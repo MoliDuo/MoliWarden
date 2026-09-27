@@ -88,8 +88,13 @@ export async function resolveRoute(
     return { kind: 'status', status: 404, headers };
   };
 
+  // Routes after a `handle` marker belong to that phase. Only the main phase
+  // and the one after the filesystem check apply to a normal request; others
+  // (e.g. the `error` phase `vercel build` adds) run only in special cases.
+  let phase: string | null = null;
   for (const route of hoistHeaderRoutes(config.routes)) {
     if (route.handle) {
+      phase = route.handle;
       if (route.handle === 'filesystem') {
         const kind = await exists(path);
         if (kind) return resolveTarget(path);
@@ -97,6 +102,7 @@ export async function resolveRoute(
       }
       continue;
     }
+    if (phase !== null && phase !== 'filesystem') continue;
     if (!route.src) continue;
     const match = new RegExp(route.src).exec(path);
     if (!match) continue;
