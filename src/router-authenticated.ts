@@ -32,7 +32,6 @@ import {
   handleCreateCipher,
   handleUpdateCipher,
   handleDeleteCipher,
-  handleDeleteCipherCompat,
   handlePermanentDeleteCipher,
   handleRestoreCipher,
   handleBulkArchiveCiphers,
@@ -493,11 +492,8 @@ export async function handleAuthenticatedRoute(
     if (subPath === '' || subPath === '/' || subPath === '/admin') {
       if (method === 'GET') return handleGetCipher(request, env, userId, cipherId);
       if (method === 'PUT' || method === 'POST') return handleUpdateCipher(request, env, userId, cipherId);
-      if (method === 'DELETE') {
-        return subPath === '/admin'
-          ? handlePermanentDeleteCipher(request, env, userId, cipherId)
-          : handleDeleteCipherCompat(request, env, userId, cipherId);
-      }
+      // Bitwarden clients use DELETE for "delete permanently" and PUT .../delete for the trash.
+      if (method === 'DELETE') return handlePermanentDeleteCipher(request, env, userId, cipherId);
     }
 
     if ((subPath === '/delete' || subPath === '/delete-admin') && method === 'PUT') return handleDeleteCipher(request, env, userId, cipherId);

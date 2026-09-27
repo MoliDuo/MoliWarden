@@ -1614,7 +1614,8 @@ export async function shareCipherToOrganization(
 }
 
 export async function deleteCipher(authedFetch: AuthedFetch, cipherId: string): Promise<Cipher> {
-  const resp = await authedFetch(`/api/ciphers/${encodeURIComponent(cipherId)}`, { method: 'DELETE' });
+  // Moves the item to the trash (DELETE on the item itself deletes permanently).
+  const resp = await authedFetch(`/api/ciphers/${encodeURIComponent(cipherId)}/delete`, { method: 'PUT' });
   if (!resp.ok) throw new Error('Delete item failed');
   return (await parseJson<Cipher>(resp))!;
 }
