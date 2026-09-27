@@ -9,7 +9,7 @@ interface SendsPageProps {
   sends: Send[];
   loading: boolean;
   onRefresh: () => Promise<void>;
-  onCreate: (draft: SendDraft, autoCopyLink: boolean) => Promise<void>;
+  onCreate: (draft: SendDraft, autoCopyLink: boolean) => Promise<string | undefined>;
   onUpdate: (send: Send, draft: SendDraft, autoCopyLink: boolean) => Promise<void>;
   onDelete: (send: Send) => Promise<void>;
   onBulkDelete: (ids: string[]) => Promise<void>;
@@ -90,6 +90,7 @@ export default function SendsPage(props: SendsPageProps) {
   const [mobilePanel, setMobilePanel] = useState<'list' | 'detail' | 'edit'>('list');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const mobileSidebarToggleKeyRef = useRef(props.mobileSidebarToggleKey);
+  const createdSendIdRef = useRef<string | null>(null);
   const [autoCopyLink, setAutoCopyLink] = useState<boolean>(() => {
     try {
       return localStorage.getItem(AUTO_COPY_KEY) === '1';
@@ -158,6 +159,17 @@ export default function SendsPage(props: SendsPageProps) {
   }, [props.sends, search, typeFilter]);
 
   useEffect(() => {
+    // A newly created send only shows up once it has been decrypted; keep the
+    // selection for it instead of falling back to whichever send is first.
+    const createdId = createdSendIdRef.current;
+    if (createdId) {
+      if (!props.sends.some((x) => x.id === createdId)) return;
+      createdSendIdRef.current = null;
+      if (filteredSends.some((x) => x.id === createdId)) {
+        setSelectedId(createdId);
+        return;
+      }
+    }
     if (!filteredSends.length) {
       setSelectedId(null);
       return;
@@ -168,7 +180,7 @@ export default function SendsPage(props: SendsPageProps) {
       setIsCreating(false);
       setDraft(null);
     }
-  }, [filteredSends, selectedId]);
+  }, [filteredSends, selectedId, props.sends]);
 
   const selectedSend = useMemo(
     () => props.sends.find((x) => x.id === selectedId) || null,
@@ -194,8 +206,9 @@ export default function SendsPage(props: SendsPageProps) {
     setBusy(true);
     try {
       if (isCreating) {
-        await props.onCreate(draft, autoCopyLink);
-        setSelectedId(null);
+        const createdId = await props.onCreate(draft, autoCopyLink);
+        createdSendIdRef.current = createdId || null;
+        setSelectedId(createdId || null);
       } else if (selectedSend) {
         await props.onUpdate(selectedSend, draft, autoCopyLink);
       }

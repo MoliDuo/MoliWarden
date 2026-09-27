@@ -964,8 +964,8 @@ export default function useVaultSendActions(options: UseVaultSendActionsOptions)
         await verifyMasterPassword(authedFetch, derived.hash);
       },
 
-      async createSend(draft: SendDraft, autoCopyLink: boolean) {
-        if (!session) return;
+      async createSend(draft: SendDraft, autoCopyLink: boolean): Promise<string | undefined> {
+        if (!session) return undefined;
         try {
           requireOnlineWrite();
         } catch (error) {
@@ -987,6 +987,7 @@ export default function useVaultSendActions(options: UseVaultSendActionsOptions)
             await navigator.clipboard.writeText(shareUrl);
           }
           onNotify('success', t('txt_send_created'));
+          return created.id;
         } catch (error) {
           onNotify('error', error instanceof Error ? error.message : t('txt_create_send_failed'));
           throw error;

@@ -116,7 +116,7 @@ export interface AppMainRoutesProps {
   uploadingAttachmentName: string;
   attachmentUploadPercent: number | null;
   onRefreshVault: () => Promise<void>;
-  onCreateSend: (draft: SendDraft, autoCopyLink: boolean) => Promise<void>;
+  onCreateSend: (draft: SendDraft, autoCopyLink: boolean) => Promise<string | undefined>;
   onUpdateSend: (send: Send, draft: SendDraft, autoCopyLink: boolean) => Promise<void>;
   onDeleteSend: (send: Send) => Promise<void>;
   onBulkDeleteSends: (ids: string[]) => Promise<void>;
