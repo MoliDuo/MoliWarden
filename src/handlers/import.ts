@@ -1,5 +1,5 @@
 import { Env, Cipher, Folder, CipherType } from '../types';
-import { notifyUserVaultSync } from '../durable/notifications-hub';
+import { notifyUserVaultSync } from '../services/notifications';
 import { StorageService } from '../services/storage';
 import { errorResponse, jsonResponse } from '../utils/response';
 import { readActingDeviceIdentifier } from '../utils/device';

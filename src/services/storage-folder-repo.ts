@@ -32,7 +32,7 @@ export async function saveFolder(db: D1Database, folder: Folder): Promise<void> 
   await db
     .prepare(
       'INSERT INTO folders(id, user_id, name, created_at, updated_at) VALUES(?, ?, ?, ?, ?) ' +
-      'ON CONFLICT(id) DO UPDATE SET name=excluded.name, updated_at=excluded.updated_at WHERE user_id=excluded.user_id'
+      'ON CONFLICT(id) DO UPDATE SET name=excluded.name, updated_at=excluded.updated_at WHERE folders.user_id=excluded.user_id'
     )
     .bind(folder.id, folder.userId, folder.name, folder.createdAt, folder.updatedAt)
     .run();
@@ -52,12 +52,12 @@ export async function clearFolderFromCiphers(
     .prepare(
       `UPDATE ciphers
        SET folder_id = NULL, updated_at = ?,
-           data = json_remove(data, '$.folderId', '$.folder_id', '$.updatedAt', '$.revisionDate')
+           data = (data::jsonb - ARRAY['folderId', 'folder_id', 'updatedAt', 'revisionDate'])::text
        WHERE user_id = ?
          AND (
            folder_id = ?
-           OR json_extract(data, '$.folderId') = ?
-           OR json_extract(data, '$.folder_id') = ?
+           OR (data::jsonb ->> 'folderId') = ?
+           OR (data::jsonb ->> 'folder_id') = ?
          )`
     )
     .bind(now, userId, folderId, folderId, folderId)
@@ -86,12 +86,12 @@ export async function bulkDeleteFolders(
       db.prepare(
         `UPDATE ciphers
          SET folder_id = NULL, updated_at = ?,
-             data = json_remove(data, '$.folderId', '$.folder_id', '$.updatedAt', '$.revisionDate')
+             data = (data::jsonb - ARRAY['folderId', 'folder_id', 'updatedAt', 'revisionDate'])::text
          WHERE user_id = ?
            AND (
              folder_id IN (${placeholders})
-             OR json_extract(data, '$.folderId') IN (${placeholders})
-             OR json_extract(data, '$.folder_id') IN (${placeholders})
+             OR (data::jsonb ->> 'folderId') IN (${placeholders})
+             OR (data::jsonb ->> 'folder_id') IN (${placeholders})
            )`
       )
       .bind(now, userId, ...chunk, ...chunk, ...chunk)

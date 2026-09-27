@@ -1,18 +1,22 @@
-// Environment bindings
+// Runtime environment (built from process.env in src/platform/env.ts).
 export interface Env {
   DB: D1Database;
-  NOTIFICATIONS_HUB: DurableObjectNamespace;
-  BACKUP_TRANSFER_RUNNER: DurableObjectNamespace;
-  ASSETS?: {
-    fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
-  };
+  BACKUP_TRANSFER_RUNNER: import('../platform/in-process-object').InProcessObjectNamespace;
+  JWT_SECRET: string;
+  // S3-compatible storage for attachments and Send files.
+  S3_ENDPOINT?: string;
+  S3_BUCKET?: string;
+  S3_ACCESS_KEY_ID?: string;
+  S3_SECRET_ACCESS_KEY?: string;
+  S3_REGION?: string;
+  // "0" switches to virtual-hosted-style bucket URLs; path-style is the default.
+  S3_FORCE_PATH_STYLE?: string;
+  // Override the per-request upload cap (bytes). Defaults to the Vercel body limit.
+  MAX_UPLOAD_BYTES?: string;
   // Set to "1" to return 404 for the Web Vault while keeping client APIs available.
   HIDE_WEB_VAULT?: string;
-  // Prefer R2 when available. Optional to support KV-only deployments.
-  ATTACHMENTS?: R2Bucket;
-  // Optional fallback for attachment/send file storage (no credit card required).
-  ATTACHMENTS_KV?: KVNamespace;
-  JWT_SECRET: string;
+  // Shared secret Vercel Cron sends as "Authorization: Bearer <CRON_SECRET>".
+  CRON_SECRET?: string;
   WEBAUTHN_RP_ID?: string;
   WEBAUTHN_RP_NAME?: string;
   WEBAUTHN_ALLOWED_ORIGINS?: string;

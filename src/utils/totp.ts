@@ -15,7 +15,7 @@ function normalizeBase32(input: string): string {
   return out;
 }
 
-function base32Decode(input: string): Uint8Array | null {
+function base32Decode(input: string): Uint8Array<ArrayBuffer> | null {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   const normalized = normalizeBase32(input);
   if (!normalized) return null;
@@ -38,7 +38,7 @@ function base32Decode(input: string): Uint8Array | null {
   return output.length > 0 ? new Uint8Array(output) : null;
 }
 
-async function hotp(secret: Uint8Array, counter: number): Promise<string> {
+async function hotp(secret: Uint8Array<ArrayBuffer>, counter: number): Promise<string> {
   const counterBytes = new Uint8Array(8);
   let c = counter;
   for (let i = 7; i >= 0; i--) {

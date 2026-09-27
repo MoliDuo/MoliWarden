@@ -10,6 +10,7 @@ import {
   verifySendFileDownloadToken,
 } from '../utils/jwt';
 import {
+  blobDownloadResponse,
   getBlobObject,
   getSendFileObjectKey,
 } from '../services/blob-store';
@@ -305,21 +306,15 @@ export async function handleDownloadSendFile(
     return errorResponse('Invalid or expired token', 401);
   }
 
-  const object = await getBlobObject(env, getSendFileObjectKey(sendId, fileId));
-  if (!object) {
+  const fileName = typeof data.fileName === 'string' ? data.fileName : fileId;
+  const download = await blobDownloadResponse(env, getSendFileObjectKey(sendId, fileId), {
+    contentDisposition: contentDispositionAttachment(fileName),
+    sanitizeContentType: sanitizeDownloadContentType,
+  });
+  if (!download) {
     return errorResponse('Send file not found', 404);
   }
-  const fileName = typeof data.fileName === 'string' ? data.fileName : fileId;
-
-  return new Response(object.body, {
-    headers: {
-      'Content-Type': sanitizeDownloadContentType(object.contentType),
-      'Content-Length': String(object.size),
-      'Content-Disposition': contentDispositionAttachment(fileName),
-      'Cache-Control': 'private, no-cache',
-      'X-Content-Type-Options': 'nosniff',
-    },
-  });
+  return download;
 }
 
 export async function issueSendAccessToken(

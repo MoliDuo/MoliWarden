@@ -4,7 +4,7 @@ import {
   notifyUserSendDelete,
   notifyUserSendUpdate,
   notifyUserVaultSync,
-} from '../durable/notifications-hub';
+} from '../services/notifications';
 import { StorageService } from '../services/storage';
 import { jsonResponse, errorResponse } from '../utils/response';
 import { readActingDeviceIdentifier } from '../utils/device';
@@ -79,12 +79,12 @@ export function getAliasedProp(source: unknown, aliases: string[]): { present: b
   return { present: false, value: undefined };
 }
 
-export function base64UrlEncode(data: Uint8Array): string {
+export function base64UrlEncode(data: Uint8Array<ArrayBuffer>): string {
   const base64 = btoa(String.fromCharCode(...data));
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-export function base64UrlDecode(input: string): Uint8Array | null {
+export function base64UrlDecode(input: string): Uint8Array<ArrayBuffer> | null {
   try {
     let normalized = input.replace(/-/g, '+').replace(/_/g, '/');
     while (normalized.length % 4) normalized += '=';
@@ -97,7 +97,7 @@ export function base64UrlDecode(input: string): Uint8Array | null {
   }
 }
 
-function uuidToBytes(uuid: string): Uint8Array | null {
+function uuidToBytes(uuid: string): Uint8Array<ArrayBuffer> | null {
   const hex = uuid.replace(/-/g, '').toLowerCase();
   if (!/^[0-9a-f]{32}$/.test(hex)) return null;
   const bytes = new Uint8Array(16);
@@ -107,7 +107,7 @@ function uuidToBytes(uuid: string): Uint8Array | null {
   return bytes;
 }
 
-function bytesToUuid(bytes: Uint8Array): string | null {
+function bytesToUuid(bytes: Uint8Array<ArrayBuffer>): string | null {
   if (bytes.length !== 16) return null;
   const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
   return [
@@ -228,7 +228,7 @@ export function isSendAvailable(send: Send): boolean {
   return true;
 }
 
-async function deriveSendPasswordHash(password: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
+async function deriveSendPasswordHash(password: string, salt: Uint8Array<ArrayBuffer>, iterations: number): Promise<Uint8Array<ArrayBuffer>> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey('raw', encoder.encode(password), { name: 'PBKDF2' }, false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits(
@@ -244,7 +244,7 @@ async function deriveSendPasswordHash(password: string, salt: Uint8Array, iterat
   return new Uint8Array(bits);
 }
 
-function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
+function constantTimeEqual(a: Uint8Array<ArrayBuffer>, b: Uint8Array<ArrayBuffer>): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) {

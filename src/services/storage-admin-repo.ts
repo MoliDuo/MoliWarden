@@ -195,7 +195,7 @@ export async function pruneAuditLogsToMax(db: D1Database, maxEntries: number): P
   const result = await db
     .prepare(
       'DELETE FROM audit_logs WHERE id IN (' +
-        'SELECT id FROM audit_logs ORDER BY created_at DESC LIMIT -1 OFFSET ?' +
+        'SELECT id FROM audit_logs ORDER BY created_at DESC LIMIT ALL OFFSET ?' +
       ')'
     )
     .bind(limit)

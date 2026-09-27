@@ -159,7 +159,7 @@ function getPositiveContentLength(headers: Headers): number | null {
 async function readIconBytes(response: Response, maxBytes: number): Promise<ArrayBuffer | null> {
   if (!response.body) return null;
   const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
+  const chunks: Uint8Array<ArrayBuffer>[] = [];
   let totalBytes = 0;
   let timedOut = false;
   const timeout = setTimeout(() => {

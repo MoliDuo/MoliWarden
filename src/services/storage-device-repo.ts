@@ -47,10 +47,10 @@ export async function upsertDevice(
       'INSERT INTO devices(user_id, device_identifier, name, type, session_stamp, encrypted_user_key, encrypted_public_key, encrypted_private_key, push_uuid, banned, banned_at, device_note, last_seen_at, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, ?) ' +
         'ON CONFLICT(user_id, device_identifier) DO UPDATE SET name=excluded.name, type=excluded.type, ' +
         'session_stamp=CASE WHEN devices.session_stamp IS NULL OR devices.session_stamp = ? THEN excluded.session_stamp ELSE devices.session_stamp END, ' +
-        'encrypted_user_key=COALESCE(excluded.encrypted_user_key, encrypted_user_key), ' +
-        'encrypted_public_key=COALESCE(excluded.encrypted_public_key, encrypted_public_key), ' +
-        'encrypted_private_key=COALESCE(excluded.encrypted_private_key, encrypted_private_key), ' +
-        'push_uuid=COALESCE(push_uuid, excluded.push_uuid), ' +
+        'encrypted_user_key=COALESCE(excluded.encrypted_user_key, devices.encrypted_user_key), ' +
+        'encrypted_public_key=COALESCE(excluded.encrypted_public_key, devices.encrypted_public_key), ' +
+        'encrypted_private_key=COALESCE(excluded.encrypted_private_key, devices.encrypted_private_key), ' +
+        'push_uuid=COALESCE(devices.push_uuid, excluded.push_uuid), ' +
         'last_seen_at=excluded.last_seen_at, ' +
         'updated_at=excluded.updated_at'
     )

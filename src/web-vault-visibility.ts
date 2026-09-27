@@ -1,6 +1,6 @@
 import type { Env } from './types';
 
-const BACKEND_PATH_PREFIXES = [
+export const BACKEND_PATH_PREFIXES = [
   '/api',
   '/identity',
   '/icons',
@@ -13,7 +13,7 @@ const BACKEND_PATH_PREFIXES = [
   '/webauthn',
 ] as const;
 
-const BACKEND_EXACT_PATHS = new Set([
+export const BACKEND_EXACT_PATHS = new Set([
   '/v1/assetlinks:check',
   '/web-bootstrap',
   '/config',

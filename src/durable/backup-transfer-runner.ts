@@ -1,4 +1,5 @@
 import type { Env } from '../types';
+import type { InProcessObjectState } from '../platform/in-process-object';
 import type { BackupDestinationRecord } from '../services/backup-config';
 import {
   BACKUP_SCHEDULER_WINDOW_MINUTES,
@@ -14,7 +15,7 @@ import {
 } from '../services/backup-uploader';
 import { getBlobObject } from '../services/blob-store';
 import { StorageService } from '../services/storage';
-import { notifyUserBackupProgress, notifyUserBackupRestoreProgress } from './notifications-hub';
+import { notifyUserBackupProgress, notifyUserBackupRestoreProgress } from '../services/notifications';
 import {
   executeConfiguredBackup,
   importAndAuditRemoteBackupFile,
@@ -83,27 +84,23 @@ export class BackupTransferRunner {
   private lastHeartbeatAt = 0;
 
   constructor(
-    private readonly state: DurableObjectState,
+    private readonly state: InProcessObjectState,
     private readonly env: Env
   ) {
   }
 
   private async acquireJob(reason: string): Promise<string | null> {
     const nowMs = Date.now();
-    const current = await this.state.storage.get<BackupJobState>(BACKUP_JOB_STATE_KEY);
-    if (current?.expiresAtMs && current.expiresAtMs > nowMs) {
-      return null;
-    }
-
     const token = crypto.randomUUID();
     const nowIso = new Date(nowMs).toISOString();
-    await this.state.storage.put<BackupJobState>(BACKUP_JOB_STATE_KEY, {
+    const acquired = await this.state.storage.acquireLease<BackupJobState>(BACKUP_JOB_STATE_KEY, {
       token,
       reason,
       acquiredAt: nowIso,
       touchedAt: nowIso,
       expiresAtMs: nowMs + BACKUP_JOB_LEASE_MS,
-    });
+    }, nowMs);
+    if (!acquired) return null;
     this.lastHeartbeatAt = 0;
     return token;
   }

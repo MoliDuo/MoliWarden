@@ -1,10 +1,11 @@
+import { getClientCountry, getClientIp } from '../utils/client-ip';
 import type { AuthRequestRecord, AuthRequestType, Env } from '../types';
 import { StorageService } from '../services/storage';
 import { generateUUID } from '../utils/uuid';
 import { readAuthRequestDeviceInfo, readActingDeviceIdentifier } from '../utils/device';
 import { errorResponse, jsonResponse } from '../utils/response';
 import { isAuthRequestExpired } from '../services/storage-auth-request-repo';
-import { notifyAuthRequestResponse, notifyUserAuthRequest } from '../durable/notifications-hub';
+import { notifyAuthRequestResponse, notifyUserAuthRequest } from '../services/notifications';
 import { RateLimitService, getClientIdentifier } from '../services/ratelimit';
 import { LIMITS } from '../config/limits';
 
@@ -29,16 +30,8 @@ function isSerializedEncString(value: unknown): value is string {
   return false;
 }
 
-function getClientIp(request: Request): string | null {
-  return (
-    request.headers.get('CF-Connecting-IP') ||
-    request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() ||
-    null
-  );
-}
-
 function getCountryName(request: Request): string | null {
-  return request.headers.get('CF-IPCountry') || null;
+  return getClientCountry(request);
 }
 
 function deviceTypeName(type: number): string {

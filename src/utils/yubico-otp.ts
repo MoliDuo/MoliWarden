@@ -63,14 +63,14 @@ function parseYubicoResponse(text: string): Record<string, string> {
   return out;
 }
 
-function base64ToBytes(input: string): Uint8Array {
+function base64ToBytes(input: string): Uint8Array<ArrayBuffer> {
   const binary = atob(input);
   const out = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index += 1) out[index] = binary.charCodeAt(index);
   return out;
 }
 
-function bytesToBase64(input: Uint8Array): string {
+function bytesToBase64(input: Uint8Array<ArrayBuffer>): string {
   let binary = '';
   for (const byte of input) binary += String.fromCharCode(byte);
   return btoa(binary);

@@ -34,15 +34,13 @@ function buildSyncCacheRequest(
   return new Request(cacheUrl.toString(), { method: 'GET' });
 }
 
-async function readSyncCache(cacheRequest: Request): Promise<Response | null> {
-  const hit = await caches.default.match(cacheRequest);
-  if (!hit) return null;
-  return new Response(hit.body, hit);
+// Upstream cached sync responses in the Cloudflare edge cache. There is no
+// equivalent shared cache in a Vercel Function, so sync is always rebuilt.
+async function readSyncCache(_cacheRequest: Request): Promise<Response | null> {
+  return null;
 }
 
-async function writeSyncCache(cacheRequest: Request, response: Response): Promise<void> {
-  await caches.default.put(cacheRequest, response.clone());
-}
+async function writeSyncCache(_cacheRequest: Request, _response: Response): Promise<void> {}
 
 // GET /api/sync
 export async function handleSync(request: Request, env: Env, userId: string): Promise<Response> {

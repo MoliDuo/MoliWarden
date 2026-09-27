@@ -1,5 +1,5 @@
 import { Env, Attachment, Cipher } from '../types';
-import { notifyUserCipherUpdate, notifyUserVaultSync } from '../durable/notifications-hub';
+import { notifyUserCipherUpdate, notifyUserVaultSync } from '../services/notifications';
 import { StorageService } from '../services/storage';
 import { jsonResponse, errorResponse } from '../utils/response';
 import { buildDirectUploadUrl, getSafeJwtSecret, parseDirectUploadPayload } from '../utils/direct-upload';
@@ -17,6 +17,7 @@ import { readActingDeviceIdentifier } from '../utils/device';
 import {
   deleteBlobObject,
   getAttachmentObjectKey,
+  blobDownloadResponse,
   getBlobObject,
   getBlobStorageMaxBytes,
   putBlobObject,
@@ -444,20 +445,14 @@ export async function handlePublicDownloadAttachment(
     return errorResponse('Invalid or expired token', 401);
   }
 
-  const object = await getBlobObject(env, path);
-  if (!object) {
+  const download = await blobDownloadResponse(env, path, {
+    contentDisposition: contentDispositionAttachment(attachment.fileName),
+    sanitizeContentType: sanitizeDownloadContentType,
+  });
+  if (!download) {
     return errorResponse('Attachment file not found', 404);
   }
-
-  return new Response(object.body, {
-    headers: {
-      'Content-Type': sanitizeDownloadContentType(object.contentType),
-      'Content-Length': String(object.size),
-      'Content-Disposition': contentDispositionAttachment(attachment.fileName),
-      'Cache-Control': 'private, no-cache',
-      'X-Content-Type-Options': 'nosniff',
-    },
-  });
+  return download;
 }
 
 // DELETE /api/ciphers/{cipherId}/attachment/{attachmentId}

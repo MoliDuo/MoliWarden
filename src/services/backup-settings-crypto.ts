@@ -42,7 +42,7 @@ export interface BackupSettingsEnvelopeV2 {
   portable: BackupSettingsPortableEnvelope;
 }
 
-function bytesToBase64(bytes: Uint8Array): string {
+function bytesToBase64(bytes: Uint8Array<ArrayBuffer>): string {
   let text = '';
   for (let index = 0; index < bytes.length; index += 1) {
     text += String.fromCharCode(bytes[index]);
@@ -50,7 +50,7 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(text);
 }
 
-function base64ToBytes(value: string): Uint8Array {
+function base64ToBytes(value: string): Uint8Array<ArrayBuffer> {
   const normalized = String(value || '').trim();
   const binary = atob(normalized);
   const bytes = new Uint8Array(binary.length);
@@ -86,7 +86,7 @@ async function deriveRuntimeKey(secret: string): Promise<CryptoKey> {
   return crypto.subtle.importKey('raw', bits, { name: AES_GCM_ALGORITHM }, false, ['encrypt', 'decrypt']);
 }
 
-async function encryptAesGcm(plaintext: Uint8Array, key: CryptoKey): Promise<{ iv: Uint8Array; ciphertext: Uint8Array }> {
+async function encryptAesGcm(plaintext: Uint8Array<ArrayBuffer>, key: CryptoKey): Promise<{ iv: Uint8Array<ArrayBuffer>; ciphertext: Uint8Array<ArrayBuffer> }> {
   const iv = crypto.getRandomValues(new Uint8Array(AES_GCM_IV_BYTES));
   const ciphertext = new Uint8Array(
     await crypto.subtle.encrypt(
@@ -98,7 +98,7 @@ async function encryptAesGcm(plaintext: Uint8Array, key: CryptoKey): Promise<{ i
   return { iv, ciphertext };
 }
 
-async function decryptAesGcm(ciphertext: Uint8Array, iv: Uint8Array, key: CryptoKey): Promise<Uint8Array> {
+async function decryptAesGcm(ciphertext: Uint8Array<ArrayBuffer>, iv: Uint8Array<ArrayBuffer>, key: CryptoKey): Promise<Uint8Array<ArrayBuffer>> {
   return new Uint8Array(
     await crypto.subtle.decrypt(
       { name: AES_GCM_ALGORITHM, iv },

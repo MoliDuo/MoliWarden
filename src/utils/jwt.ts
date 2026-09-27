@@ -4,13 +4,13 @@ import { LIMITS } from '../config/limits';
 const hmacKeyCache = new Map<string, Promise<CryptoKey>>();
 
 // Base64 URL encode
-function base64UrlEncode(data: Uint8Array): string {
+function base64UrlEncode(data: Uint8Array<ArrayBuffer>): string {
   const base64 = btoa(String.fromCharCode(...data));
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 // Base64 URL decode
-function base64UrlDecode(str: string): Uint8Array {
+function base64UrlDecode(str: string): Uint8Array<ArrayBuffer> {
   str = str.replace(/-/g, '+').replace(/_/g, '/');
   while (str.length % 4) str += '=';
   const binary = atob(str);

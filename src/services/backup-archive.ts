@@ -41,7 +41,7 @@ export interface BackupManifest {
   formatVersion: 1;
   exportedAt: string;
   appVersion: string;
-  storageKind: 'r2' | 'kv' | null;
+  storageKind: 'r2' | 'kv' | 's3' | null;
   tableCounts: Record<string, number>;
   includes: {
     attachments: boolean;
@@ -76,7 +76,7 @@ export interface BackupPayload {
 }
 
 export interface BackupArchiveBundle {
-  bytes: Uint8Array;
+  bytes: Uint8Array<ArrayBuffer>;
   fileName: string;
   manifest: BackupManifest;
 }
@@ -126,7 +126,7 @@ function sanitizeConfigRowsForExport(rows: SqlRow[]): SqlRow[] {
   return sanitized;
 }
 
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
+async function sha256Hex(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
@@ -164,7 +164,7 @@ export function extractBackupFileChecksumPrefix(fileName: string): string | null
 }
 
 export async function inspectBackupArchiveFileNameChecksum(
-  bytes: Uint8Array,
+  bytes: Uint8Array<ArrayBuffer>,
   fileName: string
 ): Promise<BackupFileIntegrityCheckResult> {
   const expectedPrefix = extractBackupFileChecksumPrefix(fileName);
@@ -178,12 +178,12 @@ export async function inspectBackupArchiveFileNameChecksum(
   };
 }
 
-export async function verifyBackupArchiveFileNameChecksum(bytes: Uint8Array, fileName: string): Promise<boolean> {
+export async function verifyBackupArchiveFileNameChecksum(bytes: Uint8Array<ArrayBuffer>, fileName: string): Promise<boolean> {
   const result = await inspectBackupArchiveFileNameChecksum(bytes, fileName);
   return result.matches;
 }
 
-function validateArchiveSize(bytes: Uint8Array): void {
+function validateArchiveSize(bytes: Uint8Array<ArrayBuffer>): void {
   if (bytes.byteLength > MAX_BACKUP_ARCHIVE_BYTES) {
     throw new Error(`Backup archive is too large. The current restore limit is ${Math.floor(MAX_BACKUP_ARCHIVE_BYTES / (1024 * 1024))} MiB`);
   }
@@ -281,8 +281,8 @@ function normalizeParsedBackupDb(value: unknown): BackupPayload['db'] {
   };
 }
 
-function createZipEntries(files: Record<string, Uint8Array>): Record<string, Uint8Array | [Uint8Array, { level: 0 | 1 | 6 }]> {
-  const entries: Record<string, Uint8Array | [Uint8Array, { level: 0 | 1 | 6 }]> = {};
+function createZipEntries(files: Record<string, Uint8Array>): Record<string, Uint8Array<ArrayBuffer> | [Uint8Array, { level: 0 | 1 | 6 }]> {
+  const entries: Record<string, Uint8Array<ArrayBuffer> | [Uint8Array, { level: 0 | 1 | 6 }]> = {};
   for (const [path, bytes] of Object.entries(files)) {
     entries[path] = [bytes, { level: BACKUP_TEXT_COMPRESSION_LEVEL }];
   }
@@ -294,7 +294,7 @@ export interface ParseBackupArchiveOptions {
 }
 
 export function parseBackupArchive(
-  bytes: Uint8Array,
+  bytes: Uint8Array<ArrayBuffer>,
   options: ParseBackupArchiveOptions = {}
 ): { payload: BackupPayload; files: Record<string, Uint8Array> } {
   validateArchiveSize(bytes);

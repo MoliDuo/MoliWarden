@@ -123,7 +123,7 @@ export async function saveCipher(db: D1Database, safeBind: SafeBind, cipher: Cip
     'VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ' +
     'ON CONFLICT(id) DO UPDATE SET ' +
     'type=excluded.type, folder_id=excluded.folder_id, name=excluded.name, notes=excluded.notes, favorite=excluded.favorite, data=excluded.data, reprompt=excluded.reprompt, key=excluded.key, updated_at=excluded.updated_at, archived_at=excluded.archived_at, deleted_at=excluded.deleted_at ' +
-    'WHERE user_id=excluded.user_id'
+    'WHERE ciphers.user_id=excluded.user_id'
   );
   await safeBind(
     stmt,
@@ -173,7 +173,7 @@ export async function bulkSoftDeleteCiphers(
       .prepare(
         `UPDATE ciphers
          SET deleted_at = ?, updated_at = ?,
-             data = json_remove(data, '$.deletedAt', '$.deletedDate', '$.updatedAt', '$.revisionDate')
+             data = (data::jsonb - ARRAY['deletedAt', 'deletedDate', 'updatedAt', 'revisionDate'])::text
          WHERE user_id = ? AND id IN (${placeholders})`
       )
       .bind(now, now, userId, ...chunk)
@@ -204,7 +204,7 @@ export async function bulkRestoreCiphers(
       .prepare(
         `UPDATE ciphers
          SET deleted_at = NULL, updated_at = ?,
-             data = json_remove(data, '$.deletedAt', '$.deletedDate', '$.updatedAt', '$.revisionDate')
+             data = (data::jsonb - ARRAY['deletedAt', 'deletedDate', 'updatedAt', 'revisionDate'])::text
          WHERE user_id = ? AND id IN (${placeholders})`
       )
       .bind(now, userId, ...chunk)
@@ -255,7 +255,7 @@ export async function getCiphersPage(
 ): Promise<Cipher[]> {
   const whereDeleted = includeDeleted
     ? ''
-    : "AND deleted_at IS NULL AND json_extract(data, '$.deletedAt') IS NULL AND json_extract(data, '$.deletedDate') IS NULL";
+    : "AND deleted_at IS NULL AND (data::jsonb ->> 'deletedAt') IS NULL AND (data::jsonb ->> 'deletedDate') IS NULL";
   const res = await db
     .prepare(
       `SELECT ${selectCipherColumns()} FROM ciphers
@@ -320,7 +320,7 @@ export async function bulkMoveCiphers(
       .prepare(
         `UPDATE ciphers
          SET folder_id = ?, updated_at = ?,
-             data = json_remove(data, '$.folderId', '$.folder_id', '$.updatedAt', '$.revisionDate')
+             data = (data::jsonb - ARRAY['folderId', 'folder_id', 'updatedAt', 'revisionDate'])::text
          WHERE user_id = ? AND id IN (${placeholders})`
       )
       .bind(normalizedFolderId, now, userId, ...chunk)
@@ -351,11 +351,11 @@ export async function bulkArchiveCiphers(
       .prepare(
         `UPDATE ciphers
          SET archived_at = ?, updated_at = ?,
-             data = json_remove(data, '$.archivedAt', '$.archivedDate', '$.updatedAt', '$.revisionDate')
+             data = (data::jsonb - ARRAY['archivedAt', 'archivedDate', 'updatedAt', 'revisionDate'])::text
          WHERE user_id = ? AND id IN (${placeholders})
            AND deleted_at IS NULL
-           AND json_extract(data, '$.deletedAt') IS NULL
-           AND json_extract(data, '$.deletedDate') IS NULL`
+           AND (data::jsonb ->> 'deletedAt') IS NULL
+           AND (data::jsonb ->> 'deletedDate') IS NULL`
       )
       .bind(now, now, userId, ...chunk)
       .run();
@@ -385,7 +385,7 @@ export async function bulkUnarchiveCiphers(
       .prepare(
         `UPDATE ciphers
          SET archived_at = NULL, updated_at = ?,
-             data = json_remove(data, '$.archivedAt', '$.archivedDate', '$.updatedAt', '$.revisionDate')
+             data = (data::jsonb - ARRAY['archivedAt', 'archivedDate', 'updatedAt', 'revisionDate'])::text
          WHERE user_id = ? AND id IN (${placeholders})`
       )
       .bind(now, userId, ...chunk)

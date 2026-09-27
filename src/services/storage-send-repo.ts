@@ -60,7 +60,7 @@ export async function saveSend(db: D1Database, safeBind: SafeBind, send: Send): 
     'password_hash=excluded.password_hash, password_salt=excluded.password_salt, password_iterations=excluded.password_iterations, auth_type=excluded.auth_type, emails=excluded.emails, ' +
     'max_access_count=excluded.max_access_count, access_count=excluded.access_count, disabled=excluded.disabled, hide_email=excluded.hide_email, ' +
     'updated_at=excluded.updated_at, expiration_date=excluded.expiration_date, deletion_date=excluded.deletion_date ' +
-    'WHERE user_id=excluded.user_id'
+    'WHERE sends.user_id=excluded.user_id'
   );
 
   await safeBind(

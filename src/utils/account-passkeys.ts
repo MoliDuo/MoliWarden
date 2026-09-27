@@ -29,7 +29,7 @@ interface AccountPasskeyTokenPayload {
   exp: number;
 }
 
-function textBytes(value: string): Uint8Array {
+function textBytes(value: string): Uint8Array<ArrayBuffer> {
   return new TextEncoder().encode(value);
 }
 
@@ -37,7 +37,7 @@ function hexByte(value: number): string {
   return value.toString(16).padStart(2, '0');
 }
 
-function dotNetGuidBytesToUuid(bytes: Uint8Array): string | null {
+function dotNetGuidBytesToUuid(bytes: Uint8Array<ArrayBuffer>): string | null {
   if (bytes.length !== 16) return null;
   return [
     [bytes[3], bytes[2], bytes[1], bytes[0]].map(hexByte).join(''),
@@ -48,7 +48,7 @@ function dotNetGuidBytesToUuid(bytes: Uint8Array): string | null {
   ].join('-');
 }
 
-function uuidToDotNetGuidBytes(value: string): Uint8Array | null {
+function uuidToDotNetGuidBytes(value: string): Uint8Array<ArrayBuffer> | null {
   const match = String(value || '').trim().match(
     /^([0-9a-f]{8})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{12})$/i
   );
@@ -75,7 +75,7 @@ async function importHmacKey(secret: string): Promise<CryptoKey> {
   return crypto.subtle.importKey('raw', textBytes(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
 }
 
-async function hmacSha256(secret: string, data: string): Promise<Uint8Array> {
+async function hmacSha256(secret: string, data: string): Promise<Uint8Array<ArrayBuffer>> {
   const key = await importHmacKey(secret);
   return new Uint8Array(await crypto.subtle.sign('HMAC', key, textBytes(data)));
 }
@@ -165,7 +165,7 @@ export function getAccountPasskeyRpConfig(request: Request, env: Env): { rpId: s
   return { rpId, rpName, origins: Array.from(origins) };
 }
 
-export function userIdToWebAuthnUserId(userId: string): Uint8Array {
+export function userIdToWebAuthnUserId(userId: string): Uint8Array<ArrayBuffer> {
   return uuidToDotNetGuidBytes(userId) || textBytes(userId);
 }
 

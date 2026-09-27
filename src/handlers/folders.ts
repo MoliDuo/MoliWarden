@@ -4,7 +4,7 @@ import {
   notifyUserFolderDelete,
   notifyUserFolderUpdate,
   notifyUserVaultSync,
-} from '../durable/notifications-hub';
+} from '../services/notifications';
 import { StorageService } from '../services/storage';
 import { jsonResponse, errorResponse } from '../utils/response';
 import { readActingDeviceIdentifier } from '../utils/device';

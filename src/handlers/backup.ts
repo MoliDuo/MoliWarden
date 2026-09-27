@@ -47,7 +47,7 @@ import { StorageService } from '../services/storage';
 import { AuthService } from '../services/auth';
 import { auditRequestMetadata, writeAuditEvent } from '../services/audit-events';
 import { getBlobObject } from '../services/blob-store';
-import { notifyUserBackupProgress, notifyUserBackupRestoreProgress } from '../durable/notifications-hub';
+import { notifyUserBackupProgress, notifyUserBackupRestoreProgress } from '../services/notifications';
 import { getMultipartRequestMaxBytes } from '../utils/direct-upload';
 import { verifyPasskeyUserVerificationToken } from '../utils/user-verification-token';
 import { unzipSync } from 'fflate';
@@ -593,7 +593,7 @@ async function downloadRemoteAttachmentViaDurableObject(
   env: Env,
   destination: BackupDestinationRecord,
   blobName: string
-): Promise<Uint8Array | null> {
+): Promise<Uint8Array<ArrayBuffer> | null> {
   const id = env.BACKUP_TRANSFER_RUNNER.idFromName('remote-attachment-restore');
   const stub = env.BACKUP_TRANSFER_RUNNER.get(id);
   const response = await stub.fetch('https://backup-transfer/internal/download-remote-attachment', {
@@ -619,9 +619,9 @@ async function downloadRemoteAttachmentBatchViaDurableObject(
   env: Env,
   destination: BackupDestinationRecord,
   blobNames: string[]
-): Promise<Map<string, Uint8Array>> {
+): Promise<Map<string, Uint8Array<ArrayBuffer>>> {
   const names = Array.from(new Set(blobNames.map((blobName) => String(blobName || '').trim()).filter(Boolean)));
-  const result = new Map<string, Uint8Array>();
+  const result = new Map<string, Uint8Array<ArrayBuffer>>();
   if (!names.length) return result;
 
   const id = env.BACKUP_TRANSFER_RUNNER.idFromName('remote-attachment-restore');
@@ -657,7 +657,7 @@ async function downloadRemoteAttachmentBatchViaDurableObject(
   return result;
 }
 
-function collectExternalRemoteAttachmentBlobNames(archiveBytes: Uint8Array): string[] {
+function collectExternalRemoteAttachmentBlobNames(archiveBytes: Uint8Array<ArrayBuffer>): string[] {
   const parsed = parseBackupArchive(archiveBytes, { allowExternalAttachmentBlobs: true });
   const refs = new Map(
     (parsed.payload.manifest.attachmentBlobs || [])
@@ -712,7 +712,7 @@ export async function importAndAuditRemoteBackupFile(
   const restoreFileName = remoteFile.fileName || remotePath.split('/').pop() || remotePath;
   await touchLease();
   const externalAttachmentBlobNames = collectExternalRemoteAttachmentBlobNames(remoteFile.bytes);
-  const externalAttachmentCache = new Map<string, Uint8Array | null>();
+  const externalAttachmentCache = new Map<string, Uint8Array<ArrayBuffer> | null>();
   const progress: BackupRestoreProgressReporter = async (event) => {
     await touchLease();
     await notifyUserBackupRestoreProgress(
@@ -820,7 +820,7 @@ async function runImportAndAudit(
   env: Env,
   request: Request,
   actorUser: User,
-  archiveBytes: Uint8Array,
+  archiveBytes: Uint8Array<ArrayBuffer>,
   fileName: string,
   replaceExisting: boolean,
   metadata: Record<string, unknown>
@@ -1314,7 +1314,7 @@ export async function handleAdminImportBackup(request: Request, env: Env, actorU
 
   const replaceExisting = String(formData.get('replaceExisting') || '').trim() === '1';
   const allowChecksumMismatch = String(formData.get('allowChecksumMismatch') || '').trim() === '1';
-  let archiveBytes: Uint8Array;
+  let archiveBytes: Uint8Array<ArrayBuffer>;
   try {
     archiveBytes = new Uint8Array(await (file as { arrayBuffer(): Promise<ArrayBuffer> }).arrayBuffer());
   } catch {

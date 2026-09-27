@@ -1,10 +1,10 @@
-export function bytesToBase64Url(bytes: Uint8Array): string {
+export function bytesToBase64Url(bytes: Uint8Array<ArrayBuffer>): string {
   let binary = '';
   for (const b of bytes) binary += String.fromCharCode(b);
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 
-export function base64UrlToBytes(input: string): Uint8Array {
+export function base64UrlToBytes(input: string): Uint8Array<ArrayBuffer> {
   const normalized = String(input || '').replace(/-/g, '+').replace(/_/g, '/');
   const padded = normalized + '='.repeat((4 - (normalized.length % 4 || 4)) % 4);
   const binary = atob(padded);

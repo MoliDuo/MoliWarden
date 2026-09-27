@@ -1,9 +1,10 @@
 import { LIMITS } from '../config/limits';
+import { getClientIp } from '../utils/client-ip';
 
 // Rate limiting service.
-// - Login attempts: D1-backed (low volume, security-critical, needs cross-colo persistence).
-// - API budgets: Cloudflare Cache API (high volume, auto-expires, zero D1 writes).
-// - Strict budgets: D1-backed fixed windows for low-volume anonymous sensitive endpoints.
+// - Login attempts: database-backed (low volume, security-critical).
+// - API budgets and strict budgets: fixed windows in the UNLOGGED
+//   rate_limit_buckets table (one upsert per request).
 
 const CONFIG = {
   LOGIN_MAX_ATTEMPTS: LIMITS.rateLimit.loginMaxAttempts,
@@ -45,42 +46,10 @@ export class RateLimitService {
     RateLimitService.lastLoginIpCleanupAt = nowMs;
   }
 
-  private async ensureLoginIpTable(): Promise<void> {
-    if (RateLimitService.loginIpTableReady) return;
+  // Tables are created by ensureStorageSchema() (src/services/storage-schema.ts).
+  private async ensureLoginIpTable(): Promise<void> {}
 
-    await this.db
-      .prepare(
-        'CREATE TABLE IF NOT EXISTS login_attempts_ip (' +
-        'ip TEXT PRIMARY KEY, ' +
-        'attempts INTEGER NOT NULL, ' +
-        'locked_until INTEGER, ' +
-        'updated_at INTEGER NOT NULL' +
-        ')'
-      )
-      .run();
-
-    RateLimitService.loginIpTableReady = true;
-  }
-
-  private async ensureStrictBudgetTable(): Promise<void> {
-    if (RateLimitService.strictBudgetTableReady) return;
-
-    await this.db
-      .prepare(
-        'CREATE TABLE IF NOT EXISTS rate_limit_buckets (' +
-        'bucket_key TEXT PRIMARY KEY, ' +
-        'count INTEGER NOT NULL, ' +
-        'expires_at INTEGER NOT NULL, ' +
-        'updated_at INTEGER NOT NULL' +
-        ')'
-      )
-      .run();
-
-    await this.db
-      .prepare('CREATE INDEX IF NOT EXISTS idx_rate_limit_buckets_expires ON rate_limit_buckets(expires_at)')
-      .run();
-    RateLimitService.strictBudgetTableReady = true;
-  }
+  private async ensureStrictBudgetTable(): Promise<void> {}
 
   private async maybeCleanupStrictBudgets(nowMs: number): Promise<void> {
     if (!this.shouldRunCleanup(RateLimitService.lastStrictBudgetCleanupAt, RateLimitService.STRICT_BUDGET_CLEANUP_INTERVAL_MS)) {
@@ -135,20 +104,14 @@ export class RateLimitService {
     const now = Date.now();
     await this.maybeCleanupLoginAttemptsIp(now);
 
-    // D1 in Workers forbids raw BEGIN/COMMIT statements.
-    // Use a single atomic UPSERT to increment attempts.
-    // This is concurrency-safe because the row is keyed by IP.
-    await this.db
+    // Single atomic UPSERT; concurrency-safe because the row is keyed by IP.
+    const row = await this.db
       .prepare(
         'INSERT INTO login_attempts_ip(ip, attempts, locked_until, updated_at) VALUES(?, 1, NULL, ?) ' +
-        'ON CONFLICT(ip) DO UPDATE SET attempts = attempts + 1, updated_at = excluded.updated_at'
+        'ON CONFLICT(ip) DO UPDATE SET attempts = login_attempts_ip.attempts + 1, updated_at = excluded.updated_at ' +
+        'RETURNING attempts'
       )
       .bind(key, now)
-      .run();
-
-    const row = await this.db
-      .prepare('SELECT attempts FROM login_attempts_ip WHERE ip = ?')
-      .bind(key)
       .first<{ attempts: number }>();
 
     const attempts = row?.attempts || 1;
@@ -170,40 +133,35 @@ export class RateLimitService {
     await this.db.prepare('DELETE FROM login_attempts_ip WHERE ip = ?').bind(key).run();
   }
 
-  // Cache API-backed fixed-window rate limiter.
-  // Uses Cloudflare edge cache instead of D1 — zero database writes, auto-expires via TTL.
-  // Per-colo isolation is acceptable (matches Cloudflare's own rate limiting behaviour).
+  private async incrementBucket(bucketKey: string, expiresAtMs: number, nowMs: number): Promise<number> {
+    const row = await this.db
+      .prepare(
+        'INSERT INTO rate_limit_buckets(bucket_key, count, expires_at, updated_at) VALUES(?, 1, ?, ?) ' +
+        'ON CONFLICT(bucket_key) DO UPDATE SET count = rate_limit_buckets.count + 1, updated_at = excluded.updated_at ' +
+        'RETURNING count'
+      )
+      .bind(bucketKey, expiresAtMs, nowMs)
+      .first<{ count: number }>();
+    return Math.max(1, Number(row?.count || 1));
+  }
+
+  // Database-backed fixed-window rate limiter shared by all function instances.
   private async consumeFixedWindowBudget(
     identifier: string,
     maxRequests: number,
     windowSeconds: number
   ): Promise<{ allowed: boolean; remaining: number; retryAfterSeconds?: number }> {
-    const nowSec = Math.floor(Date.now() / 1000);
+    const nowMs = Date.now();
+    const nowSec = Math.floor(nowMs / 1000);
     const windowStart = nowSec - (nowSec % windowSeconds);
     const windowEnd = windowStart + windowSeconds;
     const ttl = Math.max(1, windowEnd - nowSec);
 
-    const cache = await caches.open('rate-limit');
-    const cacheKey = new Request(`https://rl/${identifier}/${windowStart}`);
-
-    const cached = await cache.match(cacheKey);
-    let count = 0;
-    if (cached) {
-      count = parseInt(await cached.text(), 10) || 0;
-    }
-
-    if (count >= maxRequests) {
+    await this.maybeCleanupStrictBudgets(nowMs);
+    const count = await this.incrementBucket(`fw:${identifier}:${windowStart}`, windowEnd * 1000, nowMs);
+    if (count > maxRequests) {
       return { allowed: false, remaining: 0, retryAfterSeconds: ttl };
     }
-
-    count++;
-    await cache.put(
-      cacheKey,
-      new Response(String(count), {
-        headers: { 'Cache-Control': `public, max-age=${ttl}` },
-      })
-    );
-
     return { allowed: true, remaining: Math.max(0, maxRequests - count) };
   }
 
@@ -232,29 +190,8 @@ export class RateLimitService {
     const bucketKey = `${key}:${windowStart}`;
 
     await this.maybeCleanupStrictBudgets(nowMs);
-    await this.db
-      .prepare(
-        'INSERT OR IGNORE INTO rate_limit_buckets(bucket_key, count, expires_at, updated_at) VALUES(?, 0, ?, ?)'
-      )
-      .bind(bucketKey, windowEndMs, nowMs)
-      .run();
-
-    const update = await this.db
-      .prepare(
-        'UPDATE rate_limit_buckets SET count = count + 1, expires_at = ?, updated_at = ? ' +
-        'WHERE bucket_key = ? AND count < ?'
-      )
-      .bind(windowEndMs, nowMs, bucketKey, max)
-      .run();
-
-    const allowed = Number(update.meta?.changes ?? 0) > 0;
-    const row = await this.db
-      .prepare('SELECT count FROM rate_limit_buckets WHERE bucket_key = ?')
-      .bind(bucketKey)
-      .first<{ count: number }>();
-    const count = Math.max(0, Number(row?.count || 0));
-
-    if (!allowed) {
+    const count = await this.incrementBucket(bucketKey, windowEndMs, nowMs);
+    if (count > max) {
       return { allowed: false, remaining: 0, retryAfterSeconds };
     }
     return { allowed: true, remaining: Math.max(0, max - count) };
@@ -417,24 +354,15 @@ function isLocalRequest(request: Request): boolean {
 }
 
 export function getClientIdentifier(request: Request): string | null {
-  // Strict fallback order:
-  // 1) CF-Connecting-IP
-  // 2) X-Real-IP
-  // 3) first item of X-Forwarded-For
+  // See src/utils/client-ip.ts for which headers are trusted on Vercel.
   // If none are present/valid, treat client IP as unavailable.
-  const candidates: Array<string | null> = [
-    request.headers.get('CF-Connecting-IP'),
-    request.headers.get('X-Real-IP'),
-    request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() || null,
-  ];
-
-  for (const raw of candidates) {
-    if (!raw) continue;
+  const raw = getClientIp(request);
+  if (raw) {
     const normalized = normalizeClientIpForRateLimit(raw);
     if (normalized) return normalized;
   }
 
-  // Local dev (wrangler dev / localhost): allow a deterministic loopback identifier.
+  // Local dev (localhost): allow a deterministic loopback identifier.
   if (isLocalRequest(request)) {
     return 'ip4:127.0.0.1';
   }

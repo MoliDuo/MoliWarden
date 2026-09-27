@@ -1,6 +1,6 @@
 import type { Device, DevicePendingAuthRequest, DeviceResponse, ProtectedDeviceResponse as ProtectedDeviceWireResponse } from '../types';
 import { Env } from '../types';
-import { getOnlineUserDevices, notifyUserLogout } from '../durable/notifications-hub';
+import { getOnlineUserDevices, notifyUserLogout } from '../services/notifications';
 import { AuthService } from '../services/auth';
 import { auditRequestMetadata, writeAuditEvent } from '../services/audit-events';
 import { registerMobilePushDevice, unregisterMobilePushDevice } from '../services/push-relay';

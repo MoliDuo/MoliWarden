@@ -68,7 +68,7 @@ async function enforceRequestBodyLimit(
   }
 
   const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
+  const chunks: Uint8Array<ArrayBuffer>[] = [];
   let total = 0;
   while (true) {
     const { done, value } = await reader.read();

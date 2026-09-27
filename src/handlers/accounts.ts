@@ -91,12 +91,12 @@ function randomBase32Secret(length: number = 32): string {
   return out;
 }
 
-function base64UrlEncodeBytes(data: Uint8Array): string {
+function base64UrlEncodeBytes(data: Uint8Array<ArrayBuffer>): string {
   const base64 = btoa(String.fromCharCode(...data));
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function base64UrlDecodeBytes(input: string): Uint8Array {
+function base64UrlDecodeBytes(input: string): Uint8Array<ArrayBuffer> {
   let base64 = input.replace(/-/g, '+').replace(/_/g, '/');
   while (base64.length % 4) base64 += '=';
   const binary = atob(base64);
@@ -105,7 +105,7 @@ function base64UrlDecodeBytes(input: string): Uint8Array {
   return out;
 }
 
-async function hmacSha256(secret: string, data: string): Promise<Uint8Array> {
+async function hmacSha256(secret: string, data: string): Promise<Uint8Array<ArrayBuffer>> {
   const key = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(secret),

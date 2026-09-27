@@ -20,7 +20,7 @@ import {
   notifyUserCipherUpdate,
   notifyUserCiphersSync,
   notifyUserVaultSync,
-} from '../durable/notifications-hub';
+} from '../services/notifications';
 import { jsonResponse, errorResponse } from '../utils/response';
 import { generateUUID } from '../utils/uuid';
 import { deleteAllAttachmentsForCipher, deleteAllAttachmentsForCiphers } from './attachments';

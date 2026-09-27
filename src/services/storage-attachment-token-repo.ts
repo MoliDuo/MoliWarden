@@ -1,15 +1,7 @@
 type ShouldRunPeriodicCleanup = (lastRunAt: number, intervalMs: number) => boolean;
 
-export async function ensureUsedAttachmentDownloadTokenTable(db: D1Database): Promise<void> {
-  await db
-    .prepare(
-      'CREATE TABLE IF NOT EXISTS used_attachment_download_tokens (' +
-        'jti TEXT PRIMARY KEY, ' +
-        'expires_at INTEGER NOT NULL' +
-        ')'
-    )
-    .run();
-}
+// Table is created by ensureStorageSchema() (src/services/storage-schema.ts).
+export async function ensureUsedAttachmentDownloadTokenTable(_db: D1Database): Promise<void> {}
 
 export async function consumeAttachmentDownloadToken(
   db: D1Database,

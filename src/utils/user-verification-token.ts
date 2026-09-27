@@ -15,7 +15,7 @@ interface UserVerificationTokenPayload {
   exp: number;
 }
 
-function textBytes(value: string): Uint8Array {
+function textBytes(value: string): Uint8Array<ArrayBuffer> {
   return new TextEncoder().encode(value);
 }
 
@@ -23,7 +23,7 @@ async function importHmacKey(secret: string): Promise<CryptoKey> {
   return crypto.subtle.importKey('raw', textBytes(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
 }
 
-async function hmacSha256(secret: string, data: string): Promise<Uint8Array> {
+async function hmacSha256(secret: string, data: string): Promise<Uint8Array<ArrayBuffer>> {
   const key = await importHmacKey(secret);
   return new Uint8Array(await crypto.subtle.sign('HMAC', key, textBytes(data)));
 }

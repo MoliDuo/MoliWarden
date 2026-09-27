@@ -82,34 +82,6 @@ async function queryRows(db: D1Database, sql: string, ...values: unknown[]): Pro
   return (response.results || []).map((row) => ({ ...row }));
 }
 
-async function getTableCreateSql(db: D1Database, table: BackupTableName): Promise<string> {
-  const row = await db
-    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?")
-    .bind(table)
-    .first<{ sql: string | null }>();
-  const sql = String(row?.sql || '').trim();
-  if (!sql) {
-    throw new Error(`Restore shadow schema is missing table definition for ${table}`);
-  }
-  return sql;
-}
-
-function buildShadowTableCreateSql(createSql: string, table: BackupTableName): string {
-  const tablePattern = new RegExp(`^CREATE TABLE(?:\\s+IF NOT EXISTS)?\\s+(?:\"${table}\"|${table})(?=\\s*\\()`, 'i');
-  let next = createSql.replace(tablePattern, `CREATE TABLE "${shadowTableName(table)}"`);
-  if (next === createSql) {
-    throw new Error(`Restore shadow schema could not rewrite CREATE TABLE statement for ${table}`);
-  }
-  for (const currentTable of BACKUP_TABLES) {
-    const referencePattern = new RegExp(`\\bREFERENCES\\s+(?:\"${currentTable}\"|${currentTable})(?=\\s*\\()`, 'gi');
-    next = next.replace(
-      referencePattern,
-      `REFERENCES "${shadowTableName(currentTable)}"`
-    );
-  }
-  return next;
-}
-
 async function resetRestoreArtifacts(db: D1Database): Promise<void> {
   const dropStatements = BACKUP_TABLES
     .slice()
@@ -121,11 +93,12 @@ async function resetRestoreArtifacts(db: D1Database): Promise<void> {
 }
 
 async function createShadowTables(db: D1Database): Promise<void> {
-  const createStatements: D1PreparedStatement[] = [];
-  for (const table of BACKUP_TABLES) {
-    const createSql = await getTableCreateSql(db, table);
-    createStatements.push(db.prepare(buildShadowTableCreateSql(createSql, table)));
-  }
+  // Shadow tables copy columns, defaults, constraints and indexes (incl. PKs) but not
+  // foreign keys; referential integrity is enforced when rows are copied back
+  // into the real tables inside one transaction.
+  const createStatements = BACKUP_TABLES.map((table) =>
+    db.prepare(`CREATE TABLE ${shadowTableName(table)} (LIKE ${table} INCLUDING ALL)`)
+  );
   await db.batch(createStatements);
 }
 
@@ -226,7 +199,7 @@ interface AttachmentRestoreResult {
 }
 
 interface RemoteAttachmentSource {
-  loadAttachment(blobName: string): Promise<Uint8Array | null>;
+  loadAttachment(blobName: string): Promise<Uint8Array<ArrayBuffer> | null>;
 }
 
 export interface BackupRestoreProgressEvent {
@@ -324,7 +297,7 @@ async function importPreparedBackupRows(db: D1Database, payload: BackupPayload['
 
 function prepareImportPayloadForTarget(env: Env, payload: BackupPayload, files: Record<string, Uint8Array>): PreparedBackupImportPayload {
   const storageKind = getBlobStorageKind(env);
-  if (storageKind === 'r2') {
+  if (storageKind === 's3') {
     return {
       payload,
       skipped: {
@@ -393,8 +366,8 @@ function prepareImportPayloadForTarget(env: Env, payload: BackupPayload, files: 
 
   const needsKvBlobStorage = nextAttachments.length > 0;
 
-  if (needsKvBlobStorage && !env.ATTACHMENTS_KV) {
-    throw new Error('Backup restore requires ATTACHMENTS_KV when using KV blob storage');
+  if (needsKvBlobStorage) {
+    throw new Error('Backup restore requires S3 attachment storage to be configured');
   }
 
   const result = {
@@ -411,7 +384,12 @@ function prepareImportPayloadForTarget(env: Env, payload: BackupPayload, files: 
 function buildInsertStatements(db: D1Database, table: string, columns: string[], rows: SqlRow[], upsert = false): D1PreparedStatement[] {
   if (!rows.length) return [];
   const placeholders = `(${columns.map(() => '?').join(', ')})`;
-  const sql = `INSERT ${upsert ? 'OR REPLACE ' : ''}INTO ${table} (${columns.join(', ')}) VALUES ${placeholders}`;
+  // Upserts conflict on the first column, which is the primary key for every
+  // table restored with upsert=true (config.key, user_revisions.user_id).
+  const conflict = upsert
+    ? ` ON CONFLICT (${columns[0]}) DO UPDATE SET ${columns.slice(1).map((column) => `${column} = excluded.${column}`).join(', ')}`
+    : '';
+  const sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES ${placeholders}${conflict}`;
   return rows.map((row) => db.prepare(sql).bind(...columns.map((column) => row[column] ?? null)));
 }
 
@@ -511,10 +489,6 @@ async function prepareRemoteAttachmentPayload(
       continue;
     }
     if (!ref) {
-      skippedItems.push({ kind: 'attachment', path, sizeBytes });
-      continue;
-    }
-    if (storageKind === 'kv' && sizeBytes > KV_MAX_OBJECT_BYTES) {
       skippedItems.push({ kind: 'attachment', path, sizeBytes });
       continue;
     }
@@ -692,7 +666,7 @@ async function importBackupRows(db: D1Database, payload: BackupPayload['db'], us
 }
 
 export async function importBackupArchiveBytes(
-  archiveBytes: Uint8Array,
+  archiveBytes: Uint8Array<ArrayBuffer>,
   env: Env,
   actorUserId: string,
   replaceExisting: boolean,
@@ -832,7 +806,7 @@ export async function importBackupArchiveBytes(
 }
 
 export async function importRemoteBackupArchiveBytes(
-  archiveBytes: Uint8Array,
+  archiveBytes: Uint8Array<ArrayBuffer>,
   env: Env,
   actorUserId: string,
   replaceExisting: boolean,

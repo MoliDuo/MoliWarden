@@ -1,7 +1,8 @@
 import { User, Cipher, Folder, Attachment, Device, Invite, AuditLog, Send, TrustedDeviceTokenSummary, RefreshTokenRecord, CustomEquivalentDomain, AccountPasskeyChallenge, AccountPasskeyChallengeScope, AccountPasskeyCredential, AuthRequestRecord } from '../types';
 import { LIMITS } from '../config/limits';
 import { ensurePushInstallationCredentials } from './push-relay';
-import { ensureStorageSchema } from './storage-schema';
+import { runInBackground } from '../platform/background';
+import { ensureStorageSchema, REQUIRED_SCHEMA_TABLE_NAMES } from './storage-schema';
 import {
   getConfigValue as getStoredConfigValue,
   isRegistered as getRegisteredFlag,
@@ -161,13 +162,13 @@ import {
 const TWO_FACTOR_REMEMBER_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const STORAGE_SCHEMA_VERSION_KEY = 'schema.version';
 // IMPORTANT:
-// Bump this whenever src/services/storage-schema.ts or migrations/0001_init.sql
-// changes. Existing D1 installs only rerun ensureStorageSchema() when this value
-// differs from config.schema.version.
-const STORAGE_SCHEMA_VERSION = '2026-07-13-refresh-session-reuse';
-const REQUIRED_SCHEMA_TABLES = ['webauthn_credentials', 'webauthn_challenges', 'auth_requests', 'totp_login_replays'] as const;
+// Bump this whenever src/services/storage-schema.ts changes. Existing installs
+// only rerun ensureStorageSchema() when this value differs from
+// config.schema.version.
+const STORAGE_SCHEMA_VERSION = '2026-09-27-postgres-initial';
+const REQUIRED_SCHEMA_TABLES = REQUIRED_SCHEMA_TABLE_NAMES;
 
-// D1-backed storage.
+// PostgreSQL-backed storage (through the D1-compatible facade).
 // Contract:
 // - All methods are scoped by userId where applicable.
 // - Uses SQL constraints (PK/unique/FK) to avoid KV-style index race conditions.
@@ -202,7 +203,7 @@ export class StorageService {
   private async hasRequiredSchemaTables(): Promise<boolean> {
     const placeholders = REQUIRED_SCHEMA_TABLES.map(() => '?').join(', ');
     const result = await this.db
-      .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (${placeholders})`)
+      .prepare(`SELECT table_name AS name FROM information_schema.tables WHERE table_schema = current_schema() AND table_name IN (${placeholders})`)
       .bind(...REQUIRED_SCHEMA_TABLES)
       .all<{ name: string }>();
     const found = new Set((result.results || []).map((row) => row.name));
@@ -255,8 +256,10 @@ export class StorageService {
   async initializeDatabase(): Promise<void> {
     if (StorageService.schemaVerified) return;
 
-    await this.db.prepare('CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
-    const schemaVersion = await getStoredConfigValue(this.db, STORAGE_SCHEMA_VERSION_KEY);
+    const configTable = await this.db
+      .prepare("SELECT to_regclass('config') IS NOT NULL AS present")
+      .first<{ present: boolean }>();
+    const schemaVersion = configTable?.present ? await getStoredConfigValue(this.db, STORAGE_SCHEMA_VERSION_KEY) : null;
     const schemaMissingRequiredTables = schemaVersion === STORAGE_SCHEMA_VERSION
       ? !(await this.hasRequiredSchemaTables())
       : true;
@@ -264,7 +267,9 @@ export class StorageService {
       await ensureStorageSchema(this.db);
       await saveConfigValue(this.db, STORAGE_SCHEMA_VERSION_KEY, STORAGE_SCHEMA_VERSION);
     }
-    await ensurePushInstallationCredentials(this.db);
+    // Registering with the Bitwarden push relay is a network call; do not
+    // block the first request of a cold start on it.
+    runInBackground(ensurePushInstallationCredentials(this.db));
 
     StorageService.schemaVerified = true;
   }

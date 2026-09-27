@@ -45,12 +45,15 @@ export async function replaceYubicoCredentials(
 async function acquireBootstrapClaim(db: D1Database): Promise<string | null> {
   const now = Date.now();
   await db
-    .prepare('DELETE FROM config WHERE key = ? AND CAST(value AS INTEGER) < ?')
+    .prepare(
+      "DELETE FROM config WHERE key = ? AND " +
+      "(CASE WHEN split_part(value, ':', 1) ~ '^[0-9]{1,18}$' THEN split_part(value, ':', 1)::bigint ELSE NULL END) < ?"
+    )
     .bind(YUBICO_BOOTSTRAP_CLAIM_CONFIG_KEY, now)
     .run();
   const claim = `${now + YUBICO_BOOTSTRAP_CLAIM_TTL_MS}:${crypto.randomUUID()}`;
   const result = await db
-    .prepare('INSERT OR IGNORE INTO config(key, value) VALUES(?, ?)')
+    .prepare('INSERT INTO config(key, value) VALUES(?, ?) ON CONFLICT(key) DO NOTHING')
     .bind(YUBICO_BOOTSTRAP_CLAIM_CONFIG_KEY, claim)
     .run();
   return (result.meta.changes ?? 0) > 0 ? claim : null;

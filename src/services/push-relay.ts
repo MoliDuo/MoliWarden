@@ -52,7 +52,12 @@ async function getPushInstallationCredentials(db: D1Database): Promise<{ id: str
   return normalizedId && normalizedKey ? { id: normalizedId, key: normalizedKey } : null;
 }
 
+export function isPushRelayDisabled(): boolean {
+  return String(process.env.PUSH_RELAY_DISABLED || '').trim() === '1';
+}
+
 export async function ensurePushInstallationCredentials(db: D1Database): Promise<{ id: string; key: string } | null> {
+  if (isPushRelayDisabled()) return null;
   const existing = await getPushInstallationCredentials(db);
   if (existing) return existing;
 
