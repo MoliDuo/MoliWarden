@@ -126,8 +126,21 @@ export async function putBlobObject(
   });
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
-    throw new Error(`S3 upload failed (${response.status}): ${detail.slice(0, 200)}`);
+    throw new Error(`S3 upload failed (${response.status}): ${detail.slice(0, 500)}`);
   }
+}
+
+// Message for a failed upload that tells the user where to look (S3 status
+// and error code such as SignatureDoesNotMatch or NoSuchBucket, which contain
+// no secrets); the full error goes to the function log.
+export function blobStorageErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error('File storage error:', message);
+  if (message === 'Attachment storage is not configured') return BLOB_STORAGE_MISSING_MESSAGE;
+  const status = message.match(/^S3 \w+ failed \((\d+)\)/)?.[1];
+  const code = message.match(/<Code>([A-Za-z0-9.]+)<\/Code>/)?.[1];
+  const reason = [status && `HTTP ${status}`, code].filter(Boolean).join(' ') || 'unreachable';
+  return `File storage error (${reason}). Check the S3_* settings and the function logs.`;
 }
 
 export async function getBlobObject(env: Env, key: string): Promise<BlobObject | null> {
@@ -136,7 +149,8 @@ export async function getBlobObject(env: Env, key: string): Promise<BlobObject |
   const response = await config.client.fetch(objectUrl(config, key), { method: 'GET' });
   if (response.status === 404) return null;
   if (!response.ok) {
-    throw new Error(`S3 download failed (${response.status})`);
+    const detail = await response.text().catch(() => '');
+    throw new Error(`S3 download failed (${response.status}): ${detail.slice(0, 500)}`);
   }
   return {
     body: response.body,

@@ -9,8 +9,9 @@ import {
   getBlobStorageKind,
   getBlobStorageMaxBytes,
   BLOB_STORAGE_MISSING_MESSAGE,
+  blobStorageErrorMessage,
+  headBlobObject,
   getSendFileObjectKey,
-  getBlobObject,
   putBlobObject,
   deleteBlobObject,
 } from '../services/blob-store';
@@ -88,11 +89,10 @@ async function processSendFileUpload(
   }
 
   const path = getSendFileObjectKey(send.id, fileId);
-  if (await getBlobObject(env, path)) {
-    return errorResponse('Send file has already been uploaded', 409);
-  }
-
   try {
+    if (await headBlobObject(env, path)) {
+      return errorResponse('Send file has already been uploaded', 409);
+    }
     await putBlobObject(env, path, upload.body, {
       size: upload.size,
       contentType: upload.contentType,
@@ -106,7 +106,7 @@ async function processSendFileUpload(
     if (message.includes('KV object too large')) {
       return errorResponse('Send storage limit exceeded with this file', 413);
     }
-    return errorResponse('Attachment storage is not configured', 500);
+    return errorResponse(blobStorageErrorMessage(error), 500);
   }
 
   const storage = new StorageService(env.DB);

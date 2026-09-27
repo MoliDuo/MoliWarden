@@ -15,7 +15,10 @@ services:
       retries: 30
   s3:
     image: chrislusf/seaweedfs
-    command: ["server", "-s3", "-s3.config=/etc/s3.json"]
+    # Every test file uses its own bucket (a SeaweedFS collection with its own
+    # volumes). The default volume count is derived from free disk space and
+    # runs out on CI runners, so use many small volumes instead.
+    command: ["server", "-s3", "-s3.config=/etc/s3.json", "-volume.max=500", "-master.volumeSizeLimitMB=64"]
     volumes:
       - ./s3.json:/etc/s3.json:ro
     ports:

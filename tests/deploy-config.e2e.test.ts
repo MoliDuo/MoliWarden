@@ -90,3 +90,32 @@ test('missing S3 settings are named before any upload starts', async () => {
   // Everything that does not need file storage keeps working.
   assert.equal((await alice.json('/api/sync')).ciphers.length, 1);
 });
+
+test('wrong S3 credentials surface the S3 error code, not "not configured"', async () => {
+  const { getEnv } = await import('../src/platform/env');
+  const env = getEnv();
+  Object.assign(env, {
+    S3_ENDPOINT: process.env.TEST_S3_ENDPOINT || 'http://localhost:58333',
+    S3_BUCKET: 'mw-deploy-config',
+    S3_ACCESS_KEY_ID: process.env.TEST_S3_ACCESS_KEY_ID || 'mwaccess',
+    S3_SECRET_ACCESS_KEY: 'definitely-wrong-secret',
+    S3_REGION: 'us-east-1',
+  });
+  const client = new Client(baseUrl);
+  const alice = await client.login('alice@example.com');
+  const cipher = await alice.json('/api/ciphers', { method: 'POST', json: cipherPayload('bad-s3') });
+  const meta = await alice.json(`/api/ciphers/${cipher.id}/attachment/v2`, {
+    method: 'POST',
+    json: { key: fakeEncString('k'), fileName: fakeEncString('f'), fileSize: 4 },
+  });
+  const url = new URL(meta.url);
+  const upload = await client.fetch(url.pathname + url.search, {
+    method: 'PUT',
+    headers: { 'x-ms-blob-type': 'BlockBlob', 'Content-Length': '4' },
+    body: 'abcd',
+  });
+  assert.equal(upload.status, 500);
+  const message = await errorMessage(upload);
+  assert.match(message, /File storage error \(HTTP 403/);
+  assert.doesNotMatch(message, /definitely-wrong-secret/);
+});

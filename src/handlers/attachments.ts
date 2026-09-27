@@ -20,10 +20,11 @@ import {
   deleteBlobObject,
   getAttachmentObjectKey,
   blobDownloadResponse,
-  getBlobObject,
   getBlobStorageKind,
   getBlobStorageMaxBytes,
   BLOB_STORAGE_MISSING_MESSAGE,
+  blobStorageErrorMessage,
+  headBlobObject,
   putBlobObject,
 } from '../services/blob-store';
 import { auditRequestMetadata, writeAuditEvent } from '../services/audit-events';
@@ -181,11 +182,10 @@ async function processAttachmentUpload(
   }
 
   const path = getAttachmentObjectKey(cipherId, attachment.id);
-  if (await getBlobObject(env, path)) {
-    return errorResponse('Attachment file has already been uploaded', 409);
-  }
-
   try {
+    if (await headBlobObject(env, path)) {
+      return errorResponse('Attachment file has already been uploaded', 409);
+    }
     await putBlobObject(env, path, upload.body, {
       size: upload.size,
       contentType: upload.contentType,
@@ -199,7 +199,7 @@ async function processAttachmentUpload(
     if (message.includes('KV object too large')) {
       return errorResponse(`File too large. Maximum size is ${formatMaxSize(maxFileSize)}`, 413);
     }
-    return errorResponse('Attachment storage is not configured', 500);
+    return errorResponse(blobStorageErrorMessage(error), 500);
   }
 
   if (upload.size !== attachment.size) {
