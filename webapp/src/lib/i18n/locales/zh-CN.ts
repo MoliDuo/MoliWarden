@@ -194,6 +194,7 @@ const zhCN: Record<string, string> = {
   "txt_backup_restore_skipped_reason_default": "部分文件无法还原",
   "txt_backup_export_failed": "备份导出失败",
   "txt_backup_import_failed": "备份还原失败",
+  "txt_backup_import_too_large": "此备份文件超过 {size} MB（Vercel 的上传上限）。请改用远程备份位置（WebDAV 或 S3）还原。",
   "txt_backup_restore_failed": "备份还原失败",
   "txt_backup_integrity_check_failed": "备份完整性校验失败",
   "txt_backup_center_title": "实例备份",

@@ -891,7 +891,7 @@ export async function handleToken(request: Request, env: Env): Promise<Response>
         {
           error: 'invalid_request',
           error_description: 'send_id is required',
-          send_access_error_type: 'invalid_send_id',
+          send_access_error_type: 'send_id_required',
           ErrorModel: {
             Message: 'send_id is required',
             Object: 'error',

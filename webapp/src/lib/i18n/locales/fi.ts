@@ -191,6 +191,7 @@ const fi: Record<string, string> = {
   "txt_backup_restore_skipped_reason_default": "Joitakin tiedostoja ei voitu palauttaa",
   "txt_backup_export_failed": "Varmuuskopion vienti epäonnistui",
   "txt_backup_import_failed": "Varmuuskopion palautus epäonnistui",
+  "txt_backup_import_too_large": "Tämä varmuuskopio on suurempi kuin {size} Mt, Vercelin latausraja. Palauta se etäkohteesta (WebDAV tai S3).",
   "txt_backup_restore_failed": "Varmuuskopion palautus epäonnistui",
   "txt_backup_integrity_check_failed": "Varmuuskopion eheyden tarkistus epäonnistui",
   "txt_backup_center_title": "Instanssin varmuuskopiointi",

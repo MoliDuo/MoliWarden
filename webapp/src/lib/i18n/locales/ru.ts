@@ -192,6 +192,7 @@ const ru: Record<string, string> = {
   "txt_backup_restore_skipped_reason_default": "Некоторые файлы не удалось восстановить",
   "txt_backup_export_failed": "Не удалось экспортировать резервную копию",
   "txt_backup_import_failed": "Восстановление резервной копии не удалось",
+  "txt_backup_import_too_large": "Файл резервной копии больше {size} МБ — предела загрузки на Vercel. Восстановите его из удалённого хранилища (WebDAV или S3).",
   "txt_backup_restore_failed": "Восстановление резервной копии не удалось",
   "txt_backup_integrity_check_failed": "Проверка целостности резервной копии не удалась",
   "txt_backup_center_title": "Резервное копирование экземпляра",

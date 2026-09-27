@@ -19,6 +19,10 @@ const SCHEMA_STATEMENTS: readonly string[] = [
   'kdf_iterations BIGINT NOT NULL, kdf_memory BIGINT, kdf_parallelism BIGINT, ' +
   'security_stamp TEXT NOT NULL, role TEXT NOT NULL DEFAULT \'user\', status TEXT NOT NULL DEFAULT \'active\', verify_devices BIGINT NOT NULL DEFAULT 0, totp_secret TEXT, totp_recovery_code TEXT, yubikey_key1 TEXT, yubikey_key2 TEXT, yubikey_key3 TEXT, yubikey_key4 TEXT, yubikey_key5 TEXT, yubikey_nfc BIGINT NOT NULL DEFAULT 0, api_key TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)',
 
+  // Id of the user's current user key, reported once by clients (SDK "user key
+  // id backfill") and echoed back in sync.userDecryption.userKeyId.
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS key_id TEXT',
+
   'CREATE TABLE IF NOT EXISTS domain_settings (' +
   'user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, equivalent_domains TEXT NOT NULL DEFAULT \'[]\', custom_equivalent_domains TEXT NOT NULL DEFAULT \'[]\', excluded_global_equivalent_domains TEXT NOT NULL DEFAULT \'[]\', updated_at TEXT NOT NULL)',
 

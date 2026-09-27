@@ -21,6 +21,7 @@
     "dev:server": "tsx scripts/dev-server.ts",
     "typecheck": "tsc --noEmit -p .",
     "test:e2e": "tsx --test --test-concurrency=1 tests/*.e2e.test.ts",
+    "test:official-cli": "tsx --test tests/official-cli.e2e.test.ts",
     "check:sql": "tsx scripts/check-sql.ts",
     "test:smoke": "npm run build:vercel && tsx --test tests/vercel-output.smoke.test.ts",
     "typecheck:web": "tsc --noEmit -p webapp",

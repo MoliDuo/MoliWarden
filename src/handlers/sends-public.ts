@@ -339,7 +339,7 @@ export async function issueSendAccessToken(
         {
           error: 'invalid_grant',
           error_description: SEND_INACCESSIBLE_MSG,
-          send_access_error_type: 'send_not_available',
+          send_access_error_type: 'send_id_invalid',
           ErrorModel: {
             Message: SEND_INACCESSIBLE_MSG,
             Object: 'error',
@@ -372,6 +372,25 @@ export async function issueSendAccessToken(
     rateLimit && clientIdentifier ? sendPasswordLimitKey(clientIdentifier, send.id) : null;
 
   if (send.passwordHash) {
+    // Official clients first ask without credentials and only prompt for the
+    // password on this answer, so it must not count as a failed attempt.
+    if (!passwordHashB64 && !password) {
+      return {
+        error: jsonResponse(
+          {
+            error: 'invalid_request',
+            error_description: 'Password is required.',
+            send_access_error_type: 'password_hash_b64_required',
+            ErrorModel: {
+              Message: 'Password is required.',
+              Object: 'error',
+            },
+          },
+          400
+        ),
+      };
+    }
+
     if (rateLimit && sendPasswordLimitIpKey) {
       const sendPasswordCheck = await rateLimit.checkLoginAttempt(sendPasswordLimitIpKey);
       if (!sendPasswordCheck.allowed) {
@@ -402,7 +421,7 @@ export async function issueSendAccessToken(
           {
             error: 'invalid_grant',
             error_description: 'Invalid password.',
-            send_access_error_type: 'invalid_password',
+            send_access_error_type: 'password_hash_b64_invalid',
             ErrorModel: {
               Message: 'Invalid password.',
               Object: 'error',

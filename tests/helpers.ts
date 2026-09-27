@@ -5,6 +5,7 @@
 //   TEST_S3_ENDPOINT=http://localhost:58333 TEST_S3_ACCESS_KEY_ID=... TEST_S3_SECRET_ACCESS_KEY=...
 // Every test file resets the `public` schema before starting the server.
 import { createServer, type Server } from 'node:http';
+import { createServer as createHttpsServer } from 'node:https';
 import type { AddressInfo } from 'node:net';
 import pg from 'pg';
 import { AwsClient } from 'aws4fetch';
@@ -16,6 +17,9 @@ const S3_SECRET_ACCESS_KEY = process.env.TEST_S3_SECRET_ACCESS_KEY || 'mwsecret1
 
 export interface TestServer {
   baseUrl: string;
+  // Set when started with `tls`: the same app behind HTTPS (official clients
+  // refuse plain-HTTP servers).
+  httpsUrl?: string;
   close(): Promise<void>;
 }
 
@@ -53,7 +57,7 @@ export function testServerEnv(bucket: string): Record<string, string> {
   };
 }
 
-export async function startTestServer(): Promise<TestServer> {
+export async function startTestServer(options: { tls?: { key: string | Buffer; cert: string | Buffer } } = {}): Promise<TestServer> {
   const bucket = `mw-test-${process.pid}`;
   await resetDatabase();
   await ensureBucket(bucket);
@@ -66,11 +70,26 @@ export async function startTestServer(): Promise<TestServer> {
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address() as AddressInfo;
+  const servers: Server[] = [server];
+  let httpsUrl: string | undefined;
+  if (options.tls) {
+    // TLS terminates here like at Vercel's edge, which forwards the scheme.
+    const secure = createHttpsServer(options.tls, (req, res) => {
+      req.headers['x-forwarded-proto'] = 'https';
+      void handleNodeRequest(req, res);
+    });
+    await new Promise<void>((resolve) => secure.listen(0, '127.0.0.1', resolve));
+    servers.push(secure);
+    httpsUrl = `https://127.0.0.1:${(secure.address() as AddressInfo).port}`;
+  }
   return {
     baseUrl: `http://127.0.0.1:${port}`,
+    httpsUrl,
     async close() {
-      server.closeAllConnections?.();
-      await new Promise<void>((resolve) => server.close(() => resolve()));
+      for (const s of servers) {
+        s.closeAllConnections?.();
+        await new Promise<void>((resolve) => s.close(() => resolve()));
+      }
       const { getEnv } = await import('../src/platform/env');
       const db = getEnv().DB as unknown as { pool: pg.Pool };
       await db.pool.end();

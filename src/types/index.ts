@@ -64,6 +64,8 @@ export interface User {
   yubikeyKey5: string | null;
   yubikeyNfc: boolean;
   apiKey: string | null;
+  // Written only through setUserKeyIdIfUnset/clearUserKeyId, never by saveUser.
+  keyId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -665,6 +667,7 @@ export interface SyncResponse {
       WrappedUserKey1: string;
       WrappedUserKey2: string;
     } | null;
+    UserKeyId?: string | null;
     Object?: string;
   } | null;
   // PascalCase for desktop/browser clients
@@ -682,6 +685,7 @@ export interface SyncResponse {
       masterKeyEncryptedUserKey: string;
       salt: string;
     } | null;
+    userKeyId?: string | null;
   } | null;
   object: string;
 }
