@@ -200,18 +200,19 @@ function isStaleCipherUpdate(existingUpdatedAt: string, clientRevisionDate: stri
 
 // The iOS app adds a cipher key with one update and then sends its next
 // request (e.g. moving the item to an organization) built from its copy from
-// *before* that update, so the revision it reports is one update behind. Such
-// a request is not stale when it carries exactly the revision the key was
-// added on top of, and the key the server stored from that update.
+// *before* that update, so the revision it reports is one update behind. The
+// key it sends then may differ from the stored one (moving to an organization
+// re-wraps the same item key with the organization key), so only require that
+// it carries a key. This is not stale: the key-adding update changed nothing
+// else, and any later update ends the window (see mergeCipherUpdate).
 function isFollowUpToCipherKeyAddition(
   existingCipher: Cipher,
   clientRevisionDate: string | null,
   incomingKey: { present: boolean; value: unknown }
 ): boolean {
   const keyAddedFrom = existingCipher.keyAddedFromRevision;
-  const existingKey = normalizeCipherKeyForStorage(existingCipher.key);
-  if (!keyAddedFrom || !clientRevisionDate || !existingKey || !incomingKey.present) return false;
-  if (normalizeCipherKeyForStorage(incomingKey.value as string | null) !== existingKey) return false;
+  if (!keyAddedFrom || !clientRevisionDate || !incomingKey.present) return false;
+  if (!normalizeCipherKeyForStorage(incomingKey.value as string | null)) return false;
   const addedFromTs = Date.parse(keyAddedFrom);
   const clientTs = Date.parse(clientRevisionDate);
   return !Number.isNaN(addedFromTs) && !Number.isNaN(clientTs) && Math.abs(addedFromTs - clientTs) <= 1000;

@@ -242,15 +242,22 @@ test('iOS adds a cipher key, then shares from its pre-update copy', async () => 
     return response.status;
   };
 
+  // Moving to an organization re-wraps the item key with the org key, so the
+  // shared key differs from the one the key-adding update stored.
   const ok = await create('key-then-share');
-  assert.equal(await share(ok.item.id, ok.key, ok.item.revisionDate), 200);
+  assert.equal(await share(ok.item.id, fakeEncString('rewrapped-for-org'), ok.item.revisionDate), 200);
   const synced = (await alice.json('/api/sync')).ciphers.find((c: any) => c.id === ok.item.id);
   assert.equal(synced.organizationId, orgId);
   assert.equal(synced.keyAddedFromRevision, undefined, 'internal marker is never sent');
 
-  // Still stale: a different key, or a copy older than the one the key was added to.
-  const other = await create('wrong-key');
-  assert.equal(await share(other.item.id, fakeEncString('another-key'), other.item.revisionDate), 400);
+  // Still stale: no key, or a copy older than the one the key was added to.
+  const other = await create('no-key');
+  const noKey = await alice.request(`/api/ciphers/${other.item.id}/share`, {
+    method: 'PUT',
+    json: { cipher: { ...cipherPayload('shared'), organizationID: orgId, lastKnownRevisionDate: other.item.revisionDate }, collectionIds: [c1] },
+  });
+  assert.equal(noKey.status, 400);
+  assert.match(await noKey.text(), /out of date/);
   assert.equal(await share(other.item.id, other.key, new Date(Date.parse(other.item.revisionDate) - 60_000).toISOString()), 400);
 
   // Once the item changes again, the pre-key copy is stale like any other.
