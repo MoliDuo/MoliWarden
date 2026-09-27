@@ -166,6 +166,9 @@ function getAliasedProp(source: any, aliases: string[]): { present: boolean; val
   return { present: false, value: undefined };
 }
 
+// The iOS app sends "organizationID" (CipherRequestModel); Vaultwarden accepts it too.
+export const CIPHER_ORG_ID_ALIASES = ['organizationId', 'OrganizationId', 'organizationID'];
+
 function readCipherProp<T = unknown>(source: any, aliases: string[]): { present: boolean; value: T | undefined } {
   return getAliasedProp(source, aliases) as { present: boolean; value: T | undefined };
 }
@@ -1059,7 +1062,7 @@ export async function handleCreateCipher(request: Request, env: Env, userId: str
   const createDriversLicense = readCipherProp<CipherDriversLicense | null>(cipherData, ['driversLicense', 'DriversLicense']);
   const createPassport = readCipherProp<CipherPassport | null>(cipherData, ['passport', 'Passport']);
   const createPasswordHistory = readCipherProp<PasswordHistory[] | null>(cipherData, ['passwordHistory', 'PasswordHistory']);
-  const orgId = normalizeOptionalId(readCipherProp<string | null>(cipherData, ['organizationId', 'OrganizationId']).value);
+  const orgId = normalizeOptionalId(readCipherProp<string | null>(cipherData, CIPHER_ORG_ID_ALIASES).value);
   const collectionIds = readRequestCollectionIds(body) || [];
 
   if (createKey.present && !shouldAcceptCipherKey(createKey.value)) {
@@ -1237,7 +1240,7 @@ export async function handleUpdateCipher(request: Request, env: Env, userId: str
   // Handle nested cipher object
   // Android client sends PascalCase "Cipher" for organization ciphers
   const cipherData = body.Cipher || body.cipher || body;
-  const incomingOrgId = readCipherProp<string | null>(cipherData, ['organizationId', 'OrganizationId']);
+  const incomingOrgId = readCipherProp<string | null>(cipherData, CIPHER_ORG_ID_ALIASES);
   const preserveRevisionDate =
     shouldPreserveRepairableCipherUris(request)
     && (body.preserveRevisionDate === true || cipherData.preserveRevisionDate === true);

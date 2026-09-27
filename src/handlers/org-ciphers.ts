@@ -26,6 +26,7 @@ import {
 import { collectionJson, listJson } from '../services/org-json';
 import { notifyOrgMembersSync } from '../services/org-notifications';
 import {
+  CIPHER_ORG_ID_ALIASES,
   cipherResponseOptionsForRequest,
   cipherToResponse,
   mergeCipherUpdate,
@@ -102,7 +103,7 @@ async function shareOne(
   if (!view) return errorResponse('Cipher not found', 404);
   if (!canWriteView(view)) return errorResponse('You do not have permission to share this item', 403);
 
-  const orgId = normalizeId(cipherData?.organizationId ?? cipherData?.OrganizationId);
+  const orgId = normalizeId(CIPHER_ORG_ID_ALIASES.map((key) => cipherData?.[key]).find((value) => value != null));
   if (!orgId) {
     // Field names and types only (no values): helps match what a client sent.
     console.warn('share without organizationId; cipher fields:', describeShape(cipherData));

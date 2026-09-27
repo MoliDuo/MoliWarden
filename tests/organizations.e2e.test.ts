@@ -186,6 +186,38 @@ test('sharing a personal item into a collection the member cannot see', async ()
   );
 });
 
+test('iOS request casing (organizationID) works for share, create and update', async () => {
+  // The iOS app's CipherRequestModel encodes the owner as "organizationID".
+  const ios = (name: string, org: string | null) => {
+    const payload: Record<string, unknown> = { ...cipherPayload(name), encryptedFor: alice.userId };
+    payload.organizationID = org;
+    return payload;
+  };
+  const personal = await alice.json('/api/ciphers', { method: 'POST', json: cipherPayload('ios-share') });
+  const shared = await alice.json(`/api/ciphers/${personal.id}/share`, {
+    method: 'PUT',
+    json: { cipher: ios('ios-share', orgId), collectionIds: [c1] },
+  });
+  assert.equal(shared.organizationId, orgId);
+  assert.deepEqual(shared.collectionIds, [c1]);
+  assert.equal(shared.organizationID, undefined);
+
+  const created = await alice.json('/api/ciphers/create', {
+    method: 'POST',
+    json: { cipher: ios('ios-create', orgId), collectionIds: [c1] },
+  });
+  assert.equal(created.organizationId, orgId, 'created in the organization, not the personal vault');
+
+  const updated = await alice.json(`/api/ciphers/${created.id}`, { method: 'PUT', json: ios('ios-edit', orgId) });
+  assert.equal(updated.organizationId, orgId);
+  assert.equal(await status(alice, `/api/ciphers/${created.id}`, { method: 'PUT', json: ios('ios-edit', null) }), 400);
+
+  // Leave the org as the following tests expect it.
+  for (const id of [shared.id, created.id]) {
+    assert.ok((await alice.request(`/api/ciphers/${id}`, { method: 'DELETE' })).ok);
+  }
+});
+
 test('read-only access blocks writes but allows per-user folder/favorite', async () => {
   await alice.json(`/api/organizations/${orgId}/users/${bobMemberId}`, {
     method: 'PUT',
