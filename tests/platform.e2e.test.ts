@@ -174,3 +174,37 @@ test('admin backup export + restore round trip', async () => {
   assert.equal(afterSync.ciphers.length, before.ciphers.length);
   alice = relogin;
 });
+
+test('endpoints official clients call routinely are answered', async () => {
+  const alive = await client.fetch('/api/alive');
+  assert.equal(alive.status, 200);
+  const prelogin = await client.fetch('/api/accounts/prelogin', { method: 'POST', json: { email: 'alice@example.com' } });
+  assert.equal(prelogin.status, 200);
+  assert.deepEqual((await alice.json('/api/tasks')).data, []);
+
+  // Legacy POST aliases for PUT/DELETE.
+  const folder = await alice.json('/api/folders', { method: 'POST', json: { name: fakeEncString('old') } });
+  const renamed = await alice.json(`/api/folders/${folder.id}`, { method: 'POST', json: { name: fakeEncString('new') } });
+  assert.equal(renamed.id, folder.id);
+  assert.ok((await alice.request(`/api/folders/${folder.id}/delete`, { method: 'POST' })).ok);
+  assert.equal((await alice.request(`/api/folders/${folder.id}`)).status, 404);
+  const profile = await alice.request('/api/accounts/profile', { method: 'POST', json: { name: 'Alice', culture: 'en-US' } });
+  assert.equal(profile.status, 200, await profile.clone().text());
+
+  const org = await alice.json('/api/organizations', {
+    method: 'POST',
+    json: {
+      name: 'Stubs',
+      billingEmail: alice.email,
+      key: `4.${Buffer.from('k').toString('base64')}`,
+      collectionName: fakeEncString('Default'),
+      keys: { publicKey: 'cHVi', encryptedPrivateKey: fakeEncString('p') },
+    },
+  });
+  for (const path of ['billing/metadata', 'billing/vnext/warnings', 'billing/vnext/self-host/metadata', 'policies', 'policies/token']) {
+    const response = await alice.request(`/api/organizations/${org.id}/${path}`);
+    assert.equal(response.status, 200, path);
+  }
+  const policy = await alice.json(`/api/organizations/${org.id}/policies/master-password`);
+  assert.deepEqual([policy.type, policy.enabled, policy.object], [1, false, 'policy']);
+});

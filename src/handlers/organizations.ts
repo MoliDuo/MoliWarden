@@ -401,6 +401,21 @@ export function handleListPolicies(): Response {
   return jsonResponse(listJson([]));
 }
 
+const POLICY_TYPE_MASTER_PASSWORD = 1;
+
+// GET /api/organizations/{id}/policies/{type}
+export function handleGetDisabledPolicy(orgId: string, type: string): Response {
+  const policyType = type.toLowerCase() === 'master-password' ? POLICY_TYPE_MASTER_PASSWORD : Number(type);
+  return jsonResponse({
+    id: null,
+    organizationId: orgId,
+    type: policyType,
+    data: null,
+    enabled: false,
+    object: 'policy',
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Members
 // ---------------------------------------------------------------------------

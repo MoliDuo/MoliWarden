@@ -125,6 +125,7 @@ npm test
 | 命令 | 内容 |
 |---|---|
 | `npm run test:e2e` | 接口端到端测试：账号、密码库、附件、Send、备份、组织权限和安全回归、配置缺失时的报错、Web 导入分批。每个文件会重置 `public` schema，请使用专用测试库 |
+| `npm run test:official-cli` | 用官方 Bitwarden CLI（`bw`，首次运行自动下载到 `~/.cache/moliwarden-bw-cli`，不进依赖）走一遍：密码 / API Key 登录、锁定解锁、条目、文件夹、附件、Send、导出、确认组织成员、共享和集合权限。约 5 分钟 |
 | `npm run test:smoke` | 构建 `.vercel/output`，复制到仓库外，用 `tests/vercel-emulator.ts` 按 Vercel 的路由规则、4.5 MB 请求体限制、`waitUntil` 和 Cron 调用方式运行 |
 | `npm run check:sql` | 把代码中的每条 SQL 在真实 Postgres 上 `PREPARE` 一遍 |
 | `scripts/vercel-build-local.sh` | 不需要 Vercel 账号，用官方 `vercel build` 生成与线上一致的产物（会执行 `npm ci`）|
