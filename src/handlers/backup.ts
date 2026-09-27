@@ -136,8 +136,16 @@ function getBackupDestinationSummary(destination: BackupDestinationRecord | null
   };
 }
 
+function trimSlashes(value: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value[start] === '/') start++;
+  while (end > start && value[end - 1] === '/') end--;
+  return value.slice(start, end);
+}
+
 function ensureBackupBlobName(value: string): string {
-  const normalized = String(value || '').trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  const normalized = trimSlashes(String(value || '').trim().replace(/\\/g, '/'));
   if (!normalized) {
     throw new Error('Backup attachment blob is required');
   }

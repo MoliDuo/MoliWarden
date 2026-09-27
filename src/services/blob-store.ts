@@ -34,10 +34,16 @@ interface S3Config {
   pathStyle: boolean;
 }
 
+function trimTrailing(value: string, char: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === char) end--;
+  return value.slice(0, end);
+}
+
 let cachedConfig: { key: string; config: S3Config } | null = null;
 
 function readS3Config(env: Env): S3Config | null {
-  const endpoint = String(env.S3_ENDPOINT || '').trim().replace(/\/+$/, '');
+  const endpoint = trimTrailing(String(env.S3_ENDPOINT || '').trim(), '/');
   const bucket = String(env.S3_BUCKET || '').trim();
   const accessKeyId = String(env.S3_ACCESS_KEY_ID || '').trim();
   const secretAccessKey = String(env.S3_SECRET_ACCESS_KEY || '').trim();

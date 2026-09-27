@@ -2,18 +2,18 @@
 
 ## Reporting a Vulnerability
 
-Thank you for helping keep NodeWarden safe.
+Thank you for helping keep MoliWarden safe.
 
 Please **do not report security vulnerabilities through public GitHub issues, discussions, pull requests, or chat groups**.
 
 Use GitHub Private Vulnerability Reporting instead:
 
-1. Open the NodeWarden repository on GitHub.
+1. Open the [MoliWarden repository](https://github.com/MoliDuo/MoliWarden) on GitHub.
 2. Go to **Security and quality**.
 3. Click **Report a vulnerability**.
 4. Submit the report privately.
 
-NodeWarden is independent from Bitwarden. Please do not report NodeWarden-specific issues to the official Bitwarden team.
+MoliWarden is independent from Bitwarden and from NodeWarden, which it is based on. Please do not report MoliWarden-specific issues to the Bitwarden or NodeWarden teams.
 
 ## What to Include
 
@@ -22,7 +22,7 @@ Please include as much detail as possible:
 * A clear description of the vulnerability.
 * Steps to reproduce.
 * Affected version, commit, or deployment method.
-* Affected area, such as login, sync, vault data, attachments, Send, import/export, backup/restore, Passkey, WebAuthn, or API routes.
+* Affected area, such as login, sync, vault data, organizations and sharing, attachments, Send, import/export, backup/restore, Passkey, WebAuthn, or API routes.
 * Expected behavior and actual behavior.
 * Security impact, such as authentication bypass, authorization bypass, replay, cross-user access, token misuse, data leakage, or secret exposure.
 * Proof of concept, logs, screenshots, or request examples, if safe to share privately.
@@ -31,22 +31,23 @@ Please redact real passwords, tokens, private keys, recovery keys, vault data, a
 
 ## Scope
 
-Security reports are welcome for issues affecting NodeWarden itself, including:
+Security reports are welcome for issues affecting MoliWarden itself, including:
 
 * Authentication and session handling.
 * User authorization and cross-user access.
+* Organizations: membership, roles, collection permissions and key exchange.
 * Vault data, cipher sync, attachments, and Send.
 * Import, export, backup, and restore.
 * Passkey, WebAuthn, and two-factor authentication.
 * Secret handling and provider credentials.
-* Cloudflare Workers, D1, R2, KV, WebDAV, or S3 behavior caused by NodeWarden code or documentation.
+* Vercel, PostgreSQL, S3 or WebDAV behavior caused by MoliWarden code, build output or documentation.
 
 ## Out of Scope
 
 The following are usually out of scope:
 
 * Issues only affecting third-party services or user infrastructure.
-* Misconfigured personal deployments not caused by NodeWarden defaults.
+* Misconfigured personal deployments not caused by MoliWarden defaults.
 * Social engineering or phishing.
 * Denial-of-service testing.
 * Scanner-only reports without a practical exploit path.
@@ -54,7 +55,7 @@ The following are usually out of scope:
 
 ## Response
 
-NodeWarden is maintained on a best-effort basis.
+MoliWarden is maintained on a best-effort basis.
 
 We aim to acknowledge valid private reports within 72 hours, investigate the issue, and release a fix or mitigation when appropriate.
 
@@ -73,4 +74,4 @@ Security fixes are generally provided for the latest release and the latest code
 
 ## Rewards
 
-NodeWarden does not currently operate a paid bug bounty program.
+MoliWarden does not currently operate a paid bug bounty program.

@@ -3,7 +3,7 @@
 //
 //   npm run build && npm run dev:server
 import { createServer } from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { handleNodeRequest } from '../src/platform/node-http';
 import { BACKEND_EXACT_PATHS, BACKEND_PATH_PREFIXES } from '../src/web-vault-visibility';
@@ -35,14 +35,11 @@ async function tryServeStatic(pathname: string): Promise<{ body: Buffer; type: s
   const candidate = join(DIST, safe);
   if (!candidate.startsWith(DIST)) return null;
   try {
-    const info = await stat(candidate);
-    if (info.isFile()) {
-      return { body: await readFile(candidate), type: MIME[extname(candidate)] || 'application/octet-stream' };
-    }
+    // Directories fail with EISDIR; no separate stat (avoids a check/use race).
+    return { body: await readFile(candidate), type: MIME[extname(candidate)] || 'application/octet-stream' };
   } catch {
-    // fall through
+    return null;
   }
-  return null;
 }
 
 createServer(async (req, res) => {

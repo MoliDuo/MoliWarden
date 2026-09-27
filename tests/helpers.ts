@@ -100,11 +100,11 @@ export async function startTestServer(options: { tls?: { key: string | Buffer; c
 // Opaque but well-formed Bitwarden EncString (type 2: AES-CBC + HMAC).
 export function fakeEncString(label = 'x'): string {
   const b64 = (value: string) => Buffer.from(value).toString('base64');
-  return `2.${b64(`iv-${label}-${Math.random()}`)}|${b64(`ct-${label}`)}|${b64(`mac-${label}`)}`;
+  return `2.${b64(`iv-${label}-${crypto.randomUUID()}`)}|${b64(`ct-${label}`)}|${b64(`mac-${label}`)}`;
 }
 
 export function fakeRsaEncString(label = 'x'): string {
-  return `4.${Buffer.from(`rsa-${label}-${Math.random()}`).toString('base64')}`;
+  return `4.${Buffer.from(`rsa-${label}-${crypto.randomUUID()}`).toString('base64')}`;
 }
 
 export interface Session {

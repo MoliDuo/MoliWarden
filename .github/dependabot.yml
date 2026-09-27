@@ -9,6 +9,9 @@ updates:
       time: "05:00"
       timezone: "Asia/Shanghai"
     open-pull-requests-limit: 5
+    # Let new releases age before proposing them (supply-chain safety).
+    cooldown:
+      default-days: 7
     groups:
       npm-minor-and-patch:
         update-types:
@@ -27,6 +30,8 @@ updates:
       time: "05:10"
       timezone: "Asia/Shanghai"
     open-pull-requests-limit: 0
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
         patterns:

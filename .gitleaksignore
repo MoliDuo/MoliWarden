@@ -1,0 +1,3 @@
+# Test/demo placeholders, not secrets.
+2ce96dfed4e71f23d14bb3d8b376292d5d18b760:tests/ui/smoke.mjs:generic-api-key:86
+bd77c432de08a11fc031d501c6bb339e921a5204:webapp/src/lib/demo.ts:private-key:379

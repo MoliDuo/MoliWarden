@@ -7,14 +7,16 @@ on:
 
 permissions:
   contents: read
-  actions: read
-  security-events: write
-  packages: read
 
 jobs:
   analyze:
     name: CodeQL Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+      packages: read
 
     strategy:
       fail-fast: false

@@ -23,14 +23,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # The gitleaks CLI is free for organizations (the gitleaks-action needs a
+      # paid license there). False positives go in .gitleaksignore.
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_SUMMARY: "true"
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "true"
-          # 如果仓库属于 GitHub Organization，需要在 Settings -> Secrets 里加 GITLEAKS_LICENSE
-          # GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+        run: >-
+          docker run --rm -v "$PWD:/repo" -w /repo
+          zricethezav/gitleaks:v8.30.1
+          git --redact --no-banner -v /repo
 
   osv:
     name: OSV Dependency Scan
