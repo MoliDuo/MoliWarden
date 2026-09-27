@@ -12,7 +12,8 @@ type UpdateRevisionDate = (userId: string) => Promise<string>;
 
 interface CipherRow {
   id: string;
-  user_id: string;
+  user_id: string | null;
+  organization_id: string | null;
   type: number | null;
   folder_id: string | null;
   name: string | null;
@@ -31,6 +32,18 @@ const CIPHER_SCALAR_DATA_KEYS = new Set([
   'id',
   'userId',
   'user_id',
+  // Server-computed (organization ownership and per-user permissions); never
+  // trusted from client payloads.
+  'organizationId',
+  'OrganizationId',
+  'organization_id',
+  'organizationUseTotp',
+  'collectionIds',
+  'CollectionIds',
+  'edit',
+  'viewPassword',
+  'permissions',
+  'object',
   'type',
   'folderId',
   'folder_id',
@@ -77,6 +90,7 @@ function parseCipherRow(row: CipherRow | null | undefined): Cipher | null {
       ...parsed,
       id: row.id,
       userId: row.user_id,
+      organizationId: row.organization_id ?? null,
       type: Number(row.type) || Number(parsed.type) || 1,
       folderId,
       name: row.name ?? parsed.name ?? null,
@@ -96,7 +110,7 @@ function parseCipherRow(row: CipherRow | null | undefined): Cipher | null {
 }
 
 function selectCipherColumns(): string {
-  return 'id, user_id, type, folder_id, name, notes, favorite, data, reprompt, key, created_at, updated_at, archived_at, deleted_at';
+  return 'id, user_id, organization_id, type, folder_id, name, notes, favorite, data, reprompt, key, created_at, updated_at, archived_at, deleted_at';
 }
 
 export async function getCipher(db: D1Database, id: string): Promise<Cipher | null> {
@@ -115,17 +129,26 @@ export async function getCipherForUser(db: D1Database, id: string, userId: strin
   return parseCipherRow(row);
 }
 
+// Personal ciphers only: the upsert refuses to touch a row owned by another
+// user or by an organization.
 export async function saveCipher(db: D1Database, safeBind: SafeBind, cipher: Cipher): Promise<void> {
+  await saveCipherStatement(db, safeBind, cipher).run();
+}
+
+export function saveCipherStatement(db: D1Database, safeBind: SafeBind, cipher: Cipher): D1PreparedStatement {
+  if (!cipher.userId) {
+    throw new Error('saveCipher requires a personal cipher; use saveOrgCipherStatement for organization ciphers');
+  }
   const folderId = normalizeOptionalId(cipher.folderId);
   const data = buildCipherData(cipher, folderId);
   const stmt = db.prepare(
-    'INSERT INTO ciphers(id, user_id, type, folder_id, name, notes, favorite, data, reprompt, key, created_at, updated_at, archived_at, deleted_at) ' +
-    'VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ' +
+    'INSERT INTO ciphers(id, user_id, organization_id, type, folder_id, name, notes, favorite, data, reprompt, key, created_at, updated_at, archived_at, deleted_at) ' +
+    'VALUES(?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ' +
     'ON CONFLICT(id) DO UPDATE SET ' +
     'type=excluded.type, folder_id=excluded.folder_id, name=excluded.name, notes=excluded.notes, favorite=excluded.favorite, data=excluded.data, reprompt=excluded.reprompt, key=excluded.key, updated_at=excluded.updated_at, archived_at=excluded.archived_at, deleted_at=excluded.deleted_at ' +
-    'WHERE ciphers.user_id=excluded.user_id'
+    'WHERE ciphers.user_id=excluded.user_id AND ciphers.organization_id IS NULL'
   );
-  await safeBind(
+  return safeBind(
     stmt,
     cipher.id,
     cipher.userId,
@@ -141,7 +164,81 @@ export async function saveCipher(db: D1Database, safeBind: SafeBind, cipher: Cip
     cipher.updatedAt,
     cipher.archivedAt ?? null,
     cipher.deletedAt
-  ).run();
+  );
+}
+
+// Organization ciphers. Folder / favorite / archive are per user and live in
+// cipher_user_state, so the row keeps them empty. `allowTakeover` lets a
+// personal cipher row be converted into an organization cipher (share).
+export function saveOrgCipherStatement(
+  db: D1Database,
+  safeBind: SafeBind,
+  cipher: Cipher,
+  options: { takeoverFromUserId?: string | null } = {}
+): D1PreparedStatement {
+  const orgId = normalizeOptionalId(cipher.organizationId);
+  if (!orgId) {
+    throw new Error('saveOrgCipherStatement requires an organization cipher');
+  }
+  const data = buildCipherData({ ...cipher, folderId: null, favorite: false, archivedAt: null }, null);
+  const guard = options.takeoverFromUserId
+    ? '(ciphers.organization_id = excluded.organization_id OR (ciphers.organization_id IS NULL AND ciphers.user_id = ?))'
+    : 'ciphers.organization_id = excluded.organization_id';
+  const stmt = db.prepare(
+    'INSERT INTO ciphers(id, user_id, organization_id, type, folder_id, name, notes, favorite, data, reprompt, key, created_at, updated_at, archived_at, deleted_at) ' +
+    'VALUES(?, NULL, ?, ?, NULL, ?, ?, 0, ?, ?, ?, ?, ?, NULL, ?) ' +
+    'ON CONFLICT(id) DO UPDATE SET ' +
+    'user_id=NULL, organization_id=excluded.organization_id, type=excluded.type, folder_id=NULL, name=excluded.name, notes=excluded.notes, favorite=0, ' +
+    'data=excluded.data, reprompt=excluded.reprompt, key=excluded.key, updated_at=excluded.updated_at, archived_at=NULL, deleted_at=excluded.deleted_at ' +
+    `WHERE ${guard}`
+  );
+  const values: unknown[] = [
+    cipher.id,
+    orgId,
+    Number(cipher.type) || 1,
+    cipher.name,
+    cipher.notes,
+    data,
+    cipher.reprompt ?? 0,
+    cipher.key,
+    cipher.createdAt,
+    cipher.updatedAt,
+    cipher.deletedAt,
+  ];
+  if (options.takeoverFromUserId) values.push(options.takeoverFromUserId);
+  return safeBind(stmt, ...values);
+}
+
+export async function getCiphersByOrgIds(db: D1Database, orgIds: string[]): Promise<Cipher[]> {
+  if (!orgIds.length) return [];
+  const res = await db
+    .prepare(`SELECT ${selectCipherColumns()} FROM ciphers WHERE organization_id IN (${orgIds.map(() => '?').join(', ')}) ORDER BY updated_at DESC`)
+    .bind(...orgIds)
+    .all<CipherRow>();
+  return (res.results || []).flatMap((row) => {
+    const cipher = parseCipherRow(row);
+    return cipher ? [cipher] : [];
+  });
+}
+
+export async function getCiphersByCollectionIds(db: D1Database, collectionIds: string[]): Promise<Cipher[]> {
+  if (!collectionIds.length) return [];
+  const out = new Map<string, Cipher>();
+  for (let i = 0; i < collectionIds.length; i += 90) {
+    const chunk = collectionIds.slice(i, i + 90);
+    const res = await db
+      .prepare(
+        `SELECT ${selectCipherColumns().split(', ').map((column) => `c.${column}`).join(', ')} FROM ciphers c ` +
+        `WHERE c.organization_id IS NOT NULL AND EXISTS (SELECT 1 FROM cipher_collections cc WHERE cc.cipher_id = c.id AND cc.collection_id IN (${chunk.map(() => '?').join(', ')}))`
+      )
+      .bind(...chunk)
+      .all<CipherRow>();
+    for (const row of res.results || []) {
+      const cipher = parseCipherRow(row);
+      if (cipher) out.set(cipher.id, cipher);
+    }
+  }
+  return Array.from(out.values());
 }
 
 function sanitizeIds(ids: string[]): string[] {

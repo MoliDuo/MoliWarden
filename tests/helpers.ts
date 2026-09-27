@@ -92,7 +92,20 @@ export interface Session {
 }
 
 export class Client {
+  // First registered user becomes the instance admin; it mints invite codes
+  // for everyone registered after it.
+  private admin: { session: Session; password: string } | null = null;
+
   constructor(readonly baseUrl: string) {}
+
+  private async inviteCode(): Promise<string | undefined> {
+    if (!this.admin) return undefined;
+    const invite = await this.admin.session.json('/api/admin/invites', {
+      method: 'POST',
+      json: { expiresInHours: 1, masterPasswordHash: Buffer.from(this.admin.password).toString('base64') },
+    });
+    return invite.code ?? invite.invite?.code;
+  }
 
   async fetch(path: string, init: RequestInit & { json?: unknown; token?: string } = {}): Promise<Response> {
     const headers = new Headers(init.headers);
@@ -108,6 +121,7 @@ export class Client {
   }
 
   async register(email: string, password = 'hash-' + email): Promise<{ publicKey: string }> {
+    const inviteCode = await this.inviteCode();
     const publicKey = Buffer.from(`public-key-${email}`).toString('base64');
     const response = await this.fetch('/api/accounts/register', {
       method: 'POST',
@@ -120,6 +134,7 @@ export class Client {
         keys: { publicKey, encryptedPrivateKey: fakeEncString('private-key') },
         kdf: 0,
         kdfIterations: 600000,
+        inviteCode,
       },
     });
     if (!response.ok) throw new Error(`register ${email} failed: ${response.status} ${await response.text()}`);
@@ -170,6 +185,7 @@ export class Client {
   async registerAndLogin(email: string): Promise<Session & { publicKey: string }> {
     const { publicKey } = await this.register(email);
     const session = await this.login(email);
+    if (!this.admin) this.admin = { session, password: 'hash-' + email };
     return Object.assign(session, { publicKey });
   }
 }

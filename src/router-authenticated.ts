@@ -97,6 +97,146 @@ import {
   handleUpdateAuthRequest,
 } from './handlers/auth-requests';
 
+import {
+  handleAcceptInvitation,
+  handleBulkConfirmMembers,
+  handleBulkDeleteCollections,
+  handleBulkRemoveMembers,
+  handleBulkRevokeMembers,
+  handleCollectionsBulkAccess,
+  handleConfirmMember,
+  handleCreateCollection,
+  handleCreateOrganization,
+  handleDeleteCollection,
+  handleDeleteOrganization,
+  handleEditMember,
+  handleGetCollectionDetails,
+  handleGetCollectionUsers,
+  handleGetMember,
+  handleGetOrganization,
+  handleGetOrganizationKeys,
+  handleGetUserPublicKey,
+  handleInviteMembers,
+  handleLeaveOrganization,
+  handleListMembers,
+  handleListMembersMini,
+  handleListMyCollections,
+  handleListMyInvitations,
+  handleListOrgCollectionDetails,
+  handleListOrgCollections,
+  handleListPolicies,
+  handleMembersPublicKeys,
+  handleReinviteMember,
+  handleRemoveMember,
+  handleRevokeMember,
+  handleSetOrganizationKeys,
+  handleUpdateCollection,
+  handleUpdateOrganization,
+} from './handlers/organizations';
+import {
+  handleBulkCipherCollections,
+  handleBulkShareCiphers,
+  handleExportOrganization,
+  handleImportOrganization,
+  handleOrganizationCipherDetails,
+  handleShareCipher,
+  handleUpdateCipherCollections,
+} from './handlers/org-ciphers';
+
+async function routeOrganizations(
+  request: Request,
+  env: Env,
+  user: User,
+  path: string,
+  method: string
+): Promise<Response | null> {
+  if (path === '/api/organizations') {
+    if (method === 'POST') return handleCreateOrganization(request, env, user);
+    return null;
+  }
+  if (path === '/api/organizations/invitations' && method === 'GET') {
+    return handleListMyInvitations(env, user);
+  }
+
+  const match = path.match(/^\/api\/organizations\/([a-f0-9-]{36})(\/.*)?$/i);
+  if (!match) return null;
+  const orgId = match[1].toLowerCase();
+  const sub = match[2] || '';
+
+  if (sub === '' || sub === '/') {
+    if (method === 'GET') return handleGetOrganization(env, user, orgId);
+    if (method === 'PUT' || method === 'POST') return handleUpdateOrganization(request, env, user, orgId);
+    if (method === 'DELETE') return handleDeleteOrganization(request, env, user, orgId);
+    return null;
+  }
+  if (sub === '/delete' && method === 'POST') return handleDeleteOrganization(request, env, user, orgId);
+  if (sub === '/leave' && method === 'POST') return handleLeaveOrganization(env, user, orgId);
+  if ((sub === '/keys' || sub === '/public-key') && method === 'GET') return handleGetOrganizationKeys(env, user, orgId);
+  if (sub === '/keys' && method === 'POST') return handleSetOrganizationKeys(request, env, user, orgId);
+  if (sub === '/export' && method === 'GET') return handleExportOrganization(env, user, orgId);
+  if (sub === '/policies' && method === 'GET') return handleListPolicies();
+
+  // Members
+  if (sub === '/users') {
+    if (method === 'GET') return handleListMembers(request, env, user, orgId);
+    if (method === 'DELETE') return handleBulkRemoveMembers(request, env, user, orgId);
+    return null;
+  }
+  if (sub === '/users/mini-details' && method === 'GET') return handleListMembersMini(env, user, orgId);
+  if (sub === '/users/invite' && method === 'POST') return handleInviteMembers(request, env, user, orgId);
+  if (sub === '/users/confirm' && method === 'POST') return handleBulkConfirmMembers(request, env, user, orgId);
+  if (sub === '/users/public-keys' && method === 'POST') return handleMembersPublicKeys(request, env, user, orgId);
+  if (sub === '/users/revoke' && method === 'PUT') return handleBulkRevokeMembers(request, env, user, orgId, true);
+  if (sub === '/users/restore' && method === 'PUT') return handleBulkRevokeMembers(request, env, user, orgId, false);
+
+  const memberMatch = sub.match(/^\/users\/([a-f0-9-]{36})(\/.*)?$/i);
+  if (memberMatch) {
+    const memberId = memberMatch[1].toLowerCase();
+    const action = memberMatch[2] || '';
+    if (action === '') {
+      if (method === 'GET') return handleGetMember(env, user, orgId, memberId);
+      if (method === 'PUT' || method === 'POST') return handleEditMember(request, env, user, orgId, memberId);
+      if (method === 'DELETE') return handleRemoveMember(env, user, orgId, memberId);
+      return null;
+    }
+    if (action === '/delete' && method === 'POST') return handleRemoveMember(env, user, orgId, memberId);
+    if (action === '/accept' && method === 'POST') return handleAcceptInvitation(env, user, orgId, memberId);
+    if (action === '/reinvite' && method === 'POST') return handleReinviteMember(env, user, orgId, memberId);
+    if (action === '/confirm' && method === 'POST') return handleConfirmMember(request, env, user, orgId, memberId);
+    if (action === '/revoke' && method === 'PUT') return handleRevokeMember(env, user, orgId, memberId, true);
+    if ((action === '/restore' || action === '/restore/vnext') && method === 'PUT') {
+      return handleRevokeMember(env, user, orgId, memberId, false);
+    }
+    return null;
+  }
+
+  // Collections
+  if (sub === '/collections') {
+    if (method === 'GET') return handleListOrgCollections(env, user, orgId);
+    if (method === 'POST') return handleCreateCollection(request, env, user, orgId);
+    if (method === 'DELETE') return handleBulkDeleteCollections(request, env, user, orgId);
+    return null;
+  }
+  if (sub === '/collections/details' && method === 'GET') return handleListOrgCollectionDetails(env, user, orgId);
+  if (sub === '/collections/bulk-access' && method === 'POST') return handleCollectionsBulkAccess(request, env, user, orgId);
+  const collectionMatch = sub.match(/^\/collections\/([a-f0-9-]{36})(\/.*)?$/i);
+  if (collectionMatch) {
+    const collectionId = collectionMatch[1].toLowerCase();
+    const action = collectionMatch[2] || '';
+    if (action === '') {
+      if (method === 'PUT' || method === 'POST') return handleUpdateCollection(request, env, user, orgId, collectionId);
+      if (method === 'DELETE') return handleDeleteCollection(env, user, orgId, collectionId);
+      return null;
+    }
+    if (action === '/delete' && method === 'POST') return handleDeleteCollection(env, user, orgId, collectionId);
+    if (action === '/details' && method === 'GET') return handleGetCollectionDetails(env, user, orgId, collectionId);
+    if (action === '/users' && method === 'GET') return handleGetCollectionUsers(env, user, orgId, collectionId);
+    return null;
+  }
+  return null;
+}
+
+
 export async function handleAuthenticatedRoute(
   request: Request,
   env: Env,
@@ -287,25 +427,44 @@ export async function handleAuthenticatedRoute(
     return errorResponse('Not found', 404);
   }
 
-  if (path === '/api/ciphers' || path === '/api/ciphers/create') {
-    if (method === 'GET') return handleGetCiphers(request, env, userId);
+  if (path === '/api/ciphers' || path === '/api/ciphers/create' || path === '/api/ciphers/admin') {
+    if (method === 'GET' && path === '/api/ciphers') return handleGetCiphers(request, env, userId);
     if (method === 'POST') return handleCreateCipher(request, env, userId);
+    if (method === 'DELETE' && path !== '/api/ciphers/create') return handleBulkPermanentDeleteCiphers(request, env, userId);
     return null;
+  }
+
+  if (path === '/api/ciphers/organization-details' && method === 'GET') {
+    return handleOrganizationCipherDetails(request, env, currentUser);
+  }
+
+  if (path === '/api/ciphers/share' && (method === 'PUT' || method === 'POST')) {
+    return handleBulkShareCiphers(request, env, currentUser);
+  }
+
+  if (path === '/api/ciphers/bulk-collections' && method === 'POST') {
+    return handleBulkCipherCollections(request, env, currentUser);
+  }
+
+  if (path === '/api/ciphers/import-organization' && method === 'POST') {
+    return handleImportOrganization(request, env, currentUser);
   }
 
   if (path === '/api/ciphers/import' && method === 'POST') {
     return handleCiphersImport(request, env, userId);
   }
 
-  if (path === '/api/ciphers/delete' && method === 'POST') {
-    return handleBulkDeleteCiphers(request, env, userId);
+  if ((path === '/api/ciphers/delete' || path === '/api/ciphers/delete-admin') && (method === 'POST' || method === 'PUT')) {
+    // Bitwarden: PUT = soft delete (trash), POST = permanent delete.
+    if (method === 'PUT') return handleBulkDeleteCiphers(request, env, userId);
+    return handleBulkPermanentDeleteCiphers(request, env, userId);
   }
 
   if (path === '/api/ciphers/delete-permanent' && method === 'POST') {
     return handleBulkPermanentDeleteCiphers(request, env, userId);
   }
 
-  if (path === '/api/ciphers/restore' && method === 'POST') {
+  if ((path === '/api/ciphers/restore' || path === '/api/ciphers/restore-admin') && (method === 'POST' || method === 'PUT')) {
     return handleBulkRestoreCiphers(request, env, userId);
   }
 
@@ -326,22 +485,37 @@ export async function handleAuthenticatedRoute(
     const cipherId = cipherMatch[1];
     const subPath = cipherMatch[2] || '';
 
-    if (subPath === '' || subPath === '/') {
+    if (subPath === '' || subPath === '/' || subPath === '/admin') {
       if (method === 'GET') return handleGetCipher(request, env, userId, cipherId);
       if (method === 'PUT' || method === 'POST') return handleUpdateCipher(request, env, userId, cipherId);
-      if (method === 'DELETE') return handleDeleteCipherCompat(request, env, userId, cipherId);
+      if (method === 'DELETE') {
+        return subPath === '/admin'
+          ? handlePermanentDeleteCipher(request, env, userId, cipherId)
+          : handleDeleteCipherCompat(request, env, userId, cipherId);
+      }
     }
 
-    if (subPath === '/delete' && method === 'PUT') return handleDeleteCipher(request, env, userId, cipherId);
-    if (subPath === '/delete' && method === 'DELETE') return handlePermanentDeleteCipher(request, env, userId, cipherId);
-    if (subPath === '/restore' && method === 'PUT') return handleRestoreCipher(request, env, userId, cipherId);
+    if ((subPath === '/delete' || subPath === '/delete-admin') && method === 'PUT') return handleDeleteCipher(request, env, userId, cipherId);
+    if ((subPath === '/delete' || subPath === '/delete-admin') && (method === 'DELETE' || method === 'POST')) {
+      return handlePermanentDeleteCipher(request, env, userId, cipherId);
+    }
+    if ((subPath === '/restore' || subPath === '/restore-admin') && method === 'PUT') return handleRestoreCipher(request, env, userId, cipherId);
+    if (subPath === '/share' && (method === 'PUT' || method === 'POST')) return handleShareCipher(request, env, currentUser, cipherId);
+    if (subPath === '/collections' && (method === 'PUT' || method === 'POST')) {
+      return handleUpdateCipherCollections(request, env, currentUser, cipherId, 'v1');
+    }
+    if (subPath === '/collections_v2' && (method === 'PUT' || method === 'POST')) {
+      return handleUpdateCipherCollections(request, env, currentUser, cipherId, 'v2');
+    }
+    if (subPath === '/collections-admin' && (method === 'PUT' || method === 'POST')) {
+      return handleUpdateCipherCollections(request, env, currentUser, cipherId, 'admin');
+    }
     if (subPath === '/archive' && (method === 'PUT' || method === 'POST')) return handleArchiveCipher(request, env, userId, cipherId);
     if (subPath === '/unarchive' && (method === 'PUT' || method === 'POST')) return handleUnarchiveCipher(request, env, userId, cipherId);
     if (subPath === '/partial' && (method === 'PUT' || method === 'POST')) return handlePartialUpdateCipher(request, env, userId, cipherId);
-    if (subPath === '/share' && method === 'POST') return handleGetCipher(request, env, userId, cipherId);
     if (subPath === '/details' && method === 'GET') return handleGetCipher(request, env, userId, cipherId);
     if (subPath === '/attachment/v2' && method === 'POST') return handleCreateAttachment(request, env, userId, cipherId);
-    if (subPath === '/attachment' && method === 'POST') return handleCreateAttachment(request, env, userId, cipherId);
+    if ((subPath === '/attachment' || subPath === '/attachment-admin') && method === 'POST') return handleCreateAttachment(request, env, userId, cipherId);
 
     const attachmentMatch = subPath.match(/^\/attachment\/([a-f0-9-]+)$/i);
     if (attachmentMatch) {
@@ -356,7 +530,12 @@ export async function handleAuthenticatedRoute(
       return handleUpdateAttachmentMetadata(request, env, userId, cipherId, attachmentMetadataMatch[1]);
     }
 
-    const attachmentDeleteMatch = subPath.match(/^\/attachment\/([a-f0-9-]+)\/delete$/i);
+    const attachmentAdminMatch = subPath.match(/^\/attachment\/([a-f0-9-]+)\/admin$/i);
+    if (attachmentAdminMatch && method === 'DELETE') {
+      return handleDeleteAttachment(request, env, userId, cipherId, attachmentAdminMatch[1]);
+    }
+
+    const attachmentDeleteMatch = subPath.match(/^\/attachment\/([a-f0-9-]+)\/delete(?:-admin)?$/i);
     if (attachmentDeleteMatch && method === 'POST') {
       return handleDeleteAttachment(request, env, userId, cipherId, attachmentDeleteMatch[1]);
     }
@@ -402,17 +581,13 @@ export async function handleAuthenticatedRoute(
     return errorResponse('Method not allowed', 405);
   }
 
-  if (path === '/api/collections' || path.startsWith('/api/collections/')) {
-    if (method === 'GET') {
-      return jsonResponse({ data: [], object: 'list', continuationToken: null });
-    }
-    return null;
+  if (path === '/api/collections' && method === 'GET') {
+    return handleListMyCollections(env, currentUser);
   }
 
   if (path === '/api/organizations' || path.startsWith('/api/organizations/')) {
-    if (method === 'GET') {
-      return jsonResponse({ data: [], object: 'list', continuationToken: null });
-    }
+    const orgResponse = await routeOrganizations(request, env, currentUser, path, method);
+    if (orgResponse) return orgResponse;
     return null;
   }
 
@@ -457,11 +632,13 @@ export async function handleAuthenticatedRoute(
     }
   }
 
-  if (path === '/api/policies' || path.startsWith('/api/policies/')) {
-    if (method === 'GET') {
-      return jsonResponse({ data: [], object: 'list', continuationToken: null });
-    }
-    return null;
+  if (path === '/api/policies' && method === 'GET') {
+    return handleListPolicies();
+  }
+
+  const publicKeyMatch = path.match(/^\/api\/users\/([a-f0-9-]+)\/public-key$/i);
+  if (publicKeyMatch && method === 'GET') {
+    return handleGetUserPublicKey(env, publicKeyMatch[1]);
   }
 
   if (path === '/api/settings/domains' || path === '/settings/domains') {

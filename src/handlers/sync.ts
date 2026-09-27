@@ -10,7 +10,10 @@ import {
 } from '../utils/user-decryption';
 import { buildDomainsResponse } from '../services/domain-rules';
 import { buildWebAuthnPrfOption } from '../utils/account-passkeys';
-import { buildProfileResponse } from '../utils/profile-response';
+import { buildProfileResponse, loadProfileOrganizations } from '../utils/profile-response';
+import { listVisibleCipherViews } from '../services/cipher-views';
+import { collectionDetailsJson } from '../services/org-json';
+import { loadVisibleCollections } from '../services/org-access';
 
 // CONTRACT:
 // /api/sync reuses cipherToResponse() as the single cipher response shaper.
@@ -75,24 +78,32 @@ export async function handleSync(request: Request, env: Env, userId: string): Pr
     return cachedResponse;
   }
 
-  const [ciphers, folders, sends, attachmentsByCipher, domainSettings] = await Promise.all([
-    storage.getAllCiphers(userId),
+  const [{ views, ctx }, folders, sends, personalAttachments, domainSettings] = await Promise.all([
+    listVisibleCipherViews(env.DB, userId),
     storage.getAllFolders(userId),
     excludeSends ? Promise.resolve([]) : storage.getAllSends(userId),
     storage.getAttachmentsByUserId(userId),
     excludeDomains ? Promise.resolve(null) : storage.getUserDomainSettings(userId),
   ]);
+  const orgCipherIds = views.filter((view) => view.cipher.organizationId).map((view) => view.cipher.id);
+  const orgAttachments = orgCipherIds.length ? await storage.getAttachmentsByCipherIds(orgCipherIds) : new Map();
+  const attachmentsByCipher = new Map([...personalAttachments, ...orgAttachments]);
   const webAuthnPrfOptions = accountPasskeys
     .map(buildWebAuthnPrfOption)
     .filter((option): option is NonNullable<typeof option> => !!option);
   const userDecryptionOptions = buildUserDecryptionOptions(user, webAuthnPrfOptions[0] || null);
   const validFolderIds = new Set(folders.map((folder) => folder.id));
 
-  const profile: ProfileResponse = buildProfileResponse(user, env);
+  const profile: ProfileResponse = buildProfileResponse(user, env, await loadProfileOrganizations(env.DB, userId, ctx.memberships));
+  const collections = await loadVisibleCollections(env.DB, ctx);
 
   const cipherResponses: CipherResponse[] = [];
-  for (const cipher of ciphers) {
-    const response = cipherToResponse(cipher, attachmentsByCipher.get(cipher.id) || [], { preserveRepairableUris, validFolderIds });
+  for (const view of views) {
+    const response = cipherToResponse(view.cipher, attachmentsByCipher.get(view.cipher.id) || [], {
+      preserveRepairableUris,
+      validFolderIds,
+      access: view.access,
+    });
     if (isCipherResponseSyncCompatible(response)) {
       cipherResponses.push(response);
     }
@@ -113,7 +124,7 @@ export async function handleSync(request: Request, env: Env, userId: string): Pr
   const syncResponse: SyncResponse = {
     profile,
     folders: folderResponses,
-    collections: [],
+    collections: collections.map((collection) => collectionDetailsJson(collection, ctx)),
     ciphers: cipherResponses,
     domains: excludeDomains
       ? null

@@ -25,10 +25,60 @@ const SCHEMA_STATEMENTS: readonly string[] = [
   'CREATE TABLE IF NOT EXISTS user_revisions (' +
   'user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, revision_date TEXT NOT NULL)',
 
+  // Organizations (sharing). Keys are end-to-end encrypted by clients: the
+  // server only stores the org key wrapped for each member (org_memberships.akey)
+  // and the org's own RSA key pair (private key encrypted with the org key).
+  'CREATE TABLE IF NOT EXISTS organizations (' +
+  'id TEXT PRIMARY KEY, name TEXT NOT NULL, billing_email TEXT NOT NULL, public_key TEXT, private_key TEXT, ' +
+  'created_at TEXT NOT NULL, updated_at TEXT NOT NULL)',
+
+  // status: -1 revoked (see ORG_MEMBER_STATUS), 0 invited, 1 accepted, 2 confirmed.
+  // type: 0 owner, 1 admin, 2 user, 3 manager.
+  // revoked_status keeps the pre-revocation status so restore can return to it.
+  'CREATE TABLE IF NOT EXISTS org_memberships (' +
+  'id TEXT PRIMARY KEY, org_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, ' +
+  'user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, ' +
+  'status BIGINT NOT NULL, type BIGINT NOT NULL, access_all BIGINT NOT NULL DEFAULT 0, akey TEXT, ' +
+  'revoked_status BIGINT, invited_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, ' +
+  'UNIQUE (org_id, user_id))',
+  'CREATE INDEX IF NOT EXISTS idx_org_memberships_user ON org_memberships(user_id)',
+
+  'CREATE TABLE IF NOT EXISTS collections (' +
+  'id TEXT PRIMARY KEY, org_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, ' +
+  'name TEXT NOT NULL, external_id TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)',
+  'CREATE INDEX IF NOT EXISTS idx_collections_org ON collections(org_id)',
+
+  'CREATE TABLE IF NOT EXISTS collection_members (' +
+  'collection_id TEXT NOT NULL REFERENCES collections(id) ON DELETE CASCADE, ' +
+  'membership_id TEXT NOT NULL REFERENCES org_memberships(id) ON DELETE CASCADE, ' +
+  'read_only BIGINT NOT NULL DEFAULT 0, hide_passwords BIGINT NOT NULL DEFAULT 0, manage BIGINT NOT NULL DEFAULT 0, ' +
+  'PRIMARY KEY (collection_id, membership_id))',
+  'CREATE INDEX IF NOT EXISTS idx_collection_members_membership ON collection_members(membership_id)',
+
+  // A cipher is owned by exactly one of: a user (personal vault) or an organization.
   'CREATE TABLE IF NOT EXISTS ciphers (' +
-  'id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, type BIGINT NOT NULL, folder_id TEXT, name TEXT, notes TEXT, ' +
+  'id TEXT PRIMARY KEY, user_id TEXT REFERENCES users(id) ON DELETE CASCADE, ' +
+  'organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE, type BIGINT NOT NULL, folder_id TEXT, name TEXT, notes TEXT, ' +
   'favorite BIGINT NOT NULL DEFAULT 0, data TEXT NOT NULL, reprompt BIGINT, key TEXT, ' +
-  'created_at TEXT NOT NULL, updated_at TEXT NOT NULL, archived_at TEXT, deleted_at TEXT)',
+  'created_at TEXT NOT NULL, updated_at TEXT NOT NULL, archived_at TEXT, deleted_at TEXT, ' +
+  'CONSTRAINT ciphers_single_owner CHECK ((user_id IS NULL) <> (organization_id IS NULL)))',
+  'CREATE INDEX IF NOT EXISTS idx_ciphers_org_updated ON ciphers(organization_id, updated_at)',
+
+  'CREATE TABLE IF NOT EXISTS cipher_collections (' +
+  'cipher_id TEXT NOT NULL REFERENCES ciphers(id) ON DELETE CASCADE, ' +
+  'collection_id TEXT NOT NULL REFERENCES collections(id) ON DELETE CASCADE, ' +
+  'PRIMARY KEY (cipher_id, collection_id))',
+  'CREATE INDEX IF NOT EXISTS idx_cipher_collections_collection ON cipher_collections(collection_id)',
+
+  // Per-user view state of organization ciphers (folder, favorite, archive).
+  // Personal ciphers keep these on the ciphers row.
+  'CREATE TABLE IF NOT EXISTS cipher_user_state (' +
+  'cipher_id TEXT NOT NULL REFERENCES ciphers(id) ON DELETE CASCADE, ' +
+  'user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, ' +
+  'folder_id TEXT, favorite BIGINT NOT NULL DEFAULT 0, archived_at TEXT, ' +
+  'PRIMARY KEY (cipher_id, user_id))',
+  'CREATE INDEX IF NOT EXISTS idx_cipher_user_state_user ON cipher_user_state(user_id)',
+
   'CREATE INDEX IF NOT EXISTS idx_ciphers_user_updated ON ciphers(user_id, updated_at)',
   'CREATE INDEX IF NOT EXISTS idx_ciphers_user_archived ON ciphers(user_id, archived_at)',
   'CREATE INDEX IF NOT EXISTS idx_ciphers_user_deleted ON ciphers(user_id, deleted_at)',
@@ -141,6 +191,12 @@ async function ensureAdminUserExists(db: D1Database): Promise<void> {
 
 export const REQUIRED_SCHEMA_TABLE_NAMES = [
   'users',
+  'organizations',
+  'org_memberships',
+  'collections',
+  'collection_members',
+  'cipher_collections',
+  'cipher_user_state',
   'ciphers',
   'folders',
   'attachments',

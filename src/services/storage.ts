@@ -74,7 +74,6 @@ import {
   getAttachmentsByCipherIds as listStoredAttachmentsByCipherIds,
   getAttachmentsByUserId as listStoredAttachmentsByUserId,
   saveAttachment as saveStoredAttachment,
-  updateCipherRevisionDate as updateStoredCipherRevisionDate,
 } from './storage-attachment-repo';
 import {
   bulkDeleteSends as deleteStoredSends,
@@ -628,14 +627,7 @@ export class StorageService {
     await deleteStoredAttachmentsByCipher(this.db, cipherId);
   }
 
-  async updateCipherRevisionDate(cipherId: string): Promise<{ userId: string; revisionDate: string } | null> {
-    return updateStoredCipherRevisionDate(
-      this.getCipher.bind(this),
-      this.saveCipher.bind(this),
-      this.updateRevisionDate.bind(this),
-      cipherId
-    );
-  }
+
 
   // --- Refresh tokens ---
 

@@ -249,7 +249,10 @@ export interface PasswordHistory {
 
 export interface Cipher {
   id: string;
-  userId: string;
+  // Personal ciphers have userId set; organization ciphers have organizationId
+  // set and userId null (enforced by a CHECK constraint).
+  userId: string | null;
+  organizationId?: string | null;
   type: CipherType;
   folderId: string | null;
   name: string | null;
