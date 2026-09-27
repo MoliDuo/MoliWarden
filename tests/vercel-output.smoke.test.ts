@@ -18,6 +18,7 @@ import {
   TEST_DATABASE_URL,
   type Session,
 } from './helpers';
+import { FUNCTION_NAME } from '../scripts/vercel-config';
 import { resolveRoute, startVercelEmulator, VERCEL_BODY_LIMIT_BYTES, type VercelEmulator } from './vercel-emulator';
 
 const OUTPUT_DIR = join(process.cwd(), '.vercel', 'output');
@@ -65,9 +66,9 @@ function local(url: string): string {
 }
 
 test('build output is complete', async () => {
-  const vc = JSON.parse(await readFile(join(workDir, 'functions/index.func/.vc-config.json'), 'utf8'));
+  const vc = JSON.parse(await readFile(join(workDir, `functions/${FUNCTION_NAME}.func/.vc-config.json`), 'utf8'));
   assert.match(vc.runtime, /^nodejs\d+\.x$/);
-  await stat(join(workDir, 'functions/index.func', vc.handler));
+  await stat(join(workDir, `functions/${FUNCTION_NAME}.func`, vc.handler));
   await stat(join(workDir, 'static/index.html'));
   assert.equal(vercel.config.version, 3);
   assert.ok(vercel.config.crons?.some((cron) => cron.path === '/api/internal/cron'));

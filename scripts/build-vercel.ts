@@ -1,6 +1,6 @@
 // Produces a Vercel Build Output API v3 bundle in .vercel/output:
 //   static/                 web vault (vite build of webapp/)
-//   functions/index.func/   the whole API bundled into one Node function
+//   functions/_moliwarden.func/  the whole API bundled into one Node function
 //   config.json             routing (API paths -> function, SPA fallback) + cron
 //
 // Run with: npm run build:vercel
@@ -8,11 +8,13 @@ import { build } from 'esbuild';
 import { execSync } from 'node:child_process';
 import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { buildVercelConfig } from './vercel-config';
+import { buildVercelConfig, FUNCTION_NAME } from './vercel-config';
 
 const root = process.cwd();
 const out = join(root, '.vercel', 'output');
-const funcDir = join(out, 'functions', 'index.func');
+// Not "index": Vercel resolves "/" to a function named index before the
+// static index.html, which would hide the web vault's home page.
+const funcDir = join(out, 'functions', `${FUNCTION_NAME}.func`);
 const hideWebVault = String(process.env.HIDE_WEB_VAULT || '').trim() === '1';
 // Hobby plans only allow daily cron jobs; override for Pro (e.g. "*/15 * * * *").
 const cronSchedule = String(process.env.MOLIWARDEN_CRON_SCHEDULE || '').trim() || '17 3 * * *';

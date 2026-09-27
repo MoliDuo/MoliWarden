@@ -2,6 +2,9 @@
 // Kept separate from build-vercel.ts so tests can check it without building.
 import { BACKEND_EXACT_PATHS, BACKEND_PATH_PREFIXES } from '../src/web-vault-visibility';
 
+// The single function serving every API route (.vercel/output/functions/<name>.func).
+export const FUNCTION_NAME = '_moliwarden';
+
 export interface VercelConfigOptions {
   hideWebVault: boolean;
   cronSchedule: string;
@@ -40,7 +43,7 @@ export function buildVercelConfig(options: VercelConfigOptions): Record<string, 
         headers: { 'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet' },
         continue: true,
       },
-      { src: backendRouteSource(), dest: '/index?__nwpath=$1' },
+      { src: backendRouteSource(), dest: `/${FUNCTION_NAME}?__nwpath=$1` },
       // Official clients frame this exact page; everything else must not be framed.
       {
         src: '^/webauthn-connector\\.html$',

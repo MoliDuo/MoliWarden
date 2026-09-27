@@ -50,6 +50,10 @@ const MIME: Record<string, string> = {
   '.txt': 'text/plain; charset=utf-8',
 };
 
+function functionName(path: string): string {
+  return `${path.endsWith('/') ? `${path}index` : path}`.replace(/^\//, '');
+}
+
 function substitute(dest: string, match: RegExpExecArray): string {
   return dest.replace(/\$(\d+)/g, (_, index: string) => match[Number(index)] ?? '');
 }
@@ -82,7 +86,7 @@ export async function resolveRoute(
     const kind = await exists(target);
     if (kind === 'function') {
       const qs = query.toString();
-      return { kind: 'function', name: target.replace(/^\//, ''), url: `${target}${qs ? `?${qs}` : ''}`, headers };
+      return { kind: 'function', name: functionName(target), url: `${target}${qs ? `?${qs}` : ''}`, headers };
     }
     if (kind === 'static') return { kind: 'static', file: target, headers, status: 200 };
     return { kind: 'status', status: 404, headers };
@@ -165,7 +169,9 @@ export async function startVercelEmulator(outputDir: string, env: Record<string,
   const exists = async (path: string): Promise<'static' | 'function' | null> => {
     const clean = normalize(decodeURIComponent(path)).replace(/^(\.\.[/\\])+/, '');
     try {
-      await stat(join(outputDir, 'functions', `${clean.replace(/^\//, '')}.func`, '.vc-config.json'));
+      // Like Vercel, a directory path ("/") resolves to a function named
+      // index before the static index.html.
+      await stat(join(outputDir, 'functions', `${functionName(clean)}.func`, '.vc-config.json'));
       return 'function';
     } catch {
       // not a function
