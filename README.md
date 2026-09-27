@@ -63,6 +63,8 @@ npm test
 
 runs type checks, i18n validation, unit tests, `check:sql` (every SQL statement is `PREPARE`d on Postgres), the API end-to-end suites (`npm run test:e2e`) and `npm run test:smoke`, which builds `.vercel/output`, copies it outside the repository and serves it with `tests/vercel-emulator.ts` (Vercel routing, 4.5 MB body limit, `waitUntil`, cron calls). `scripts/vercel-build-local.sh` runs the official `vercel build` without an account. CI runs all of it on every push.
 
+The end-to-end suites include `tests/official-cli.e2e.test.ts`, which drives the official Bitwarden CLI (`bw`) over HTTPS against accounts and organizations created with real client crypto: login (password and API key), lock/unlock, items, folders, attachments, Sends, export, confirming members, sharing and collections. The CLI is not a dependency; it is installed on first run into `~/.cache/moliwarden-bw-cli` (override with `BW_CLI=/path/to/bw` or `BW_CLI_VERSION`). Run it alone with `npm run test:official-cli`.
+
 Limits worth knowing: web vault imports are split into several requests automatically, but `bw import` sends one request and fails above ~4.5 MB; backup files uploaded from the browser are capped at 4.4 MB (restore larger ones from WebDAV/S3); sync responses are streamed and not limited. Put the Neon database in the same region as the Vercel functions (`iad1` by default).
 
 ## License
