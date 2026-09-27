@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Building2, Check, Fingerprint, Layers, LogOut, Pencil, Plus, RefreshCw, Trash2, UserCheck, UserMinus, UserPlus, UserX, Users } from 'lucide-preact';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import LoadingState from '@/components/LoadingState';
@@ -168,7 +168,14 @@ export default function OrganizationsPage(props: OrganizationsPageProps) {
   const [deleteOrgOpen, setDeleteOrgOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
 
-  const organizations = props.organizations;
+  // Organizations deleted or left from this page stay hidden, and are never
+  // reloaded, while the vault refresh that drops them is still in flight.
+  const [removedOrgIds, setRemovedOrgIds] = useState<string[]>([]);
+  const removedOrgIdsRef = useRef<string[]>([]);
+  const organizations = useMemo(
+    () => props.organizations.filter((org) => !removedOrgIds.includes(org.id)),
+    [props.organizations, removedOrgIds]
+  );
   const selectedOrg = organizations.find((org) => org.id === selectedOrgId) || null;
   const myType = selectedOrg ? (selectedOrg.type === ORG_TYPE.CUSTOM ? ORG_TYPE.MANAGER : selectedOrg.type) : ORG_TYPE.USER;
   const canAdmin = isAdminType(myType);
@@ -194,7 +201,13 @@ export default function OrganizationsPage(props: OrganizationsPageProps) {
     }
   }
 
+  function forgetOrganization(orgId: string) {
+    removedOrgIdsRef.current = [...removedOrgIdsRef.current, orgId];
+    setRemovedOrgIds(removedOrgIdsRef.current);
+  }
+
   async function loadOrgData(orgId: string) {
+    if (removedOrgIdsRef.current.includes(orgId)) return;
     const org = organizations.find((item) => item.id === orgId);
     if (!org) return;
     const type = org.type === ORG_TYPE.CUSTOM ? ORG_TYPE.MANAGER : org.type;
@@ -781,6 +794,7 @@ export default function OrganizationsPage(props: OrganizationsPageProps) {
           if (!selectedOrg) return;
           void run(async () => {
             await leaveOrganization(authedFetch, selectedOrg.id);
+            forgetOrganization(selectedOrg.id);
             setLeaveOpen(false);
             setSelectedOrgId('');
           }, t('txt_org_left'), { refreshVault: true }).catch(() => undefined);
@@ -801,6 +815,7 @@ export default function OrganizationsPage(props: OrganizationsPageProps) {
           void run(async () => {
             const derived = await deriveLoginHash(email, deletePassword, props.defaultKdfIterations);
             await deleteOrganization(authedFetch, selectedOrg.id, derived.hash);
+            forgetOrganization(selectedOrg.id);
             setDeleteOrgOpen(false);
             setDeletePassword('');
             setSelectedOrgId('');
