@@ -378,6 +378,19 @@ section('auth', async () => {
   await step('register first user (becomes admin)', async () => {
     await register(alice, { name: 'Alice', email: 'alice@example.com' });
   });
+  await step('wrong password is rejected with a message', async () => {
+    await expecting4xx([{ method: 'POST', path: /^\/identity\/connect\/token$/, status: 400 }], () => allowingErrorToast(async () => {
+      await alice.locator('input[autocomplete="current-password"]').fill('not-the-password-123');
+      await alice.locator('.auth-page button[type="submit"]').click();
+      await alice.locator('.toast-item.error').first().waitFor();
+    }));
+    assert(alice.url().includes('/login'), 'left the login page after a wrong password');
+  });
+  await step('password hint on the login page', async () => {
+    await alice.getByRole('button', { name: 'Show Password Hint' }).click();
+    await dialog(alice).waitFor();
+    await confirmDialog(alice);
+  });
   await step('login', async () => {
     await login(alice, 'alice@example.com');
     await alice.locator('.user-chip', { hasText: 'alice@example.com' }).waitFor();
@@ -1075,6 +1088,25 @@ section('mobile', async () => {
     await listItem(phone, 'GitHub Work').locator('.row-main').click();
     await phone.locator('.detail-col.open .detail-title', { hasText: 'GitHub Work' }).waitFor();
     await assertNoHorizontalOverflow(phone, '.app-shell');
+  });
+  await step('create an item on the phone', async () => {
+    await phone.locator('.detail-col.open').getByRole('button', { name: 'Back' }).click();
+    await phone.locator('.mobile-fab-trigger').click();
+    await phone.locator('.create-menu-item', { hasText: /^Note$/ }).click();
+    const sheet = phone.locator('.detail-col.open');
+    await field(sheet, 'Name').fill('Phone note');
+    await field(sheet, 'Notes').fill('written on a phone');
+    await sheet.locator('.detail-actions').getByRole('button', { name: 'Confirm', exact: true }).click();
+    await listItem(phone, 'Phone note').locator('.row-main').click();
+    await phone.locator('.detail-col.open').getByText('written on a phone').waitFor();
+    await assertNoHorizontalOverflow(phone, '.app-shell');
+  });
+  await step('tab bar navigation on the phone', async () => {
+    for (const label of ['Verification Code', 'Generator', 'Sends', 'Settings', 'My Vault']) {
+      await phone.locator('.mobile-tabbar .mobile-tab', { hasText: label }).click();
+      await settle(phone);
+      await assertNoHorizontalOverflow(phone, '.app-shell');
+    }
   });
 });
 
