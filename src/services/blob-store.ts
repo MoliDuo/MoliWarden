@@ -85,6 +85,9 @@ async function toBytes(value: string | ArrayBuffer | ArrayBufferView | ReadableS
   return new Uint8Array(await new Response(value).arrayBuffer());
 }
 
+export const BLOB_STORAGE_MISSING_MESSAGE =
+  'File storage is not configured. Set S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY.';
+
 export function getBlobStorageKind(env: Env): 's3' | null {
   return readS3Config(env) ? 's3' : null;
 }

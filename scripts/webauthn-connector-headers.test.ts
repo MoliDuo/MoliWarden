@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import type { Env } from '../src/types';
 import { getConfiguredWebAuthnAllowedOrigins } from '../src/utils/origins';
 import { applyCors, handleCors } from '../src/utils/response';
+import { resolveRoute } from '../tests/vercel-emulator';
+import { buildVercelConfig } from './vercel-config';
 
 const env = {} as Env;
 
@@ -36,13 +37,14 @@ test('official Bitwarden desktop origin receives credentialed CORS', () => {
   assert.equal(preflight.headers.get('Access-Control-Allow-Credentials'), 'true');
 });
 
-test('Worker assets preserve exact official connector .html paths', async () => {
-  for (const configUrl of [
-    new URL('../wrangler.toml', import.meta.url),
-    new URL('../wrangler.kv.toml', import.meta.url),
-  ]) {
-    const config = await readFile(configUrl, 'utf8');
-    const assetsSection = config.match(/\[assets\]([\s\S]*?)(?=\n\[|$)/)?.[1] || '';
-    assert.match(assetsSection, /^\s*html_handling\s*=\s*"none"\s*$/m);
+test('Vercel routing serves the official connector .html paths as-is', async () => {
+  const config = buildVercelConfig({ hideWebVault: false, cronSchedule: '0 0 * * *' });
+  const exists = async (path: string) => (path.endsWith('.html') ? 'static' as const : null);
+  for (const path of ['/webauthn-connector.html', '/webauthn-fallback-connector.html', '/webauthn-mobile-connector.html']) {
+    const route = await resolveRoute(config as never, path, '', exists);
+    assert.deepEqual([route.kind, route.kind === 'static' && route.file], ['static', path]);
+    const framable = path === '/webauthn-connector.html';
+    assert.equal(route.headers['X-Frame-Options'], framable ? undefined : 'DENY');
+    assert.equal(/frame-ancestors/.test(route.headers['Content-Security-Policy'] || ''), !framable);
   }
 });

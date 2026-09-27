@@ -75,7 +75,7 @@ export async function handleAppRequest(request: Request, env: Env): Promise<Resp
         error: 'Database not initialized',
         error_description: 'Database initialization failed. Check server logs for details.',
         ErrorModel: {
-          Message: 'Service temporarily unavailable',
+          Message: 'Database unavailable. Check DATABASE_URL and the function logs.',
           Object: 'error',
         },
       },

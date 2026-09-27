@@ -21,7 +21,9 @@ import {
   getAttachmentObjectKey,
   blobDownloadResponse,
   getBlobObject,
+  getBlobStorageKind,
   getBlobStorageMaxBytes,
+  BLOB_STORAGE_MISSING_MESSAGE,
   putBlobObject,
 } from '../services/blob-store';
 import { auditRequestMetadata, writeAuditEvent } from '../services/audit-events';
@@ -155,6 +157,10 @@ async function runWithConcurrency<T>(
   }
 }
 
+function formatMaxSize(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')} MB`;
+}
+
 async function processAttachmentUpload(
   request: Request,
   env: Env,
@@ -168,7 +174,7 @@ async function processAttachmentUpload(
   const upload = await parseDirectUploadPayload(request, {
     expectedSize: Number(attachment.size) || 0,
     maxFileSize,
-    tooLargeMessage: `File too large. Maximum size is ${Math.floor(maxFileSize / (1024 * 1024))}MB`,
+    tooLargeMessage: `File too large. Maximum size is ${formatMaxSize(maxFileSize)}`,
   });
   if (upload instanceof Response) {
     return upload;
@@ -191,7 +197,7 @@ async function processAttachmentUpload(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes('KV object too large')) {
-      return errorResponse(`File too large. Maximum size is ${Math.floor(maxFileSize / (1024 * 1024))}MB`, 413);
+      return errorResponse(`File too large. Maximum size is ${formatMaxSize(maxFileSize)}`, 413);
     }
     return errorResponse('Attachment storage is not configured', 500);
   }
@@ -236,7 +242,16 @@ export async function handleCreateAttachment(
     return errorResponse('fileName and key are required', 400);
   }
 
-  const fileSize = body.fileSize || 0;
+  if (!getBlobStorageKind(env)) {
+    return errorResponse(BLOB_STORAGE_MISSING_MESSAGE, 400);
+  }
+  const fileSize = Number(body.fileSize) || 0;
+  // Reject before creating metadata: an oversized upload would otherwise be
+  // cut off by the platform body limit and leave a broken attachment behind.
+  const maxFileSize = getBlobStorageMaxBytes(env, LIMITS.attachment.maxFileSizeBytes);
+  if (fileSize > maxFileSize) {
+    return errorResponse(`File too large. Maximum size is ${formatMaxSize(maxFileSize)}`, 400);
+  }
   const attachmentId = generateUUID();
 
   // Create attachment metadata

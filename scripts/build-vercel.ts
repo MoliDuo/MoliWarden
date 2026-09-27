@@ -8,7 +8,7 @@ import { build } from 'esbuild';
 import { execSync } from 'node:child_process';
 import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { BACKEND_EXACT_PATHS, BACKEND_PATH_PREFIXES } from '../src/web-vault-visibility';
+import { buildVercelConfig } from './vercel-config';
 
 const root = process.cwd();
 const out = join(root, '.vercel', 'output');
@@ -16,10 +16,6 @@ const funcDir = join(out, 'functions', 'index.func');
 const hideWebVault = String(process.env.HIDE_WEB_VAULT || '').trim() === '1';
 // Hobby plans only allow daily cron jobs; override for Pro (e.g. "*/15 * * * *").
 const cronSchedule = String(process.env.MOLIWARDEN_CRON_SCHEDULE || '').trim() || '17 3 * * *';
-
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 async function main(): Promise<void> {
   await rm(out, { recursive: true, force: true });
@@ -65,29 +61,7 @@ async function main(): Promise<void> {
     )
   );
 
-  const prefixPattern = BACKEND_PATH_PREFIXES.map((prefix) => escapeRegex(prefix.slice(1))).join('|');
-  const exactPattern = Array.from(BACKEND_EXACT_PATHS).map(escapeRegex).join('|');
-  const backendSrc = `^(/(?:${prefixPattern})(?:/.*)?|${exactPattern})/?$`;
-
-  const config = {
-    version: 3,
-    routes: [
-      {
-        src: '^/(.*)$',
-        headers: { 'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet' },
-        continue: true,
-      },
-      { src: backendSrc, dest: '/index?__nwpath=$1' },
-      { handle: 'filesystem' },
-      ...(hideWebVault
-        ? [{ src: '^/(.*)$', status: 404, dest: '/404' }]
-        : [
-            { src: '^/assets/(.*)$', status: 404 },
-            { src: '^/(.*)$', dest: '/index.html' },
-          ]),
-    ],
-    crons: [{ path: '/api/internal/cron', schedule: cronSchedule }],
-  };
+  const config = buildVercelConfig({ hideWebVault, cronSchedule });
   await writeFile(join(out, 'config.json'), JSON.stringify(config, null, 2));
   console.log(`Vercel output written to ${out}`);
 }

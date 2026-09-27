@@ -6,7 +6,9 @@ import { generateUUID } from '../utils/uuid';
 import { parsePagination, encodeContinuationToken } from '../utils/pagination';
 import { LIMITS } from '../config/limits';
 import {
+  getBlobStorageKind,
   getBlobStorageMaxBytes,
+  BLOB_STORAGE_MISSING_MESSAGE,
   getSendFileObjectKey,
   getBlobObject,
   putBlobObject,
@@ -289,6 +291,9 @@ export async function handleCreateFileSendV2(request: Request, env: Env, userId:
     return errorResponse('Send content is not a file', 400);
   }
 
+  if (!getBlobStorageKind(env)) {
+    return errorResponse(BLOB_STORAGE_MISSING_MESSAGE, 400);
+  }
   const fileLengthRaw = getAliasedProp(body, ['fileLength', 'FileLength']);
   const fileLengthParsed = parseFileLength(fileLengthRaw.value);
   if (!fileLengthParsed.ok) return fileLengthParsed.response;

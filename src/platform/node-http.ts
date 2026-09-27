@@ -1,6 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Readable } from 'node:stream';
 import { handleAppRequest } from '../app';
+import type { Env } from '../types';
+import { errorResponse } from '../utils/response';
 import { getEnv } from './env';
 
 // Node http adapter: converts IncomingMessage -> Web Request, runs the app,
@@ -11,6 +13,22 @@ function firstHeader(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
+// Removes ?__nwpath= from url and returns its value. Parsed by hand rather
+// than with URLSearchParams, which would turn '+' in the path into a space
+// and re-encode the remaining query parameters.
+function takeOriginalPathParam(url: URL): string | null {
+  const params = url.search.slice(1).split('&');
+  const index = params.findIndex((param) => param.startsWith('__nwpath='));
+  if (index < 0) return null;
+  const [param] = params.splice(index, 1);
+  url.search = params.length ? `?${params.join('&')}` : '';
+  try {
+    return decodeURIComponent(param.slice('__nwpath='.length));
+  } catch {
+    return null;
+  }
+}
+
 export function toWebRequest(req: IncomingMessage): Request {
   const proto = firstHeader(req.headers['x-forwarded-proto'])?.split(',')[0]?.trim() || 'http';
   // Prefer Host: it is what Vercel routed on and what same-origin checks
@@ -19,11 +37,8 @@ export function toWebRequest(req: IncomingMessage): Request {
   const url = new URL(req.url || '/', `${proto}://${host}`);
   // Vercel routes pass the original path as ?__nwpath= (see
   // scripts/build-vercel.ts) in case the function sees the rewritten URL.
-  const originalPath = url.searchParams.get('__nwpath');
-  if (originalPath !== null) {
-    url.searchParams.delete('__nwpath');
-    if (originalPath.startsWith('/')) url.pathname = originalPath;
-  }
+  const originalPath = takeOriginalPathParam(url);
+  if (originalPath !== null && originalPath.startsWith('/')) url.pathname = originalPath;
 
   const headers = new Headers();
   for (const [name, value] of Object.entries(req.headers)) {
@@ -72,7 +87,18 @@ export async function writeWebResponse(res: ServerResponse, response: Response):
 export async function handleNodeRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
   try {
     const request = toWebRequest(req);
-    const response = await handleAppRequest(request, getEnv());
+    let env: Env;
+    try {
+      env = getEnv();
+    } catch (error) {
+      // Missing deployment configuration: say which variable, so the web
+      // vault shows something actionable instead of a bare 500.
+      const message = `Server configuration error: ${error instanceof Error ? error.message : String(error)}`;
+      console.error(message);
+      await writeWebResponse(res, errorResponse(message, 500));
+      return;
+    }
+    const response = await handleAppRequest(request, env);
     await writeWebResponse(res, response);
   } catch (error) {
     console.error('Unhandled request error:', error);

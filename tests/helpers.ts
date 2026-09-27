@@ -19,8 +19,8 @@ export interface TestServer {
   close(): Promise<void>;
 }
 
-async function resetDatabase(): Promise<void> {
-  const client = new pg.Client({ connectionString: TEST_DATABASE_URL });
+export async function resetDatabase(connectionString = TEST_DATABASE_URL): Promise<void> {
+  const client = new pg.Client({ connectionString });
   await client.connect();
   try {
     await client.query('DROP SCHEMA IF EXISTS public CASCADE');
@@ -30,7 +30,7 @@ async function resetDatabase(): Promise<void> {
   }
 }
 
-async function ensureBucket(bucket: string): Promise<void> {
+export async function ensureBucket(bucket: string): Promise<void> {
   const aws = new AwsClient({ accessKeyId: S3_ACCESS_KEY_ID, secretAccessKey: S3_SECRET_ACCESS_KEY, region: 'us-east-1', service: 's3' });
   const response = await aws.fetch(`${S3_ENDPOINT}/${bucket}`, { method: 'PUT' });
   if (!response.ok && response.status !== 409) {
@@ -38,20 +38,27 @@ async function ensureBucket(bucket: string): Promise<void> {
   }
 }
 
+// Environment for a server under test, as it would be set on Vercel.
+export function testServerEnv(bucket: string): Record<string, string> {
+  return {
+    DATABASE_URL: TEST_DATABASE_URL,
+    JWT_SECRET: 'test-secret-test-secret-test-secret-0123456789',
+    S3_ENDPOINT,
+    S3_BUCKET: bucket,
+    S3_ACCESS_KEY_ID,
+    S3_SECRET_ACCESS_KEY,
+    S3_REGION: 'us-east-1',
+    CRON_SECRET: 'test-cron-secret',
+    PUSH_RELAY_DISABLED: '1',
+  };
+}
+
 export async function startTestServer(): Promise<TestServer> {
   const bucket = `mw-test-${process.pid}`;
   await resetDatabase();
   await ensureBucket(bucket);
 
-  process.env.DATABASE_URL = TEST_DATABASE_URL;
-  process.env.JWT_SECRET = 'test-secret-test-secret-test-secret-0123456789';
-  process.env.S3_ENDPOINT = S3_ENDPOINT;
-  process.env.S3_BUCKET = bucket;
-  process.env.S3_ACCESS_KEY_ID = S3_ACCESS_KEY_ID;
-  process.env.S3_SECRET_ACCESS_KEY = S3_SECRET_ACCESS_KEY;
-  process.env.S3_REGION = 'us-east-1';
-  process.env.CRON_SECRET = 'test-cron-secret';
-  process.env.PUSH_RELAY_DISABLED = '1';
+  Object.assign(process.env, testServerEnv(bucket));
 
   const { handleNodeRequest } = await import('../src/platform/node-http');
   const server: Server = createServer((req, res) => {
@@ -96,7 +103,9 @@ export class Client {
   // for everyone registered after it.
   private admin: { session: Session; password: string } | null = null;
 
-  constructor(readonly baseUrl: string) {}
+  // `origin` is what browsers would send; it differs from baseUrl behind a
+  // TLS-terminating proxy such as Vercel's.
+  constructor(readonly baseUrl: string, readonly origin = baseUrl) {}
 
   private async inviteCode(): Promise<string | undefined> {
     if (!this.admin) return undefined;
@@ -125,7 +134,7 @@ export class Client {
     const publicKey = Buffer.from(`public-key-${email}`).toString('base64');
     const response = await this.fetch('/api/accounts/register', {
       method: 'POST',
-      headers: { Origin: this.baseUrl },
+      headers: { Origin: this.origin },
       json: {
         email,
         name: email.split('@')[0],
