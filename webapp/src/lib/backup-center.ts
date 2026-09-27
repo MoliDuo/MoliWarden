@@ -3,6 +3,8 @@ import {
   type BackupDestinationType,
   type BackupRuntimeState,
   type BackupSettings,
+  type S3BackupDestination,
+  type WebDavBackupDestination,
   createBackupDestinationRecord,
   createDefaultBackupSettings,
 } from '@shared/backup-schema';
@@ -193,6 +195,16 @@ export function invalidateRemoteBrowserCacheForDestination(
     pageByKey: Object.fromEntries(Object.entries(pageByKey).filter(([key]) => !key.startsWith(`${destinationId}:`))),
     selectedDestinationId: destinationId,
   };
+}
+
+// Whether a saved destination points somewhere yet. A fresh instance starts
+// with an empty WebDAV destination, which has nothing to browse.
+export function hasRemoteEndpoint(destination: BackupDestinationRecord): boolean {
+  if (destination.type === 's3') {
+    const config = destination.destination as S3BackupDestination;
+    return !!String(config.endpoint || '').trim() && !!String(config.bucket || '').trim();
+  }
+  return !!String((destination.destination as WebDavBackupDestination).baseUrl || '').trim();
 }
 
 export function getDestinationById(

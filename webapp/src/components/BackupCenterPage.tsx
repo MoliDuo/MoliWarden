@@ -21,6 +21,7 @@ import {
   getFirstVisibleDestinationId,
   getRemoteBrowserCacheKey,
   getVisibleDestinations,
+  hasRemoteEndpoint,
   invalidateRemoteBrowserCacheForDestination,
   isReplaceRequiredError,
   loadPersistedRemoteBrowserState,
@@ -315,7 +316,7 @@ export default function BackupCenterPage(props: BackupCenterPageProps) {
   }, [props.currentUserId, remoteBrowserCache, remoteBrowserPageByKey, remoteBrowserPathByDestination, remoteBrowserRefreshedAt, selectedDestinationId]);
 
   useEffect(() => {
-    if (!savedSelectedDestination) return;
+    if (!savedSelectedDestination || !hasRemoteEndpoint(savedSelectedDestination)) return;
     const destinationId = savedSelectedDestination.id;
     const path = remoteBrowserPathByDestination[destinationId] || '';
     const cacheKey = getRemoteBrowserCacheKey(destinationId, path);
