@@ -4,7 +4,7 @@
 // (tests/bw-crypto.ts); everything a user would do day to day then goes
 // through the official `bw` binary against this server over HTTPS.
 //
-//   TEST_DATABASE_URL=postgres://... npx tsx --test tests/official-cli.e2e.test.ts
+//   TEST_DATABASE_URL=postgres://... npx tsx --test tests/official-cli.test.ts
 //   BW_CLI=/path/to/bw   use a specific CLI build instead of the cached install
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';

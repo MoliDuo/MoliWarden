@@ -16,7 +16,7 @@ function jwtSecretUnsafeReason(env: Env): 'missing' | 'too_short' | null {
 function canServeWithUnsafeJwtSecret(path: string, method: string): boolean {
   if (method === 'OPTIONS') return true;
   if (method === 'GET' && (path === '/api/web-bootstrap' || path === '/web-bootstrap')) return true;
-  if (method === 'GET' && (path === '/config' || path === '/api/config' || path === '/api/version')) return true;
+  if (method === 'GET' && (path === '/config' || path === '/api/config' || path === '/api/version' || path === '/api/alive')) return true;
   if (method === 'GET' && path === '/.well-known/appspecific/com.chrome.devtools.json') return true;
   if (method === 'GET' && path === '/fill-assist/manifest.json') return true;
   if (method === 'GET' && /^\/fill-assist\/[^/]+$/i.test(path)) return true;

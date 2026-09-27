@@ -1,5 +1,6 @@
 import type { Env, User } from './types';
 import { errorResponse, jsonResponse, unsupportedResponse } from './utils/response';
+import { listJson } from './services/org-json';
 import {
   handleGetProfile,
   handleUpdateProfile,
@@ -125,6 +126,7 @@ import {
   handleListOrgCollectionDetails,
   handleListOrgCollections,
   handleListPolicies,
+  handleGetDisabledPolicy,
   handleMembersPublicKeys,
   handleReinviteMember,
   handleRemoveMember,
@@ -174,7 +176,19 @@ async function routeOrganizations(
   if ((sub === '/keys' || sub === '/public-key') && method === 'GET') return handleGetOrganizationKeys(env, user, orgId);
   if (sub === '/keys' && method === 'POST') return handleSetOrganizationKeys(request, env, user, orgId);
   if (sub === '/export' && method === 'GET') return handleExportOrganization(env, user, orgId);
-  if (sub === '/policies' && method === 'GET') return handleListPolicies();
+  if ((sub === '/policies' || sub === '/policies/token') && method === 'GET') return handleListPolicies();
+  // Policies are not supported: every single policy reads as disabled.
+  const policyMatch = sub.match(/^\/policies\/(\d+|master-password)$/i);
+  if (policyMatch && method === 'GET') return handleGetDisabledPolicy(orgId, policyMatch[1]);
+  // Billing does not exist on a self-hosted server; these only keep official
+  // clients from logging 404s (same responses as Vaultwarden).
+  if (sub === '/billing/metadata' && method === 'GET') return jsonResponse(listJson([]));
+  if (sub === '/billing/vnext/warnings' && method === 'GET') {
+    return jsonResponse({ freeTrial: null, inactiveSubscription: null, resellerRenewal: null, taxId: null });
+  }
+  if (sub === '/billing/vnext/self-host/metadata' && method === 'GET') {
+    return jsonResponse({ isOnSecretsManagerStandalone: false, organizationOccupiedSeats: 0 });
+  }
 
   // Members
   if (sub === '/users') {
@@ -293,7 +307,7 @@ export async function handleAuthenticatedRoute(
 
   if (path === '/api/accounts/profile') {
     if (method === 'GET') return handleGetProfile(request, env, userId);
-    if (method === 'PUT') return handleUpdateProfile(request, env, userId);
+    if (method === 'PUT' || method === 'POST') return handleUpdateProfile(request, env, userId);
     return errorResponse('Method not allowed', 405);
   }
 
@@ -556,9 +570,11 @@ export async function handleAuthenticatedRoute(
   if (folderMatch) {
     const folderId = folderMatch[1];
     if (method === 'GET') return handleGetFolder(request, env, userId, folderId);
-    if (method === 'PUT') return handleUpdateFolder(request, env, userId, folderId);
+    if (method === 'PUT' || method === 'POST') return handleUpdateFolder(request, env, userId, folderId);
     if (method === 'DELETE') return handleDeleteFolder(request, env, userId, folderId);
   }
+  const folderDeleteMatch = path.match(/^\/api\/folders\/([a-f0-9-]+)\/delete$/i);
+  if (folderDeleteMatch && method === 'POST') return handleDeleteFolder(request, env, userId, folderDeleteMatch[1]);
 
   if (path === '/api/auth-requests' || path === '/api/auth-requests/' || path === '/auth-requests' || path === '/auth-requests/') {
     if (method === 'GET') return handleListAuthRequests(request, env, userId);
@@ -631,6 +647,12 @@ export async function handleAuthenticatedRoute(
       if (method === 'GET') return handleGetSendFileUpload(request, env, userId, sendId, fileId);
       if (method === 'POST' || method === 'PUT') return handleUploadSendFile(request, env, userId, sendId, fileId);
     }
+  }
+
+  // Security tasks (at-risk password reminders) are an organization feature
+  // this server does not have.
+  if (path === '/api/tasks' && method === 'GET') {
+    return jsonResponse(listJson([]));
   }
 
   if (path === '/api/policies' && method === 'GET') {

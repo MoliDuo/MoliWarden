@@ -48,6 +48,9 @@ jobs:
         env:
           TEST_DATABASE_URL: postgres://mw:mw@localhost:56432/mw
 
+      - name: Official Bitwarden CLI against the server
+        run: npm run test:official-cli
+
       - name: Official vercel build
         run: scripts/vercel-build-local.sh
 

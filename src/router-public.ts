@@ -416,7 +416,7 @@ export async function handlePublicRoute(
     return handleRevocation(request, env);
   }
 
-  if (path === '/identity/accounts/prelogin' && method === 'POST') {
+  if ((path === '/identity/accounts/prelogin' || path === '/api/accounts/prelogin') && method === 'POST') {
     const blocked = await enforcePublicRateLimit('public-sensitive', LIMITS.rateLimit.sensitivePublicRequestsPerMinute);
     if (blocked) return blocked;
     return handlePrelogin(request, env);
@@ -480,6 +480,12 @@ export async function handlePublicRoute(
     if (blocked) return blocked;
     const origin = new URL(request.url).origin;
     return jsonResponse(buildConfigResponse(origin), 200, { 'Cache-Control': 'no-store' });
+  }
+
+  if ((path === '/api/alive' || path === '/api/now') && method === 'GET') {
+    const blocked = await enforcePublicRateLimit('public-read', LIMITS.rateLimit.publicReadRequestsPerMinute);
+    if (blocked) return blocked;
+    return jsonResponse(new Date().toISOString(), 200, { 'Cache-Control': 'no-store' });
   }
 
   if (path === '/api/version' && method === 'GET') {
