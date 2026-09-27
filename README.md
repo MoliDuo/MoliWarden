@@ -65,6 +65,8 @@ runs type checks, i18n validation, unit tests, `check:sql` (every SQL statement 
 
 `tests/official-cli.test.ts` drives the official Bitwarden CLI (`bw`) over HTTPS against accounts and organizations created with real client crypto: login (password and API key), lock/unlock, items, folders, attachments, Sends, export, confirming members, sharing and collections. The CLI is not a dependency; it is installed on first run into `~/.cache/moliwarden-bw-cli` (override with `BW_CLI=/path/to/bw` or `BW_CLI_VERSION`). Run it with `npm run test:official-cli` (about 5 minutes; part of `npm test` and CI).
 
+`npm run test:ui` clicks through the web vault in Chromium (Playwright, in the official Docker image by default): items, folders, trash, attachments, Sends, import/export, settings, admin, the full organization flow, a Chinese-language pass and a 375px phone pass. Any page error, console error, error toast or 5xx fails it; see `tests/ui/README.md`.
+
 Limits worth knowing: web vault imports are split into several requests automatically, but `bw import` sends one request and fails above ~4.5 MB; backup files uploaded from the browser are capped at 4.4 MB (restore larger ones from WebDAV/S3); sync responses are streamed and not limited. Put the Neon database in the same region as the Vercel functions (`iad1` by default).
 
 ## License

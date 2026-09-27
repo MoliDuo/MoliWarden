@@ -51,6 +51,19 @@ jobs:
       - name: Official Bitwarden CLI against the server
         run: npm run test:official-cli
 
+      - name: Web vault in a browser
+        run: |
+          npm install --prefix tests/ui --no-audit --no-fund --no-package-lock
+          tests/ui/node_modules/.bin/playwright-core install --with-deps chromium
+          UI_NO_DOCKER=1 npm run test:ui
+
+      - name: Upload browser test artifacts
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ui-artifacts
+          path: tests/ui/.artifacts
+
       - name: Official vercel build
         run: scripts/vercel-build-local.sh
 
