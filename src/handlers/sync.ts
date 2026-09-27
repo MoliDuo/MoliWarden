@@ -144,6 +144,7 @@ export async function handleSync(request: Request, env: Env, userId: string): Pr
       WebAuthnPrfOption: webAuthnPrfOptions[0] || null,
       WebAuthnPrfOptions: webAuthnPrfOptions,
       V2UpgradeToken: null,
+      UserKeyId: user.keyId ?? null,
       Object: 'userDecryption',
     },
     UserDecryptionOptions: userDecryptionOptions,

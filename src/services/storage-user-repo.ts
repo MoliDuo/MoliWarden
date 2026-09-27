@@ -4,7 +4,7 @@ type SafeBind = (stmt: D1PreparedStatement, ...values: any[]) => D1PreparedState
 const USER_SELECT_COLUMNS =
   'id, email, name, master_password_hint, master_password_hash, key, private_key, public_key, ' +
   'kdf_type, kdf_iterations, kdf_memory, kdf_parallelism, security_stamp, role, status, verify_devices, ' +
-  'totp_secret, totp_recovery_code, yubikey_key1, yubikey_key2, yubikey_key3, yubikey_key4, yubikey_key5, yubikey_nfc, api_key, created_at, updated_at';
+  'totp_secret, totp_recovery_code, yubikey_key1, yubikey_key2, yubikey_key3, yubikey_key4, yubikey_key5, yubikey_nfc, api_key, key_id, created_at, updated_at';
 
 function mapUserRow(row: any): User {
   return {
@@ -33,6 +33,7 @@ function mapUserRow(row: any): User {
     yubikeyKey5: row.yubikey_key5 ?? null,
     yubikeyNfc: !!row.yubikey_nfc,
     apiKey: row.api_key ?? null,
+    keyId: row.key_id ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -107,6 +108,19 @@ export async function saveUser(db: D1Database, safeBind: SafeBind, user: User): 
     user.createdAt,
     user.updatedAt
   ).run();
+}
+
+// Records the client-reported user key id once; false when one is already set.
+export async function setUserKeyIdIfUnset(db: D1Database, id: string, keyId: string): Promise<boolean> {
+  const result = await db
+    .prepare('UPDATE users SET key_id = ? WHERE id = ? AND key_id IS NULL')
+    .bind(keyId, id)
+    .run();
+  return Number(result.meta?.changes || 0) > 0;
+}
+
+export async function clearUserKeyId(db: D1Database, id: string): Promise<void> {
+  await db.prepare('UPDATE users SET key_id = NULL WHERE id = ?').bind(id).run();
 }
 
 export async function createUser(db: D1Database, safeBind: SafeBind, user: User): Promise<void> {

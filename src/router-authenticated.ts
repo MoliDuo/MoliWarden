@@ -23,6 +23,7 @@ import {
   handlePutDeviceVerificationSettings,
   handleDisableTwoFactorProvider,
   handleGetApiKey,
+  handleSetUserKeyId,
   handleRotateApiKey,
 } from './handlers/accounts';
 import {
@@ -387,6 +388,10 @@ export async function handleAuthenticatedRoute(
 
   if (path === '/api/accounts/verify-devices' && (method === 'PUT' || method === 'POST')) {
     return handleSetVerifyDevices(request, env, userId);
+  }
+
+  if (path === '/api/accounts/key-management/user-key-id' && method === 'POST') {
+    return handleSetUserKeyId(request, env, userId);
   }
 
   if ((path === '/api/accounts/api-key' || path === '/api/accounts/api_key') && method === 'POST') {

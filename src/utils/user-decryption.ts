@@ -59,9 +59,10 @@ export function buildUserDecryptionOptions(
 }
 
 export function buildUserDecryptionCompat(
-  user: Pick<User, 'email' | 'key' | 'kdfType' | 'kdfIterations' | 'kdfMemory' | 'kdfParallelism'>
+  user: Pick<User, 'email' | 'key' | 'kdfType' | 'kdfIterations' | 'kdfMemory' | 'kdfParallelism' | 'keyId'>
 ): Record<string, unknown> {
   return {
+    userKeyId: user.keyId ?? null,
     masterPasswordUnlock: {
       kdf: {
         kdfType: user.kdfType,

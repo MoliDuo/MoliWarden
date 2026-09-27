@@ -616,12 +616,15 @@ export async function handleSetKeys(request: Request, env: Env, userId: string):
     return errorResponse('encryptedPrivateKey is not a valid encrypted string', 400);
   }
 
+  const userKeyChanged = !!body.key && body.key !== user.key;
   if (body.key) user.key = body.key;
   if (body.encryptedPrivateKey) user.privateKey = body.encryptedPrivateKey;
   if (body.publicKey) user.publicKey = body.publicKey;
   user.updatedAt = new Date().toISOString();
 
   await storage.saveUser(user);
+  // A replaced user key invalidates the recorded key id; clients backfill it again.
+  if (userKeyChanged) await storage.clearUserKeyId(user.id);
   await writeAuditEvent(storage, {
     actorUserId: user.id,
     action: 'account.keys.update',
@@ -1534,6 +1537,29 @@ export async function handleVerifyPassword(request: Request, env: Env, userId: s
   }
 
   return jsonResponse(masterPasswordPolicyResponse());
+}
+
+// POST /api/accounts/key-management/user-key-id
+// Current official clients (SDK "user key id backfill") report the id of the
+// user key once after unlock and fail login/unlock if the call is rejected by a
+// 404. The id is non-secret metadata; like Vaultwarden it can be set only once.
+export async function handleSetUserKeyId(request: Request, env: Env, userId: string): Promise<Response> {
+  let body: { userKeyId?: unknown; UserKeyId?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return errorResponse('Invalid JSON', 400);
+  }
+  const keyId = body?.userKeyId ?? body?.UserKeyId;
+  if (typeof keyId !== 'string' || !/^[A-Za-z0-9+/=_-]{1,128}$/.test(keyId)) {
+    return errorResponse('userKeyId is invalid', 400);
+  }
+  const storage = new StorageService(env.DB);
+  if (!(await storage.setUserKeyIdIfUnset(userId, keyId))) {
+    return errorResponse('User key id is already set', 422);
+  }
+  AuthService.invalidateUserCache(userId);
+  return new Response(null, { status: 200 });
 }
 
 // POST /api/accounts/api-key
