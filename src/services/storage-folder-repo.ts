@@ -62,6 +62,11 @@ export async function clearFolderFromCiphers(
     )
     .bind(now, userId, folderId, folderId, folderId)
     .run();
+  // Org items keep the user's folder in cipher_user_state.
+  await db
+    .prepare('UPDATE cipher_user_state SET folder_id = NULL WHERE user_id = ? AND folder_id = ?')
+    .bind(userId, folderId)
+    .run();
 }
 
 export async function bulkDeleteFolders(
@@ -95,6 +100,11 @@ export async function bulkDeleteFolders(
            )`
       )
       .bind(now, userId, ...chunk, ...chunk, ...chunk)
+    );
+    statements.push(
+      db
+        .prepare(`UPDATE cipher_user_state SET folder_id = NULL WHERE user_id = ? AND folder_id IN (${placeholders})`)
+        .bind(userId, ...chunk)
     );
     statements.push(
       db.prepare(`DELETE FROM folders WHERE user_id = ? AND id IN (${placeholders})`)

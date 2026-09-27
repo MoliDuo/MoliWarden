@@ -28,6 +28,7 @@ import { parsePagination, encodeContinuationToken } from '../utils/pagination';
 import { readActingDeviceIdentifier } from '../utils/device';
 import { auditRequestMetadata, writeAuditEvent } from '../services/audit-events';
 import { readNullableFullUpdateField } from './cipher-full-update';
+import { SERVER_OWNED_CIPHER_KEYS_LOWER } from '../services/storage-cipher-repo';
 import type { CipherAccess } from '../services/org-access';
 import { canWriteCollection, loadUserOrgContext } from '../services/org-access';
 import {
@@ -46,6 +47,19 @@ import { notifyOrgMembersSync } from '../services/org-notifications';
 // unknown/future client fields by default, then override only server-owned
 // fields. Any change to cipher response shape must be checked against /api/sync,
 // attachments, import/export, and current official clients.
+// camelCase names the response sets itself; other casings of these are dropped.
+const CAMEL_SERVER_KEYS = new Set([
+  'organizationId',
+  'organizationUseTotp',
+  'collectionIds',
+  'viewPassword',
+  'folderId',
+  'creationDate',
+  'revisionDate',
+  'deletedDate',
+  'archivedDate',
+]);
+
 export interface CipherResponseOptions {
   preserveRepairableUris?: boolean;
   validFolderIds?: ReadonlySet<string>;
@@ -781,7 +795,14 @@ export function cipherToResponse(
   options: CipherResponseOptions = {}
 ): CipherResponse {
   // Strip internal-only fields that must not appear in the API response
-  const { userId, createdAt, updatedAt, archivedAt, deletedAt, ...passthrough } = cipher;
+  const { userId, createdAt, updatedAt, archivedAt, deletedAt, ...rawPassthrough } = cipher;
+  // Rows written before server-owned keys were stripped case-insensitively may
+  // still hold client copies such as "Edit" or "Id"; never echo those.
+  const passthrough = {} as typeof rawPassthrough;
+  for (const [key, value] of Object.entries(rawPassthrough)) {
+    if (key !== key.toLowerCase() && SERVER_OWNED_CIPHER_KEYS_LOWER.has(key.toLowerCase()) && !CAMEL_SERVER_KEYS.has(key)) continue;
+    (passthrough as Record<string, unknown>)[key] = value;
+  }
   const responseCipherKey = optionalEncString(cipher.key);
   const normalizedLogin = normalizeCipherLoginForCompatibility(
     (passthrough as any).login ?? null,

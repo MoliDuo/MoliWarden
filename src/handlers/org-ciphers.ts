@@ -221,7 +221,7 @@ export async function handleUpdateCipherCollections(
 
   const storage = new StorageService(env.DB);
   const attachments = await storage.getAttachmentsByCipher(view.cipher.id);
-  if (variant === 'admin') {
+  if (variant === 'admin' && hasFullOrgAccess(ctx.confirmedByOrg.get(orgId)!)) {
     const links = await listCipherCollectionIds(env.DB, [view.cipher.id]);
     return jsonResponse(orgAdminCipherJson(view.cipher, links.get(view.cipher.id) || [], attachments));
   }
@@ -254,10 +254,17 @@ export async function handleBulkCipherCollections(request: Request, env: Env, us
     }
   }
   const remove = body.removeCollections === true;
+  const fullAccess = hasFullOrgAccess(ctx.confirmedByOrg.get(orgId)!);
   const statements: D1PreparedStatement[] = [];
   for (const cipherId of parseIds(body.cipherIds)) {
     const view = await loadCipherView(env.DB, user.id, cipherId, ctx);
     if (!view || view.cipher.organizationId !== orgId || !canWriteView(view)) continue;
+    if (remove && !fullAccess) {
+      // Same rule as the single-item endpoint: limited members may not orphan an item.
+      const current = (await listCipherCollectionIds(env.DB, [cipherId])).get(cipherId) || [];
+      const remaining = current.filter((id) => !collectionIds.includes(id));
+      if (!remaining.length) return errorResponse('Items must remain in at least one collection', 400);
+    }
     for (const collectionId of collectionIds) {
       statements.push(
         remove

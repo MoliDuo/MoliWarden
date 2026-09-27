@@ -243,10 +243,12 @@ export async function listMembershipsByOrg(db: D1Database, orgId: string): Promi
   }));
 }
 
+// Confirmed members only: others cannot see org data, so they should not
+// learn about org activity through revision bumps or pushes either.
 export async function listMemberUserIds(db: D1Database, orgId: string): Promise<string[]> {
   const res = await db
-    .prepare('SELECT user_id FROM org_memberships WHERE org_id = ?')
-    .bind(orgId)
+    .prepare('SELECT user_id FROM org_memberships WHERE org_id = ? AND status = ?')
+    .bind(orgId, ORG_MEMBER_STATUS.CONFIRMED)
     .all<{ user_id: string }>();
   return (res.results || []).map((row) => row.user_id);
 }
@@ -373,14 +375,17 @@ export function replaceCollectionGrantsStatements(
   ];
 }
 
+// Grants only link a collection and a membership of the same organization.
 export function insertGrantStatement(db: D1Database, grant: CollectionGrant): D1PreparedStatement {
   return db
     .prepare(
-      'INSERT INTO collection_members(collection_id, membership_id, read_only, hide_passwords, manage) VALUES(?, ?, ?, ?, ?) ' +
+      'INSERT INTO collection_members(collection_id, membership_id, read_only, hide_passwords, manage) ' +
+      'SELECT col.id, m.id, ?, ?, ? FROM collections col INNER JOIN org_memberships m ON m.org_id = col.org_id ' +
+      'WHERE col.id = ? AND m.id = ? ' +
       'ON CONFLICT(collection_id, membership_id) DO UPDATE SET read_only = excluded.read_only, ' +
       'hide_passwords = excluded.hide_passwords, manage = excluded.manage'
     )
-    .bind(grant.collectionId, grant.membershipId, grant.readOnly ? 1 : 0, grant.hidePasswords ? 1 : 0, grant.manage ? 1 : 0);
+    .bind(grant.readOnly ? 1 : 0, grant.hidePasswords ? 1 : 0, grant.manage ? 1 : 0, grant.collectionId, grant.membershipId);
 }
 
 // --- Cipher <-> collection links ---
@@ -405,17 +410,20 @@ export async function listCipherCollectionIds(db: D1Database, cipherIds: string[
 export function replaceCipherCollectionsStatements(db: D1Database, cipherId: string, collectionIds: string[]): D1PreparedStatement[] {
   return [
     db.prepare('DELETE FROM cipher_collections WHERE cipher_id = ?').bind(cipherId),
-    ...collectionIds.map((collectionId) =>
-      db
-        .prepare('INSERT INTO cipher_collections(cipher_id, collection_id) VALUES(?, ?) ON CONFLICT DO NOTHING')
-        .bind(cipherId, collectionId)
-    ),
+    ...collectionIds.map((collectionId) => addCipherCollectionStatement(db, cipherId, collectionId)),
   ];
 }
 
+// Links only when the collection belongs to the cipher's organization *at
+// write time*, so a concurrent ownership change (e.g. racing shares into two
+// orgs) can never leave a cipher linked to another org's collection.
 export function addCipherCollectionStatement(db: D1Database, cipherId: string, collectionId: string): D1PreparedStatement {
   return db
-    .prepare('INSERT INTO cipher_collections(cipher_id, collection_id) VALUES(?, ?) ON CONFLICT DO NOTHING')
+    .prepare(
+      'INSERT INTO cipher_collections(cipher_id, collection_id) ' +
+      'SELECT c.id, col.id FROM ciphers c INNER JOIN collections col ON col.org_id = c.organization_id ' +
+      'WHERE c.id = ? AND col.id = ? ON CONFLICT DO NOTHING'
+    )
     .bind(cipherId, collectionId);
 }
 

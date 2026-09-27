@@ -794,7 +794,11 @@ export async function handleListOrgCollectionDetails(env: Env, user: User, orgId
   const full = hasFullOrgAccess(guard.membership);
   const data = collections
     .filter((collection) => full || ctx.grantsByCollection.has(collection.id))
-    .map((collection) => collectionAccessDetails(collection, ctx, members, grants, true, true));
+    .map((collection) => {
+      // Access lists are only shown for collections the caller may manage.
+      const manageable = full || canManageCollection(ctx, orgId, collection.id);
+      return collectionAccessDetails(collection, ctx, members, manageable ? grants : [], true, manageable);
+    });
   return jsonResponse(listJson(data));
 }
 

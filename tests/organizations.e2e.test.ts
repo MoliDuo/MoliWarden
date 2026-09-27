@@ -367,3 +367,61 @@ test('instance backup round-trips organizations', async () => {
   assert.deepEqual(restoredItem.collectionIds, [collectionId]);
   assert.equal(restoredItem.favorite, true);
 });
+
+test('security regressions: casing, cross-org links, orphaning, admin collection ids', async () => {
+  const org = await alice.json('/api/organizations', {
+    method: 'POST',
+    json: { name: 'Sec', billingEmail: 'alice@example.com', key: fakeRsaEncString('k'), collectionName: fakeEncString('S1'), planType: 0 },
+  });
+  const s1 = (await alice.json(`/api/organizations/${org.id}/collections`)).data[0].id;
+  const s2 = (await alice.json(`/api/organizations/${org.id}/collections`, { method: 'POST', json: { name: fakeEncString('S2'), users: [], groups: [] } })).id;
+  await alice.json(`/api/organizations/${org.id}/users/invite`, {
+    method: 'POST',
+    json: { emails: ['bob@example.com'], type: 2, groups: [], collections: [{ id: s1, readOnly: false, hidePasswords: true, manage: false }] },
+  });
+  const invitation = (await bob.json('/api/organizations/invitations')).data.find((d: any) => d.organizationId === org.id);
+  await bob.json(`/api/organizations/${org.id}/users/${invitation.id}/accept`, { method: 'POST', json: {} });
+  await alice.json(`/api/organizations/${org.id}/users/${invitation.id}/confirm`, { method: 'POST', json: { key: fakeRsaEncString('b') } });
+
+  const item = await alice.json('/api/ciphers/create', {
+    method: 'POST',
+    json: { cipher: cipherPayload('sec', { organizationId: org.id }), collectionIds: [s1, s2] },
+  });
+  // PascalCase copies of server-owned fields are neither stored nor echoed.
+  const put = await bob.request(`/api/ciphers/${item.id}`, {
+    method: 'PUT',
+    json: { ...cipherPayload('sec2'), Edit: true, ViewPassword: true, Permissions: { Delete: true }, Id: 'x', DeletedDate: '2020-01-01T00:00:00Z' },
+  });
+  assert.equal(put.status, 200, await put.clone().text());
+  const seen = (await bob.json('/api/sync')).ciphers.find((c: any) => c.id === item.id);
+  for (const key of ['Edit', 'ViewPassword', 'Permissions', 'Id', 'DeletedDate']) assert.equal(key in seen, false, key);
+  assert.equal(seen.viewPassword, false);
+
+  // collections-admin does not reveal collections outside the caller's grants.
+  const adminView = await bob.json(`/api/ciphers/${item.id}/collections-admin`, { method: 'PUT', json: { collectionIds: [s1] } });
+  assert.deepEqual(adminView.collectionIds, [s1]);
+
+  // A limited member cannot orphan an item through bulk removal.
+  const single = await alice.json('/api/ciphers/create', {
+    method: 'POST',
+    json: { cipher: cipherPayload('only-s1', { organizationId: org.id }), collectionIds: [s1] },
+  });
+  const bulk = await bob.request('/api/ciphers/bulk-collections', {
+    method: 'POST',
+    json: { organizationId: org.id, cipherIds: [single.id], collectionIds: [s1], removeCollections: true },
+  });
+  assert.equal(bulk.status, 400);
+
+  // Collection links never cross organizations, even when inserted directly.
+  const other = await alice.json('/api/organizations', {
+    method: 'POST',
+    json: { name: 'Other', billingEmail: 'alice@example.com', key: fakeRsaEncString('k'), collectionName: fakeEncString('O1'), planType: 0 },
+  });
+  const o1 = (await alice.json(`/api/organizations/${other.id}/collections`)).data[0].id;
+  const { getEnv } = await import('../src/platform/env');
+  const { addCipherCollectionStatement } = await import('../src/services/storage-org-repo');
+  const db = getEnv().DB;
+  await addCipherCollectionStatement(db, item.id, o1).run();
+  const links = await db.prepare('SELECT collection_id FROM cipher_collections WHERE cipher_id = ?').bind(item.id).all<{ collection_id: string }>();
+  assert.ok(!links.results.some((row) => row.collection_id === o1));
+});

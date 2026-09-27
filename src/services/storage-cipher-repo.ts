@@ -70,6 +70,30 @@ const CIPHER_SCALAR_DATA_KEYS = new Set([
   'deletedDate',
 ]);
 
+// Server-owned cipher fields in any letter case. Official clients read the
+// PascalCase variant first, so a client-stored "Edit" or "ViewPassword" would
+// otherwise override the server-computed value for every other member.
+export const SERVER_OWNED_CIPHER_KEYS_LOWER = new Set([
+  'id',
+  'userid',
+  'organizationid',
+  'organizationusetotp',
+  'collectionids',
+  'edit',
+  'viewpassword',
+  'permissions',
+  'folderid',
+  'favorite',
+  'type',
+  'key',
+  'reprompt',
+  'creationdate',
+  'revisiondate',
+  'deleteddate',
+  'archiveddate',
+  'object',
+]);
+
 function buildCipherData(cipher: Cipher, folderId: string | null): string {
   const payload: Record<string, unknown> = {
     ...cipher,
@@ -77,6 +101,9 @@ function buildCipherData(cipher: Cipher, folderId: string | null): string {
   };
   for (const key of CIPHER_SCALAR_DATA_KEYS) {
     delete payload[key];
+  }
+  for (const key of Object.keys(payload)) {
+    if (SERVER_OWNED_CIPHER_KEYS_LOWER.has(key.toLowerCase())) delete payload[key];
   }
   return JSON.stringify(payload);
 }
