@@ -191,6 +191,7 @@ const sv: Record<string, string> = {
   "txt_backup_restore_skipped_reason_default": "Vissa filer kunde inte återställas",
   "txt_backup_export_failed": "Export av säkerhetskopia misslyckades",
   "txt_backup_import_failed": "Återställning av säkerhetskopia misslyckades",
+  "txt_backup_import_too_large": "Den här säkerhetskopian är större än {size} MB, uppladdningsgränsen på Vercel. Återställ den från ett fjärrmål (WebDAV eller S3) i stället.",
   "txt_backup_restore_failed": "Återställning av säkerhetskopia misslyckades",
   "txt_backup_integrity_check_failed": "Integritetsverifiering av säkerhetskopian misslyckades",
   "txt_backup_center_title": "Instanssäkerhetskopiering",

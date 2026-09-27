@@ -43,25 +43,27 @@ A Bitwarden-compatible server for **Vercel**, based on [NodeWarden](https://gith
 
 Downloads above 4 MB redirect to presigned S3 URLs; to download those from the web vault or browser extension, allow `GET` from your site origin (and `chrome-extension://*`) in the bucket's CORS rules.
 
-## Development
+## Development and tests
 
 ```bash
 npm install
 ```
 
 ```bash
-npm run build && npm run dev:server
+npm run test:services
 ```
 
-`npm run dev:server` reads the variables above from the environment. Tests need a disposable Postgres database and S3 bucket (see `tests/helpers.ts`); each test file resets the `public` schema.
+Run the server locally with `npm run build && npm run dev:server` (reads the variables above from the environment).
 
-```bash
-npm run test:e2e
-```
+`npm run test:services` starts Postgres, an S3 server (SeaweedFS) and a transaction-mode PgBouncer (like Neon's pooled URL) with the defaults in `tests/helpers.ts`.
 
 ```bash
-npm run check:sql
+npm test
 ```
+
+runs type checks, i18n validation, unit tests, `check:sql` (every SQL statement is `PREPARE`d on Postgres), the API end-to-end suites (`npm run test:e2e`) and `npm run test:smoke`, which builds `.vercel/output`, copies it outside the repository and serves it with `tests/vercel-emulator.ts` (Vercel routing, 4.5 MB body limit, `waitUntil`, cron calls). `scripts/vercel-build-local.sh` runs the official `vercel build` without an account. CI runs all of it on every push.
+
+Limits worth knowing: web vault imports are split into several requests automatically, but `bw import` sends one request and fails above ~4.5 MB; backup files uploaded from the browser are capped at 4.4 MB (restore larger ones from WebDAV/S3); sync responses are streamed and not limited. Put the Neon database in the same region as the Vercel functions (`iad1` by default).
 
 ## License
 

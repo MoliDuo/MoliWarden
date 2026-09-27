@@ -191,6 +191,7 @@ const fr: Record<string, string> = {
   "txt_backup_restore_skipped_reason_default": "Certaines fichiers n'ont pas pu être restaurés",
   "txt_backup_export_failed": "L'exportation de la sauvegarde a échoué",
   "txt_backup_import_failed": "La restauration de la sauvegarde a échoué",
+  "txt_backup_import_too_large": "Ce fichier de sauvegarde dépasse {size} Mo, la limite d'envoi sur Vercel. Restaurez-le plutôt depuis une destination distante (WebDAV ou S3).",
   "txt_backup_restore_failed": "La restauration de la sauvegarde a échoué",
   "txt_backup_integrity_check_failed": "La vérification de l'intégrité de la sauvegarde a échoué",
   "txt_backup_center_title": "Sauvegarde de l'instance",

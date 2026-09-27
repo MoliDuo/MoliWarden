@@ -453,6 +453,8 @@ export async function restoreRemoteBackup(
   return body;
 }
 
+const BACKUP_UPLOAD_MAX_BYTES = 4_400_000;
+
 export async function importAdminBackup(
   authedFetch: AuthedFetch,
   masterPasswordHash: string,
@@ -460,6 +462,10 @@ export async function importAdminBackup(
   replaceExisting: boolean = false,
   allowChecksumMismatch: boolean = false
 ): Promise<AdminBackupImportResponse> {
+  // Vercel rejects request bodies over 4.5 MB before they reach the server.
+  if (file.size > BACKUP_UPLOAD_MAX_BYTES) {
+    throw new Error(t('txt_backup_import_too_large', { size: (BACKUP_UPLOAD_MAX_BYTES / (1024 * 1024)).toFixed(1) }));
+  }
   const formData = new FormData();
   formData.set('file', file, file.name || 'nodewarden_backup.zip');
   formData.set('masterPasswordHash', masterPasswordHash);

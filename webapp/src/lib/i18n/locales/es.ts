@@ -191,6 +191,7 @@ const es: Record<string, string> = {
   "txt_backup_restore_skipped_reason_default": "Algunos archivos no pudieron ser restaurados",
   "txt_backup_export_failed": "Error al exportar la copia de seguridad",
   "txt_backup_import_failed": "Error al restaurar la copia de seguridad",
+  "txt_backup_import_too_large": "Este archivo de copia de seguridad supera los {size} MB, el límite de subida en Vercel. Restáuralo desde un destino remoto (WebDAV o S3).",
   "txt_backup_restore_failed": "Error al restaurar la copia de seguridad",
   "txt_backup_integrity_check_failed": "Error en la verificación de integridad de la copia de seguridad",
   "txt_backup_center_title": "Copia de seguridad de la instancia",

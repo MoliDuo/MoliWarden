@@ -77,15 +77,31 @@
 - **上传大小**：Vercel Functions 的请求体上限是 4.5 MB，而官方客户端上传附件必须经过服务器，所以单个附件 / Send 文件最大约 4.4 MB。下载不受影响。
 - **实时同步**：没有 WebSocket。其他设备上的改动不会立即出现，客户端会在解锁、定时同步或手动同步时拉取。
 - **定时备份**：由 Vercel Cron 触发 `/api/internal/cron`。Hobby 套餐每天一次，Pro 可以通过 `MOLIWARDEN_CRON_SCHEDULE` 调得更频繁。
-- **实例备份导入**：通过网页上传的备份文件同样受 4.5 MB 限制，大备份请用 WebDAV / S3 远程备份恢复。
+- **实例备份导入**：通过网页上传的备份文件同样受 4.5 MB 限制（网页会直接提示），大备份请用 WebDAV / S3 远程备份恢复。
+- **导入密码库**：自带 Web 密码库导入大文件时会自动分批上传，不受 4.5 MB 限制；官方 CLI 的 `bw import` 是一次性上传，超过约 4.5 MB（大约两三千条）会失败，可拆分文件或改用 Web 密码库导入。
+- **同步**：响应以流式返回，大密码库的同步不受 4.5 MB 限制。
+- **地区**：Vercel 函数默认在 `iad1`（美国东部）。Neon 数据库请选同一地区，或在 Vercel 项目设置里把函数地区改到数据库附近，否则每次请求都要跨洋访问数据库。
+
+### 部署后的排错
+
+- 页面提示 `Server configuration error: DATABASE_URL is not configured`：没有设置数据库变量。
+- 提示 `Database unavailable. Check DATABASE_URL`：连接串错误或数据库不可达，具体原因在 Vercel 的函数日志里。
+- 注册时提示 `JWT_SECRET is not set` / `must be at least 32 characters`：设置 `JWT_SECRET` 后重新部署。
+- 上传附件提示 `File storage is not configured`：缺少 `S3_*` 变量。
+- 修改环境变量后需要在 Vercel 里 **Redeploy** 才会生效。
 
 ---
 
-## 本地开发
+## 本地开发与测试
 
 ```bash
 npm install
-docker run -d --name mw-pg -e POSTGRES_PASSWORD=mw -e POSTGRES_USER=mw -e POSTGRES_DB=mw -p 55432:5432 postgres:17-alpine
+```
+
+启动测试用的 Postgres、S3（SeaweedFS）和 PgBouncer（事务池模式，模拟 Neon 的 pooled 连接串）：
+
+```bash
+npm run test:services
 ```
 
 新建 `.env.local`（参考上面的环境变量），然后：
@@ -98,17 +114,28 @@ npm run build
 set -a; . ./.env.local; set +a; npm run dev:server
 ```
 
-测试（需要可写的 Postgres 和 S3，见 `tests/helpers.ts`；每个测试文件会重置 `public` schema，请使用专用测试库）：
+跑全部测试（类型检查、i18n、单元测试、SQL 检查、端到端测试、Vercel 构建产物冒烟测试）：
 
 ```bash
-npm run test:e2e
+npm test
 ```
+
+各部分也可以单独跑：
+
+| 命令 | 内容 |
+|---|---|
+| `npm run test:e2e` | 接口端到端测试：账号、密码库、附件、Send、备份、组织权限和安全回归、配置缺失时的报错、Web 导入分批。每个文件会重置 `public` schema，请使用专用测试库 |
+| `npm run test:smoke` | 构建 `.vercel/output`，复制到仓库外，用 `tests/vercel-emulator.ts` 按 Vercel 的路由规则、4.5 MB 请求体限制、`waitUntil` 和 Cron 调用方式运行 |
+| `npm run check:sql` | 把代码中的每条 SQL 在真实 Postgres 上 `PREPARE` 一遍 |
+| `scripts/vercel-build-local.sh` | 不需要 Vercel 账号，用官方 `vercel build` 生成与线上一致的产物（会执行 `npm ci`）|
+
+要验证 Neon 连接池模式，把 `TEST_DATABASE_URL` 指向 PgBouncer 再跑端到端测试：
 
 ```bash
-npm run check:sql
+TEST_DATABASE_URL=postgres://mw:mw@localhost:56432/mw npm run test:e2e
 ```
 
-`check:sql` 会把代码中的每条 SQL 在真实 Postgres 上 `PREPARE` 一遍，用来发现方言和类型推断问题。
+GitHub Actions（`.github/workflows/ci.yml`）在每次推送时运行以上全部内容。
 
 ---
 

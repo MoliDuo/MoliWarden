@@ -191,6 +191,7 @@ const de: Record<string, string> = {
   "txt_backup_restore_skipped_reason_default": "Einige Dateien konnten nicht wiederhergestellt werden",
   "txt_backup_export_failed": "Backup-Export fehlgeschlagen",
   "txt_backup_import_failed": "Backup-Wiederherstellung fehlgeschlagen",
+  "txt_backup_import_too_large": "Diese Sicherungsdatei ist größer als {size} MB, das Upload-Limit auf Vercel. Stelle sie stattdessen aus einem entfernten Sicherungsziel (WebDAV oder S3) wieder her.",
   "txt_backup_restore_failed": "Backup-Wiederherstellung fehlgeschlagen",
   "txt_backup_integrity_check_failed": "Überprüfung der Backup-Integrität fehlgeschlagen",
   "txt_backup_center_title": "Instanz-Backup",

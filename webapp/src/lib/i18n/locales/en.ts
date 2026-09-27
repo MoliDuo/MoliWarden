@@ -244,6 +244,7 @@ const en: Record<string, string> = {
   "txt_backup_restore_skipped_reason_default": "Some files could not be restored",
   "txt_backup_export_failed": "Backup export failed",
   "txt_backup_import_failed": "Backup restore failed",
+  "txt_backup_import_too_large": "This backup file is larger than {size} MB, the upload limit on Vercel. Restore it from a remote backup destination (WebDAV or S3) instead.",
   "txt_backup_restore_failed": "Backup restore failed",
   "txt_backup_integrity_check_failed": "Backup integrity verification failed",
   "txt_backup_center_title": "Instance Backup",

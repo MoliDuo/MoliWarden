@@ -140,24 +140,24 @@ export interface ImportedCipherMapEntry {
 
 const IMPORT_ITEM_LIMIT = 5000;
 
-export async function importCiphers(
+// Vercel rejects request bodies over 4.5 MB, so large imports are sent in
+// several requests: folders first, then ciphers in size-bounded chunks that
+// reference the created folders by id.
+const IMPORT_REQUEST_MAX_CHARS = 3_500_000;
+
+async function postImport(
   authedFetch: AuthedFetch,
   payload: CiphersImportPayload,
-  options?: { returnCipherMap?: boolean }
-): Promise<ImportedCipherMapEntry[] | null> {
-  const returnCipherMap = !!options?.returnCipherMap;
+  returnCipherMap: boolean
+): Promise<ImportedCipherMapEntry[]> {
   const url = returnCipherMap ? '/api/ciphers/import?returnCipherMap=1' : '/api/ciphers/import';
-  const totalItems = (payload.folders?.length || 0) + (payload.ciphers?.length || 0);
-  if (totalItems > IMPORT_ITEM_LIMIT) {
-    throw new Error(`Import exceeds maximum of ${IMPORT_ITEM_LIMIT} items`);
-  }
   const resp = await authedFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (!resp.ok) throw new Error(await parseErrorMessage(resp, 'Import failed'));
-  if (!returnCipherMap) return null;
+  if (!returnCipherMap) return [];
 
   const body =
     (await parseJson<{
@@ -178,6 +178,75 @@ export async function importCiphers(
     });
   }
   return responses;
+}
+
+async function importFoldersForChunkedImport(
+  authedFetch: AuthedFetch,
+  folders: CiphersImportPayload['folders']
+): Promise<Map<number, string>> {
+  const idByIndex = new Map<number, string>();
+  if (!folders.length) return idByIndex;
+  await postImport(authedFetch, { folders, ciphers: [], folderRelationships: [] }, false);
+  const resp = await authedFetch('/api/folders');
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, 'Import failed'));
+  const body = (await parseJson<{ data?: Array<{ id?: string; name?: string }> }>(resp)) || {};
+  // Encrypted names use a random IV, so they identify the new folders exactly.
+  const idByName = new Map<string, string>();
+  for (const folder of body.data || []) {
+    if (folder?.id && folder.name) idByName.set(folder.name, folder.id);
+  }
+  folders.forEach((folder, index) => {
+    const id = idByName.get(folder.name);
+    if (id) idByIndex.set(index, id);
+  });
+  return idByIndex;
+}
+
+export async function importCiphers(
+  authedFetch: AuthedFetch,
+  payload: CiphersImportPayload,
+  options?: { returnCipherMap?: boolean }
+): Promise<ImportedCipherMapEntry[] | null> {
+  const returnCipherMap = !!options?.returnCipherMap;
+  const folders = payload.folders || [];
+  const ciphers = payload.ciphers || [];
+  const totalItems = folders.length + ciphers.length;
+  if (totalItems > IMPORT_ITEM_LIMIT) {
+    throw new Error(`Import exceeds maximum of ${IMPORT_ITEM_LIMIT} items`);
+  }
+
+  if (JSON.stringify(payload).length <= IMPORT_REQUEST_MAX_CHARS) {
+    const map = await postImport(authedFetch, payload, returnCipherMap);
+    return returnCipherMap ? map : null;
+  }
+
+  const folderIds = await importFoldersForChunkedImport(authedFetch, folders);
+  const folderIndexByCipher = new Map<number, number>();
+  for (const rel of payload.folderRelationships || []) folderIndexByCipher.set(rel.key, rel.value);
+
+  const responses: ImportedCipherMapEntry[] = [];
+  let chunk: Array<Record<string, unknown>> = [];
+  let chunkStart = 0;
+  let chunkChars = 0;
+  const flush = async () => {
+    if (!chunk.length) return;
+    const map = await postImport(authedFetch, { folders: [], ciphers: chunk, folderRelationships: [] }, returnCipherMap);
+    for (const entry of map) responses.push({ ...entry, index: entry.index + chunkStart });
+    chunkStart += chunk.length;
+    chunk = [];
+    chunkChars = 0;
+  };
+  for (let index = 0; index < ciphers.length; index++) {
+    const folderIndex = folderIndexByCipher.get(index);
+    const folderId = folderIndex === undefined ? null : folderIds.get(folderIndex) || null;
+    const cipher = folderId ? { ...ciphers[index], folderId } : ciphers[index];
+    const size = JSON.stringify(cipher).length + 1;
+    if (chunk.length && chunkChars + size > IMPORT_REQUEST_MAX_CHARS) await flush();
+    chunk.push(cipher);
+    chunkChars += size;
+  }
+  await flush();
+  return returnCipherMap ? responses : null;
 }
 
 export interface AttachmentDownloadInfo {

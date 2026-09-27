@@ -191,6 +191,7 @@ const it: Record<string, string> = {
   "txt_backup_restore_skipped_reason_default": "Alcuni file non potevano essere ripristinati",
   "txt_backup_export_failed": "Esportazione del backup fallita",
   "txt_backup_import_failed": "Ripristino del backup fallito",
+  "txt_backup_import_too_large": "Questo file di backup supera {size} MB, il limite di caricamento su Vercel. Ripristinalo da una destinazione remota (WebDAV o S3).",
   "txt_backup_restore_failed": "Ripristino del backup fallito",
   "txt_backup_integrity_check_failed": "Verifica dell'integrità del backup fallita",
   "txt_backup_center_title": "Backup dell'Istanza",
