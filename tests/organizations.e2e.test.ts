@@ -6,7 +6,7 @@ import { Client, cipherPayload, fakeEncString, fakeRsaEncString, startTestServer
 let server: TestServer;
 let client: Client;
 let alice: Session; // owner
-let bob: Session; // member
+let bob: Session & { publicKey: string }; // member
 let carol: Session; // outsider
 let orgId: string;
 let c1: string;
@@ -335,4 +335,35 @@ test('deleting the organization requires the master password and removes its ite
   assert.equal(sync.profile.organizations.length, 0);
   assert.ok(!sync.ciphers.some((c: any) => c.organizationId));
   assert.equal(sync.collections.length, 0);
+});
+
+test('instance backup round-trips organizations', async () => {
+  const org = await alice.json('/api/organizations', {
+    method: 'POST',
+    json: { name: 'Backup Org', billingEmail: 'alice@example.com', key: fakeRsaEncString('k'), collectionName: fakeEncString('C'), planType: 0 },
+  });
+  const collectionId = (await alice.json(`/api/organizations/${org.id}/collections`)).data[0].id;
+  const item = await alice.json('/api/ciphers/create', {
+    method: 'POST',
+    json: { cipher: cipherPayload('backup', { organizationId: org.id }), collectionIds: [collectionId] },
+  });
+  await alice.json(`/api/ciphers/${item.id}/partial`, { method: 'PUT', json: { favorite: true } });
+
+  const password = Buffer.from('hash-alice@example.com').toString('base64');
+  const exported = await alice.request('/api/admin/backup/export', { method: 'POST', json: { includeAttachments: false, masterPasswordHash: password } });
+  assert.equal(exported.status, 200, await exported.clone().text());
+  const form = new FormData();
+  form.set('file', new Blob([new Uint8Array(await exported.arrayBuffer())], { type: 'application/zip' }), 'backup.zip');
+  form.set('masterPasswordHash', password);
+  form.set('replaceExisting', '1');
+  const restored = await alice.request('/api/admin/backup/import', { method: 'POST', body: form });
+  assert.equal(restored.status, 200, await restored.clone().text());
+
+  const relogin = await client.login('alice@example.com');
+  const sync = await relogin.json('/api/sync');
+  assert.equal(sync.profile.organizations.length, 1);
+  const restoredItem = sync.ciphers.find((c: any) => c.id === item.id);
+  assert.ok(restoredItem);
+  assert.deepEqual(restoredItem.collectionIds, [collectionId]);
+  assert.equal(restoredItem.favorite, true);
 });

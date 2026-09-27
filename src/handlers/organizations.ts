@@ -961,3 +961,29 @@ export async function handleBulkDeleteCollections(request: Request, env: Env, us
   return emptyOk();
 }
 
+
+// Called before a user account is deleted. Organizations where the user is
+// the only member are deleted with them; if the user is the last confirmed
+// owner of an org that still has other members, deletion is refused so the
+// org is not left without anyone able to administer it.
+export async function prepareUserRemovalFromOrganizations(env: Env, userId: string): Promise<string | null> {
+  const memberships = await listMembershipsByUser(env.DB, userId);
+  const soleMemberOrgs: string[] = [];
+  for (const membership of memberships) {
+    const members = await listMembershipsByOrg(env.DB, membership.orgId);
+    if (members.length === 1) {
+      soleMemberOrgs.push(membership.orgId);
+      continue;
+    }
+    if (
+      membership.type === ORG_MEMBER_TYPE.OWNER &&
+      membership.status === ORG_MEMBER_STATUS.CONFIRMED &&
+      (await countOwners(env.DB, membership.orgId)) <= 1
+    ) {
+      const org = await getOrganization(env.DB, membership.orgId);
+      return `User is the last owner of organization "${org?.name ?? membership.orgId}". Transfer ownership or delete the organization first.`;
+    }
+  }
+  for (const orgId of soleMemberOrgs) await deleteOrganizationCompletely(env, orgId);
+  return null;
+}

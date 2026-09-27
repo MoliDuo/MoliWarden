@@ -1,3 +1,4 @@
+import { prepareUserRemovalFromOrganizations } from './organizations';
 import { Env, User, Invite } from '../types';
 import { AuthService } from '../services/auth';
 import { StorageService } from '../services/storage';
@@ -413,7 +414,10 @@ export async function handleAdminDeleteUser(
     return errorResponse('User not found', 404);
   }
 
-  // Clean up R2 files before DB cascade deletes the metadata rows.
+  const orgError = await prepareUserRemovalFromOrganizations(env, target.id);
+  if (orgError) return errorResponse(orgError, 409);
+
+  // Clean up stored files before DB cascade deletes the metadata rows.
   // 1. Attachment files (keyed by cipherId/attachmentId)
   const attachmentMap = await storage.getAttachmentsByUserId(target.id);
   for (const [cipherId, attachments] of attachmentMap) {
