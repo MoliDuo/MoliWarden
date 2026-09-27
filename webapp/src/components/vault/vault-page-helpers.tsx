@@ -27,7 +27,10 @@ export type SidebarFilter =
   | { kind: 'trash' }
   | { kind: 'duplicates' }
   | { kind: 'type'; value: TypeFilter }
-  | { kind: 'folder'; folderId: string | null };
+  | { kind: 'folder'; folderId: string | null }
+  // orgId null = personal vault.
+  | { kind: 'vault'; orgId: string | null }
+  | { kind: 'collection'; collectionId: string };
 
 interface TypeOption {
   type: number;

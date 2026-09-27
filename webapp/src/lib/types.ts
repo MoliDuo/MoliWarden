@@ -261,9 +261,39 @@ export interface Cipher {
   secureNote?: { type?: number | null } | null;
   passwordHistory?: CipherPasswordHistoryEntry[] | null;
   fields?: CipherField[] | null;
+  organizationId?: string | null;
+  collectionIds?: string[] | null;
+  edit?: boolean;
+  viewPassword?: boolean;
   decName?: string;
   decNotes?: string;
 }
+
+// profile.organizations entry (the member's own view of an organization).
+export interface ProfileOrganization {
+  id: string;
+  name: string;
+  key?: string | null;
+  status: number;
+  type: number;
+  organizationUserId?: string;
+  userId?: string;
+  permissions?: Record<string, boolean>;
+  [k: string]: unknown;
+}
+
+export interface VaultCollection {
+  id: string;
+  organizationId: string;
+  name: string;
+  readOnly?: boolean;
+  hidePasswords?: boolean;
+  manage?: boolean;
+  decName?: string;
+}
+
+// Decrypted organization symmetric keys (base64), keyed by organization id.
+export type OrgKeyMap = Record<string, { enc: string; mac: string }>;
 
 export interface SendTextData {
   text?: string | null;
@@ -328,6 +358,9 @@ export interface VaultDraft {
   favorite: boolean;
   name: string;
   folderId: string;
+  // New items only: owning organization and its collections (empty = personal vault).
+  organizationId?: string | null;
+  collectionIds?: string[];
   notes: string;
   reprompt: boolean;
   loginUsername: string;

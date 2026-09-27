@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import { createPortal } from 'preact/compat';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { AlertTriangle, Archive, Clipboard, Download, Eye, EyeOff, ExternalLink, Folder, Paperclip, Pencil, RefreshCw, RotateCcw, ShieldCheck, ShieldAlert, Trash2, X } from 'lucide-preact';
@@ -41,6 +42,8 @@ interface VaultDetailViewProps {
   onToggleHiddenField: (index: number) => void;
   onDownloadAttachment: (cipher: Cipher, attachmentId: string) => void;
   onStartEdit: () => void;
+  // Organization details / sharing controls rendered under the actions.
+  orgPanel?: ComponentChildren;
   onDelete: (cipher: Cipher) => void;
   onRestore: (cipher: Cipher) => void | Promise<void>;
   onArchive: (cipher: Cipher) => void | Promise<void>;
@@ -100,6 +103,11 @@ export default function VaultDetailView(props: VaultDetailViewProps) {
   const breachControllerRef = useRef<AbortController | null>(null);
   const isArchived = !!(props.selectedCipher.archivedDate || (props.selectedCipher as { archivedAt?: string | null }).archivedAt);
   const isDeleted = isCipherDeleted(props.selectedCipher);
+  // Organization items carry server-computed permissions; personal items are fully editable.
+  // "Hide passwords" collections: the password stays masked, and the item is
+  // not opened in the editor (which would reveal it).
+  const canViewPassword = props.selectedCipher.viewPassword !== false;
+  const canEditItem = props.selectedCipher.edit !== false && canViewPassword;
   const passwordHistoryEntries = useMemo(
     () =>
       (props.selectedCipher.passwordHistory || [])
@@ -200,9 +208,9 @@ export default function VaultDetailView(props: VaultDetailViewProps) {
               <div className="kv-row">
                 <span className="kv-label">{t('txt_password')}</span>
                 <div className="kv-main">
-                  <strong>{props.showPassword ? props.selectedCipher.login.decPassword || '' : maskSecret(props.selectedCipher.login.decPassword || '')}</strong>
+                  <strong>{props.showPassword && canViewPassword ? props.selectedCipher.login.decPassword || '' : maskSecret(props.selectedCipher.login.decPassword || '')}</strong>
                 </div>
-                <div className="kv-actions">
+                {canViewPassword && <div className="kv-actions">
                   <button type="button" className="btn btn-secondary small" onClick={props.onToggleShowPassword}>
                     {props.showPassword ? <EyeOff size={14} className="btn-icon" /> : <Eye size={14} className="btn-icon" />}
                     {props.showPassword ? t('txt_hide') : t('txt_reveal')}
@@ -214,7 +222,7 @@ export default function VaultDetailView(props: VaultDetailViewProps) {
                     {checkingBreach ? <RefreshCw size={14} className="btn-icon spin" /> : <ShieldCheck size={14} className="btn-icon" />}
                     {checkingBreach ? t('txt_checking_password_security') : t('txt_check_password_breach')}
                   </button>
-                </div>
+                </div>}
               </div>
               {breachResult && (
                 <div className={`password-breach-inline ${breachResult.available ? (breachResult.count ? 'danger' : 'safe') : 'warning'}`} role="status">
@@ -550,7 +558,7 @@ export default function VaultDetailView(props: VaultDetailViewProps) {
 
           <div className="detail-actions">
             <div className="actions">
-              {isDeleted ? (
+              {!canEditItem ? null : isDeleted ? (
                 <button type="button" className="btn btn-secondary" onClick={() => void props.onRestore(props.selectedCipher)}>
                   <RotateCcw size={14} className="btn-icon" /> {t('txt_restore')}
                 </button>
@@ -571,10 +579,13 @@ export default function VaultDetailView(props: VaultDetailViewProps) {
                 </>
               )}
             </div>
-            <button type="button" className="btn btn-danger" onClick={() => props.onDelete(props.selectedCipher)}>
-              <Trash2 size={14} className="btn-icon" /> {isDeleted ? t('txt_delete_permanently') : t('txt_delete')}
-            </button>
+            {canEditItem && (
+              <button type="button" className="btn btn-danger" onClick={() => props.onDelete(props.selectedCipher)}>
+                <Trash2 size={14} className="btn-icon" /> {isDeleted ? t('txt_delete_permanently') : t('txt_delete')}
+              </button>
+            )}
           </div>
+          {props.orgPanel}
         </>
       )}
       <PasswordHistoryDialog

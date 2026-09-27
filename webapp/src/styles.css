@@ -7,6 +7,7 @@
 @import './styles/shell.css';
 @import './styles/vault.css';
 @import './styles/management.css';
+@import './styles/organizations.css';
 @import './styles/overlays.css';
 @import './styles/motion.css';
 @import './styles/skeleton.css';

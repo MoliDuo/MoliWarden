@@ -1439,16 +1439,27 @@ export async function buildCipherImportPayload(session: SessionState, draft: Vau
 export async function createCipher(
   authedFetch: AuthedFetch,
   session: SessionState,
-  draft: VaultDraft
+  draft: VaultDraft,
+  // Organization items: `session` must carry the org key (see orgSession()).
+  org?: { organizationId: string; collectionIds: string[] }
 ): Promise<Cipher> {
   const payload = await buildCipherPayload(session, draft, null);
 
-  const resp = await authedFetch('/api/ciphers', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!resp.ok) throw new Error('Create item failed');
+  const resp = org
+    ? await authedFetch('/api/ciphers/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cipher: { ...payload, folderId: payload.folderId ?? null, organizationId: org.organizationId },
+          collectionIds: org.collectionIds,
+        }),
+      })
+    : await authedFetch('/api/ciphers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, 'Create item failed'));
   const body = await parseJson<Cipher>(resp);
   if (!body?.id) throw new Error('Create item failed');
   return body;
@@ -1476,6 +1487,60 @@ export async function updateCipher(
     body: JSON.stringify(payload),
   });
   if (!resp.ok) throw new Error('Update item failed');
+  return (await parseJson<Cipher>(resp))!;
+}
+
+// Moves a personal item into an organization. The item gets (or keeps) its own
+// item key; only that key is re-wrapped with the org key, so attachments do not
+// have to be re-uploaded. Attachment keys / names still wrapped with the account
+// key are re-wrapped with the item key.
+export async function shareCipherToOrganization(
+  authedFetch: AuthedFetch,
+  session: SessionState,
+  orgKey: { enc: string; mac: string },
+  cipher: Cipher,
+  draft: VaultDraft,
+  organizationId: string,
+  collectionIds: string[]
+): Promise<Cipher> {
+  if (!session.symEncKey || !session.symMacKey) throw new Error('Vault key unavailable');
+  const userEnc = base64ToBytes(session.symEncKey);
+  const userMac = base64ToBytes(session.symMacKey);
+  const existing = await getCipherKeys(cipher, userEnc, userMac);
+
+  let itemKey: Uint8Array;
+  let cipherForPayload: Cipher = cipher;
+  const attachments2: Record<string, { fileName: string; key: string }> = {};
+  if (existing.key) {
+    itemKey = new Uint8Array(64);
+    itemKey.set(existing.enc, 0);
+    itemKey.set(existing.mac, 32);
+  } else {
+    itemKey = crypto.getRandomValues(new Uint8Array(64));
+    cipherForPayload = { ...cipher, key: await encryptBw(itemKey, userEnc, userMac) };
+    for (const attachment of cipher.attachments || []) {
+      if (!attachment?.id) continue;
+      if (!attachment.key) throw new Error('This item has a legacy attachment without its own key. Re-upload it before sharing.');
+      const rawKey = await decryptBw(attachment.key, userEnc, userMac);
+      const fileName = attachment.decFileName || (attachment.fileName ? await decryptStr(attachment.fileName, userEnc, userMac) : '');
+      attachments2[attachment.id] = {
+        key: await encryptBw(rawKey, itemKey.slice(0, 32), itemKey.slice(32, 64)),
+        fileName: await encryptBw(new TextEncoder().encode(fileName || 'attachment'), itemKey.slice(0, 32), itemKey.slice(32, 64)),
+      };
+    }
+  }
+
+  const payload = await buildCipherPayload(session, draft, cipherForPayload);
+  payload.key = await encryptBw(itemKey, base64ToBytes(orgKey.enc), base64ToBytes(orgKey.mac));
+  payload.organizationId = organizationId;
+  if (Object.keys(attachments2).length) payload.attachments2 = attachments2;
+
+  const resp = await authedFetch(`/api/ciphers/${encodeURIComponent(cipher.id)}/share`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cipher: payload, collectionIds }),
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, 'Share item failed'));
   return (await parseJson<Cipher>(resp))!;
 }
 

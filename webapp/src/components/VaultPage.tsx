@@ -4,6 +4,7 @@ import VaultDialogs from '@/components/vault/VaultDialogs';
 import VaultDetailView from '@/components/vault/VaultDetailView';
 import VaultEditor from '@/components/vault/VaultEditor';
 import VaultListPanel from '@/components/vault/VaultListPanel';
+import VaultOrgPanel from '@/components/vault/VaultOrgPanel';
 import VaultSidebar from '@/components/vault/VaultSidebar';
 import {
   MOBILE_LAYOUT_QUERY,
@@ -34,12 +35,16 @@ import {
 import { calcTotpNow, type TotpCodeResult } from '@/lib/crypto';
 import { computeSshFingerprint, generateDefaultSshKeyMaterial } from '@/lib/ssh';
 import { ChevronLeft } from 'lucide-preact';
-import type { Cipher, CustomFieldType, Folder, VaultDraft, VaultDraftField } from '@/lib/types';
+import type { Cipher, CustomFieldType, Folder, ProfileOrganization, VaultCollection, VaultDraft, VaultDraftField } from '@/lib/types';
 import { t } from '@/lib/i18n';
 
 interface VaultPageProps {
   ciphers: Cipher[];
   folders: Folder[];
+  organizations: ProfileOrganization[];
+  collections: VaultCollection[];
+  onShare: (cipher: Cipher, organizationId: string, collectionIds: string[]) => Promise<void>;
+  onUpdateCollections: (cipher: Cipher, collectionIds: string[]) => Promise<void>;
   loading: boolean;
   error: string;
   emailForReprompt: string;
@@ -410,6 +415,8 @@ export default function VaultPage(props: VaultPageProps) {
         }
         if (sidebarFilter.kind === 'favorite' && !cipher.favorite) return false;
         if (sidebarFilter.kind === 'type' && meta?.typeKey !== sidebarFilter.value) return false;
+        if (sidebarFilter.kind === 'vault' && (cipher.organizationId || null) !== sidebarFilter.orgId) return false;
+        if (sidebarFilter.kind === 'collection' && !(cipher.collectionIds || []).includes(sidebarFilter.collectionId)) return false;
         if (sidebarFilter.kind === 'folder') {
           if (sidebarFilter.folderId === null) {
             if (cipher.folderId) return false;
@@ -833,6 +840,10 @@ const folderName = useCallback((id: string | null | undefined): string => {
       setLocalError(t('txt_item_name_is_required'));
       return;
     }
+    if (isCreating && nextDraft.organizationId && !(nextDraft.collectionIds || []).length) {
+      setLocalError(t('txt_org_select_collection'));
+      return;
+    }
     setBusy(true);
     try {
       if (isCreating) {
@@ -1208,6 +1219,8 @@ const folderName = useCallback((id: string | null | undefined): string => {
         )}
         <VaultSidebar
           folders={props.folders}
+          organizations={props.organizations}
+          collections={props.collections}
           sidebarFilter={sidebarFilter}
           busy={busy}
           isMobileLayout={isMobileLayout}
@@ -1298,6 +1311,8 @@ const folderName = useCallback((id: string | null | undefined): string => {
                 isCreating={isCreating}
                 busy={busy}
                 folders={props.folders}
+                organizations={props.organizations}
+                collections={props.collections}
                 selectedCipher={selectedCipher}
                 editExistingAttachments={editExistingAttachments}
                 removedAttachmentIds={removedAttachmentIds}
@@ -1347,6 +1362,30 @@ const folderName = useCallback((id: string | null | undefined): string => {
                 downloadingAttachmentKey={props.downloadingAttachmentKey}
                 attachmentDownloadPercent={props.attachmentDownloadPercent}
                 onStartEdit={startEdit}
+                orgPanel={
+                  <VaultOrgPanel
+                    cipher={selectedCipher}
+                    organizations={props.organizations}
+                    collections={props.collections}
+                    busy={busy}
+                    onShare={async (cipher, organizationId, collectionIds) => {
+                      setBusy(true);
+                      try {
+                        await props.onShare(cipher, organizationId, collectionIds);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    onUpdateCollections={async (cipher, collectionIds) => {
+                      setBusy(true);
+                      try {
+                        await props.onUpdateCollections(cipher, collectionIds);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  />
+                }
                 onDelete={setPendingDelete}
                 onRestore={(cipher) => void handleRestoreSelected(cipher)}
                 onArchive={(cipher) => setPendingArchive(cipher)}

@@ -1,9 +1,13 @@
-import type { Cipher, Folder, Send } from './types';
+import type { Cipher, Folder, ProfileOrganization, Send, VaultCollection } from './types';
 
 export interface VaultCoreSnapshot {
   ciphers: Cipher[];
   folders: Folder[];
   sends: Send[];
+  organizations?: ProfileOrganization[];
+  collections?: VaultCollection[];
+  // Account RSA private key (encrypted with the user key), needed to unwrap org keys.
+  encryptedPrivateKey?: string | null;
 }
 
 interface VaultCoreCacheRecord {
@@ -38,6 +42,9 @@ function sanitizeSnapshotForCache(snapshot: VaultCoreSnapshot): VaultCoreSnapsho
     ciphers: stripDecryptedCacheFields(Array.isArray(snapshot.ciphers) ? snapshot.ciphers : []),
     folders: stripDecryptedCacheFields(Array.isArray(snapshot.folders) ? snapshot.folders : []),
     sends: stripDecryptedCacheFields(Array.isArray(snapshot.sends) ? snapshot.sends : []),
+    organizations: Array.isArray(snapshot.organizations) ? snapshot.organizations : [],
+    collections: stripDecryptedCacheFields(Array.isArray(snapshot.collections) ? snapshot.collections : []),
+    encryptedPrivateKey: snapshot.encryptedPrivateKey ?? null,
   };
 }
 

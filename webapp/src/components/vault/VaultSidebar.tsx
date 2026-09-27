@@ -3,6 +3,9 @@ import type { RefObject } from 'preact';
 import {
   Archive,
   ArrowUpDown,
+  Building2,
+  Layers,
+  Vault,
   BookUser,
   Check,
   Copy,
@@ -24,12 +27,14 @@ import {
   X,
 } from 'lucide-preact';
 import { Link } from 'wouter';
-import type { Folder } from '@/lib/types';
+import type { Folder, ProfileOrganization, VaultCollection } from '@/lib/types';
 import { t } from '@/lib/i18n';
 import { getFolderSortOptions, type SidebarFilter, type VaultSortMode } from '@/components/vault/vault-page-helpers';
 
 interface VaultSidebarProps {
   folders: Folder[];
+  organizations: ProfileOrganization[];
+  collections: VaultCollection[];
   sidebarFilter: SidebarFilter;
   busy: boolean;
   isMobileLayout: boolean;
@@ -116,6 +121,43 @@ export default function VaultSidebar(props: VaultSidebarProps) {
           <Copy size={14} className="tree-icon" /> <span className="tree-label">{t('txt_duplicates')}</span>
         </button>
       </div>
+
+      {props.organizations.length > 0 && (
+        <div className="sidebar-block">
+          <div className="sidebar-title">{t('txt_org_vaults')}</div>
+          <button
+            type="button"
+            className={`tree-btn ${props.sidebarFilter.kind === 'vault' && props.sidebarFilter.orgId === null ? 'active' : ''}`}
+            onClick={() => props.onChangeFilter({ kind: 'vault', orgId: null })}
+          >
+            <Vault size={14} className="tree-icon" /> <span className="tree-label">{t('txt_org_my_vault')}</span>
+          </button>
+          {props.organizations.map((org) => (
+            <div key={org.id}>
+              <button
+                type="button"
+                className={`tree-btn ${props.sidebarFilter.kind === 'vault' && props.sidebarFilter.orgId === org.id ? 'active' : ''}`}
+                onClick={() => props.onChangeFilter({ kind: 'vault', orgId: org.id })}
+              >
+                <Building2 size={14} className="tree-icon" /> <span className="tree-label" title={org.name}>{org.name}</span>
+              </button>
+              {props.collections
+                .filter((collection) => collection.organizationId === org.id)
+                .map((collection) => (
+                  <button
+                    key={collection.id}
+                    type="button"
+                    className={`tree-btn tree-btn-nested ${props.sidebarFilter.kind === 'collection' && props.sidebarFilter.collectionId === collection.id ? 'active' : ''}`}
+                    onClick={() => props.onChangeFilter({ kind: 'collection', collectionId: collection.id })}
+                  >
+                    <Layers size={13} className="tree-icon" />
+                    <span className="tree-label" title={collection.decName || ''}>{collection.decName || t('txt_org_collection_unnamed')}</span>
+                  </button>
+                ))}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="sidebar-block">
         <div className="sidebar-title">{t('txt_type')}</div>

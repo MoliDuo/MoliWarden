@@ -1,12 +1,14 @@
 import { base64ToBytes, decryptBw, decryptStr } from './crypto';
 import { deriveSendKeyParts, looksLikeCipherString } from './app-support';
-import type { Cipher, Folder, Send } from './types';
+import type { Cipher, Folder, OrgKeyMap, Send } from './types';
 
 export interface DecryptVaultCoreArgs {
   folders: Folder[];
   ciphers: Cipher[];
   symEncKeyB64: string;
   symMacKeyB64: string;
+  // Org items are encrypted with their organization's key instead of the user key.
+  orgKeys?: OrgKeyMap;
 }
 
 export interface DecryptVaultCoreResult {
@@ -117,18 +119,23 @@ async function decryptFieldWithSource(
 }
 
 export async function decryptVaultCore(args: DecryptVaultCoreArgs): Promise<DecryptVaultCoreResult> {
-  const userEnc = base64ToBytes(args.symEncKeyB64);
-  const userMac = base64ToBytes(args.symMacKeyB64);
+  const accountEnc = base64ToBytes(args.symEncKeyB64);
+  const accountMac = base64ToBytes(args.symMacKeyB64);
 
   const folders = await Promise.all(
     args.folders.map(async (folder) => ({
       ...folder,
-      decName: await decryptField(folder.name, userEnc, userMac),
+      decName: await decryptField(folder.name, accountEnc, accountMac),
     }))
   );
 
   const ciphers = await Promise.all(
     args.ciphers.map(async (cipher) => {
+      // "user key" below means the key the item is protected with: the
+      // account key for personal items, the organization key for org items.
+      const orgKey = cipher.organizationId ? args.orgKeys?.[cipher.organizationId] : undefined;
+      const userEnc = orgKey ? base64ToBytes(orgKey.enc) : accountEnc;
+      const userMac = orgKey ? base64ToBytes(orgKey.mac) : accountMac;
       let itemEnc = userEnc;
       let itemMac = userMac;
       let usesItemKey = false;

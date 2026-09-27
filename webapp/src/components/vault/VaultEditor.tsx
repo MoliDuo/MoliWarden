@@ -1,3 +1,4 @@
+import type { ProfileOrganization, VaultCollection } from '@/lib/types';
 import type { RefObject } from 'preact';
 import { createPortal } from 'preact/compat';
 import { ArrowDown, ArrowUp, CheckCheck, Download, Paperclip, Plus, QrCode, RefreshCw, Star, StarOff, Trash2, Upload, X } from 'lucide-preact';
@@ -26,6 +27,9 @@ interface VaultEditorProps {
   isCreating: boolean;
   busy: boolean;
   folders: Folder[];
+  // Organizations / collections the new item may be created in.
+  organizations?: ProfileOrganization[];
+  collections?: VaultCollection[];
   selectedCipher: Cipher | null;
   editExistingAttachments: Array<any>;
   removedAttachmentIds: Record<string, boolean>;
@@ -391,6 +395,52 @@ export default function VaultEditor(props: VaultEditorProps) {
           <input className="input" value={props.draft.name} onInput={(e) => props.onUpdateDraft({ name: (e.currentTarget as HTMLInputElement).value })} />
         </label>
       </div>
+
+      {props.isCreating && !!props.organizations?.length && (
+        <div className="card">
+          <h4>{t('txt_org_ownership')}</h4>
+          <label className="field">
+            <span>{t('txt_org_owner')}</span>
+            <select
+              className="input"
+              value={props.draft.organizationId || ''}
+              onInput={(e) => props.onUpdateDraft({ organizationId: (e.currentTarget as HTMLSelectElement).value || null, collectionIds: [] })}
+            >
+              <option value="">{t('txt_org_my_vault')}</option>
+              {props.organizations.map((org) => (
+                <option key={org.id} value={org.id}>{org.name}</option>
+              ))}
+            </select>
+          </label>
+          {!!props.draft.organizationId && (
+            <div className="field">
+              <span>{t('txt_org_collections')}</span>
+              <div className="org-collection-checklist">
+                {(props.collections || [])
+                  .filter((collection) => collection.organizationId === props.draft.organizationId && !collection.readOnly)
+                  .map((collection) => {
+                    const checked = (props.draft.collectionIds || []).includes(collection.id);
+                    return (
+                      <label key={collection.id} className="check-line check-line-compact">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = new Set(props.draft.collectionIds || []);
+                            if ((e.currentTarget as HTMLInputElement).checked) next.add(collection.id);
+                            else next.delete(collection.id);
+                            props.onUpdateDraft({ collectionIds: Array.from(next) });
+                          }}
+                        />
+                        <span>{collection.decName || t('txt_org_collection_unnamed')}</span>
+                      </label>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {props.draft.type === 1 && (
         <div className="card">

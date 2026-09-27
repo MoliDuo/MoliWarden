@@ -34,7 +34,9 @@ import {
 import { clearAuditLogs, getAuditLogSettings, listAdminInvites, listAdminUsers, listAuditLogs, saveAuditLogSettings, type AuditLogFilters } from '@/lib/api/admin';
 import { getDomainRules, saveDomainRules } from '@/lib/api/domains';
 import { getSendById, getSends } from '@/lib/api/send';
-import { getCipherById, getFolderById, repairCipherKeyMismatches, repairCipherUriChecksums } from '@/lib/api/vault';
+import { getCipherById, getFolderById, repairCipherKeyMismatches, repairCipherUriChecksums, shareCipherToOrganization } from '@/lib/api/vault';
+import { updateCipherCollections } from '@/lib/api/organizations';
+import { draftFromCipher } from '@/components/vault/vault-page-helpers';
 import { getCachedVaultCoreSnapshot, invalidateVaultCoreSyncSnapshot, loadVaultCoreSyncSnapshot, saveVaultCoreSyncSnapshot } from '@/lib/api/vault-sync';
 import { silentlyRepairBackupSettingsIfNeeded } from '@/lib/backup-settings-repair';
 import {
@@ -70,6 +72,8 @@ import { dispatchBackupProgress, type BackupProgressDetail } from '@/lib/backup-
 import { clearOfflineUnlockRecord } from '@/lib/offline-auth';
 import { clearPasswordSecurityCache } from '@/lib/password-security-cache';
 import { decryptSends, decryptVaultCore } from '@/lib/vault-decrypt';
+import { decryptOrgKeys, decryptWithOrgKey } from '@/lib/org-crypto';
+import type { OrgKeyMap, VaultCollection } from '@/lib/types';
 import { decryptSendsInWorker, decryptVaultCoreInWorker } from '@/lib/vault-worker';
 import {
   DEMO_CIPHERS,
@@ -115,6 +119,7 @@ const APP_ROUTE_PATHS = [
   '/security/password-health',
   '/generator',
   '/sends',
+  '/organizations',
   '/admin',
   '/logs',
   LEGACY_DEVICE_MANAGEMENT_ROUTE,
@@ -208,6 +213,8 @@ export default function App() {
   const [phase, setPhase] = useState<AppPhase>(initialBootstrap.phase);
   const [session, setSessionState] = useState<SessionState | null>(initialBootstrap.session);
   const [profile, setProfile] = useState<Profile | null>(initialProfileSnapshot);
+  const [orgKeys, setOrgKeys] = useState<OrgKeyMap>({});
+  const [decryptedCollections, setDecryptedCollections] = useState<VaultCollection[]>([]);
   const [defaultKdfIterations, setDefaultKdfIterations] = useState(initialBootstrap.defaultKdfIterations);
   const [registrationInviteRequired, setRegistrationInviteRequired] = useState(initialBootstrap.registrationInviteRequired);
   const [jwtWarning, setJwtWarning] = useState<{ reason: JwtUnsafeReason; minLength: number } | null>(initialBootstrap.jwtWarning);
@@ -1114,6 +1121,9 @@ export default function App() {
   const encryptedFolders = encryptedVaultCore?.folders;
   const encryptedCiphers = encryptedVaultCore?.ciphers;
   const encryptedSendsFromSync = encryptedVaultCore?.sends;
+  const encryptedOrganizations = encryptedVaultCore?.organizations;
+  const encryptedCollections = encryptedVaultCore?.collections;
+  const encryptedPrivateKey = encryptedVaultCore?.encryptedPrivateKey ?? null;
   const sendsQueryKey = useMemo(() => ['sends', vaultCacheKey || session?.email] as const, [vaultCacheKey, session?.email]);
   const sendsQuery = useQuery({
     queryKey: sendsQueryKey,
@@ -1339,6 +1349,12 @@ export default function App() {
     (async () => {
       try {
         setVaultDecryptError('');
+        let nextOrgKeys: OrgKeyMap = {};
+        try {
+          nextOrgKeys = await decryptOrgKeys(encryptedOrganizations, encryptedPrivateKey, session);
+        } catch (error) {
+          console.warn('Failed to unlock organization keys:', error);
+        }
         let result;
         try {
           result = await decryptVaultCoreInWorker({
@@ -1346,6 +1362,7 @@ export default function App() {
             ciphers: encryptedCiphers,
             symEncKeyB64: session.symEncKey!,
             symMacKeyB64: session.symMacKey!,
+            orgKeys: nextOrgKeys,
           });
         } catch {
           result = await decryptVaultCore({
@@ -1353,10 +1370,19 @@ export default function App() {
             ciphers: encryptedCiphers,
             symEncKeyB64: session.symEncKey!,
             symMacKeyB64: session.symMacKey!,
+            orgKeys: nextOrgKeys,
           });
         }
+        const nextCollections = await Promise.all(
+          (encryptedCollections || []).map(async (collection) => ({
+            ...collection,
+            decName: await decryptWithOrgKey(collection.name, nextOrgKeys, collection.organizationId),
+          }))
+        );
 
         if (!active) return;
+        setOrgKeys(nextOrgKeys);
+        setDecryptedCollections(nextCollections);
         setDecryptedFolders(result.folders);
         setDecryptedCiphers(result.ciphers);
         setVaultInitialDecryptDone(true);
@@ -1364,14 +1390,16 @@ export default function App() {
         const repairKey = `${session.accessToken}:${encryptedCiphers.map((cipher) => `${cipher.id}:${cipher.revisionDate || ''}`).join(',')}`;
         if (uriChecksumRepairAttemptRef.current !== repairKey) {
           uriChecksumRepairAttemptRef.current = repairKey;
-          void repairCipherKeyMismatches(authedFetch, session, result.ciphers)
+          // Compatibility repairs re-encrypt with the account key: personal items only.
+          const personalCiphers = result.ciphers.filter((cipher) => !cipher.organizationId);
+          void repairCipherKeyMismatches(authedFetch, session, personalCiphers)
             .then(async (keyMismatchCount) => {
               if (keyMismatchCount > 0) {
                 await invalidateVaultCoreSyncSnapshot(vaultCacheKey);
                 void refetchVaultCoreData();
                 return;
               }
-              const uriChecksumCount = await repairCipherUriChecksums(authedFetch, session, result.ciphers);
+              const uriChecksumCount = await repairCipherUriChecksums(authedFetch, session, personalCiphers);
               if (uriChecksumCount > 0) {
                 await invalidateVaultCoreSyncSnapshot(vaultCacheKey);
                 void refetchVaultCoreData();
@@ -1393,7 +1421,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [session?.symEncKey, session?.symMacKey, vaultCacheKey, encryptedFolders, encryptedCiphers]);
+  }, [session?.symEncKey, session?.symMacKey, vaultCacheKey, encryptedFolders, encryptedCiphers, encryptedOrganizations, encryptedCollections, encryptedPrivateKey]);
 
   useEffect(() => {
     if (IS_DEMO_MODE) return;
@@ -1469,6 +1497,9 @@ export default function App() {
       ciphers: Array.isArray(snapshot?.ciphers) ? snapshot.ciphers : [],
       folders: Array.isArray(snapshot?.folders) ? snapshot.folders : [],
       sends: Array.isArray(snapshot?.sends) ? snapshot.sends : [],
+      organizations: Array.isArray(snapshot?.organizations) ? snapshot.organizations : [],
+      collections: Array.isArray(snapshot?.collections) ? snapshot.collections : [],
+      encryptedPrivateKey: snapshot?.encryptedPrivateKey ?? null,
     };
   }
 
@@ -1593,6 +1624,7 @@ export default function App() {
         ciphers: [encrypted],
         symEncKeyB64: session.symEncKey,
         symMacKeyB64: session.symMacKey,
+        orgKeys,
       });
       const decrypted = result.ciphers[0];
       if (decrypted) setDecryptedCiphers((current) => upsertById(current, decrypted));
@@ -1687,6 +1719,9 @@ export default function App() {
           method: 'POST',
           headers: { Authorization: `Bearer ${accessToken}` },
         });
+        // 404: the server has no realtime hub (serverless deployment). Stop
+        // retrying; the vault refreshes through its regular sync instead.
+        if (negotiateResponse.status === 404) return;
         if (!negotiateResponse.ok) throw new Error('Notification negotiation failed');
         const negotiation = (await negotiateResponse.json()) as { connectionToken?: string };
         if (!negotiation.connectionToken || disposed) throw new Error('Notification connection token missing');
@@ -1839,6 +1874,7 @@ export default function App() {
   }, [phase, session?.accessToken, session?.symEncKey, session?.symMacKey, vaultInitialDecryptDone]);
 
   const vaultSendActions = useVaultSendActions({
+    orgKeys,
     authedFetch,
     importAuthedFetch,
     session,
@@ -2020,7 +2056,41 @@ export default function App() {
     }
   }, [phase, mobileLayout, location, navigate]);
 
+  async function shareVaultItem(cipher: Cipher, organizationId: string, collectionIds: string[]) {
+    if (!session) return;
+    const orgKey = orgKeys[organizationId];
+    try {
+      if (!orgKey) throw new Error(t('txt_org_key_unavailable'));
+      await shareCipherToOrganization(authedFetch, session, orgKey, cipher, draftFromCipher(cipher), organizationId, collectionIds);
+      await invalidateVaultCoreSyncSnapshot(vaultCacheKey);
+      await refetchVaultCoreData();
+      pushToast('success', t('txt_org_item_moved'));
+    } catch (error) {
+      pushToast('error', error instanceof Error ? error.message : t('txt_org_action_failed'));
+      throw error;
+    }
+  }
+
+  async function updateVaultItemCollections(cipher: Cipher, collectionIds: string[]) {
+    try {
+      await updateCipherCollections(authedFetch, cipher.id, collectionIds);
+      await invalidateVaultCoreSyncSnapshot(vaultCacheKey);
+      await refetchVaultCoreData();
+      pushToast('success', t('txt_org_collections_updated'));
+    } catch (error) {
+      pushToast('error', error instanceof Error ? error.message : t('txt_org_action_failed'));
+      throw error;
+    }
+  }
+
   const mainRoutesProps = {
+    authedFetch,
+    organizations: encryptedOrganizations || [],
+    collections: decryptedCollections,
+    orgKeys,
+    defaultKdfIterations,
+    onShareVaultItem: shareVaultItem,
+    onUpdateVaultItemCollections: updateVaultItemCollections,
     profile,
     profileLoading: profileQuery.isFetching && !profile,
     session,
