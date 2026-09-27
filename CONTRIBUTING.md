@@ -3,7 +3,7 @@
 Thanks for taking the time to improve NodeWarden.
 
 NodeWarden is a Bitwarden-compatible server with a custom web vault, Cloudflare
-Workers/D1 storage, attachment storage, imports/exports, and scheduled backups.
+Vercel / PostgreSQL storage, attachment storage, imports/exports, and scheduled backups.
 Small changes can affect official clients, backups, migrations, or locale files,
 so please keep changes focused and check the related parts of the project.
 
@@ -39,12 +39,12 @@ these areas, check the related files before calling the work complete.
 
 ### Database Changes
 
-Runtime schema lives in `src/services/storage-schema.ts`. The initial D1 schema
-lives in `migrations/0001_init.sql`.
+The PostgreSQL schema lives only in `src/services/storage-schema.ts`.
 
 If you add or change a table, column, or index:
 
-- Update both schema files.
+- Add new columns with `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
+- Run `npm run check:sql` against a scratch database.
 - Bump `STORAGE_SCHEMA_VERSION` in `src/services/storage.ts`.
 - Decide whether the data should be included in instance backup.
 
