@@ -198,6 +198,25 @@ function isStaleCipherUpdate(existingUpdatedAt: string, clientRevisionDate: stri
   return existingTs - clientTs > 1000;
 }
 
+// The iOS app adds a cipher key with one update and then sends its next
+// request (e.g. moving the item to an organization) built from its copy from
+// *before* that update, so the revision it reports is one update behind. Such
+// a request is not stale when it carries exactly the revision the key was
+// added on top of, and the key the server stored from that update.
+function isFollowUpToCipherKeyAddition(
+  existingCipher: Cipher,
+  clientRevisionDate: string | null,
+  incomingKey: { present: boolean; value: unknown }
+): boolean {
+  const keyAddedFrom = existingCipher.keyAddedFromRevision;
+  const existingKey = normalizeCipherKeyForStorage(existingCipher.key);
+  if (!keyAddedFrom || !clientRevisionDate || !existingKey || !incomingKey.present) return false;
+  if (normalizeCipherKeyForStorage(incomingKey.value as string | null) !== existingKey) return false;
+  const addedFromTs = Date.parse(keyAddedFrom);
+  const clientTs = Date.parse(clientRevisionDate);
+  return !Number.isNaN(addedFromTs) && !Number.isNaN(clientTs) && Math.abs(addedFromTs - clientTs) <= 1000;
+}
+
 function syncCipherComputedAliases(cipher: Cipher): Cipher {
   cipher.archivedDate = cipher.archivedAt ?? null;
   cipher.deletedDate = cipher.deletedAt ?? null;
@@ -330,6 +349,8 @@ export function normalizeCipherForStorage(cipher: Cipher): Cipher {
   cipher.archivedAt = hasArchivedAt
     ? normalizeCipherTimestamp(cipher.archivedAt) ?? null
     : normalizeCipherTimestamp(cipher.archivedDate) ?? null;
+  // Server-internal; never accepted from a client payload.
+  delete cipher.keyAddedFromRevision;
   return syncCipherComputedAliases(cipher);
 }
 
@@ -798,7 +819,7 @@ export function cipherToResponse(
   options: CipherResponseOptions = {}
 ): CipherResponse {
   // Strip internal-only fields that must not appear in the API response
-  const { userId, createdAt, updatedAt, archivedAt, deletedAt, ...rawPassthrough } = cipher;
+  const { userId, createdAt, updatedAt, archivedAt, deletedAt, keyAddedFromRevision, ...rawPassthrough } = cipher;
   // Rows written before server-owned keys were stripped case-insensitively may
   // still hold client copies such as "Edit" or "Id"; never echo those.
   const passthrough = {} as typeof rawPassthrough;
@@ -1162,7 +1183,11 @@ export function mergeCipherUpdate(
     return 'Cipher key encryption is not supported by this server. Resync the client and try again.';
   }
 
-  if (!hasAttachmentMigrationMetadata && isStaleCipherUpdate(existingCipher.updatedAt, incomingRevisionDate)) {
+  if (
+    !hasAttachmentMigrationMetadata
+    && isStaleCipherUpdate(existingCipher.updatedAt, incomingRevisionDate)
+    && !isFollowUpToCipherKeyAddition(existingCipher, incomingRevisionDate, incomingKey)
+  ) {
     return 'The client copy of this cipher is out of date. Resync the client and try again.';
   }
 
@@ -1214,6 +1239,11 @@ export function mergeCipherUpdate(
   normalizeCipherForStorage(cipher);
   const compatibilityError = validateCipherEncryptedFieldsForCompatibility(cipher);
   if (compatibilityError) return compatibilityError;
+
+  // Remember the pre-key revision only for the update that adds the first key;
+  // any later update ends the window.
+  const keyAdded = !normalizeCipherKeyForStorage(existingCipher.key) && !!cipher.key;
+  if (keyAdded) cipher.keyAddedFromRevision = existingCipher.updatedAt;
 
   return cipher;
 }

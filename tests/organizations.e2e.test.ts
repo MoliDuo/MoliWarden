@@ -218,6 +218,55 @@ test('iOS request casing (organizationID) works for share, create and update', a
   }
 });
 
+test('iOS adds a cipher key, then shares from its pre-update copy', async () => {
+  // iOS: PUT the item with a new cipher key, then PUT /share built from the
+  // copy it had before that update (same key, previous lastKnownRevisionDate).
+  const create = async (name: string) => {
+    const item = await alice.json('/api/ciphers', { method: 'POST', json: cipherPayload(name) });
+    assert.equal(item.key ?? null, null);
+    // Older than the 1 s tolerance, like any item created before today.
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    const key = fakeEncString(`${name}-cipher-key`);
+    const withKey = await alice.json(`/api/ciphers/${item.id}`, {
+      method: 'PUT',
+      json: { ...cipherPayload(name), key, lastKnownRevisionDate: item.revisionDate },
+    });
+    assert.equal(withKey.key, key);
+    return { item, key, withKey };
+  };
+  const share = async (id: string, key: string, revision: string) => {
+    const response = await alice.request(`/api/ciphers/${id}/share`, {
+      method: 'PUT',
+      json: { cipher: { ...cipherPayload('shared'), key, organizationID: orgId, lastKnownRevisionDate: revision }, collectionIds: [c1] },
+    });
+    return response.status;
+  };
+
+  const ok = await create('key-then-share');
+  assert.equal(await share(ok.item.id, ok.key, ok.item.revisionDate), 200);
+  const synced = (await alice.json('/api/sync')).ciphers.find((c: any) => c.id === ok.item.id);
+  assert.equal(synced.organizationId, orgId);
+  assert.equal(synced.keyAddedFromRevision, undefined, 'internal marker is never sent');
+
+  // Still stale: a different key, or a copy older than the one the key was added to.
+  const other = await create('wrong-key');
+  assert.equal(await share(other.item.id, fakeEncString('another-key'), other.item.revisionDate), 400);
+  assert.equal(await share(other.item.id, other.key, new Date(Date.parse(other.item.revisionDate) - 60_000).toISOString()), 400);
+
+  // Once the item changes again, the pre-key copy is stale like any other.
+  const later = await create('edited-after-key');
+  await new Promise((resolve) => setTimeout(resolve, 1100));
+  await alice.json(`/api/ciphers/${later.item.id}`, {
+    method: 'PUT',
+    json: { ...cipherPayload('edited-after-key'), key: later.key, lastKnownRevisionDate: later.withKey.revisionDate },
+  });
+  assert.equal(await share(later.item.id, later.key, later.item.revisionDate), 400);
+
+  for (const id of [ok.item.id, other.item.id, later.item.id]) {
+    assert.ok((await alice.request(`/api/ciphers/${id}`, { method: 'DELETE' })).ok);
+  }
+});
+
 test('read-only access blocks writes but allows per-user folder/favorite', async () => {
   await alice.json(`/api/organizations/${orgId}/users/${bobMemberId}`, {
     method: 'PUT',

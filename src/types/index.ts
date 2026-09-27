@@ -255,6 +255,9 @@ export interface Cipher {
   // set and userId null (enforced by a CHECK constraint).
   userId: string | null;
   organizationId?: string | null;
+  // Server-internal: revision the cipher had right before a client first added
+  // a cipher key to it (see mergeCipherUpdate). Never sent to clients.
+  keyAddedFromRevision?: string | null;
   type: CipherType;
   folderId: string | null;
   name: string | null;
