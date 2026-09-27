@@ -46,6 +46,13 @@ function parseIds(value: unknown): string[] {
   return Array.from(new Set(value.map(normalizeId).filter(Boolean)));
 }
 
+function describeShape(value: unknown): string {
+  if (!value || typeof value !== 'object') return typeof value;
+  return Object.entries(value as Record<string, unknown>)
+    .map(([key, item]) => `${key}:${item === null ? 'null' : Array.isArray(item) ? 'array' : typeof item}`)
+    .join(',');
+}
+
 async function readJson(request: Request): Promise<any | Response> {
   try {
     const text = await request.text();
@@ -96,7 +103,11 @@ async function shareOne(
   if (!canWriteView(view)) return errorResponse('You do not have permission to share this item', 403);
 
   const orgId = normalizeId(cipherData?.organizationId ?? cipherData?.OrganizationId);
-  if (!orgId) return errorResponse('organizationId is required', 400);
+  if (!orgId) {
+    // Field names and types only (no values): helps match what a client sent.
+    console.warn('share without organizationId; cipher fields:', describeShape(cipherData));
+    return errorResponse('organizationId is required', 400);
+  }
   // Checked before touching anything: an org item cannot hop to another org.
   if (view.cipher.organizationId && view.cipher.organizationId !== orgId) {
     return errorResponse("Organization mismatch. Please resync the client before updating the cipher", 400);
@@ -141,7 +152,10 @@ export async function handleShareCipher(request: Request, env: Env, user: User, 
   const body = await readJson(request);
   if (body instanceof Response) return body;
   const cipherData = body.cipher || body.Cipher;
-  if (!cipherData || typeof cipherData !== 'object') return errorResponse('cipher is required', 400);
+  if (!cipherData || typeof cipherData !== 'object') {
+    console.warn('share without cipher; body fields:', describeShape(body));
+    return errorResponse('cipher is required', 400);
+  }
   const ctx = await loadUserOrgContext(env.DB, user.id);
   const result = await shareOne(request, env, user, normalizeId(cipherId), cipherData, parseIds(body.collectionIds ?? body.CollectionIds), ctx);
   if (result instanceof Response) return result;
