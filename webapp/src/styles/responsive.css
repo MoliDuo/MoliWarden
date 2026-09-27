@@ -1387,7 +1387,14 @@
   }
 
   .backup-option-field {
+    position: relative;
     align-items: flex-start;
+  }
+
+  /* Anchor the help bubble to the start of the row, not the "?" button near
+     the right edge, so it stays on screen. */
+  .backup-option-field .backup-help-wrap {
+    position: static;
   }
 
   .backup-help-bubble {

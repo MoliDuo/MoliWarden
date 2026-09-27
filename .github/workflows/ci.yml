@@ -63,6 +63,7 @@ jobs:
         with:
           name: ui-artifacts
           path: tests/ui/.artifacts
+          include-hidden-files: true
 
       - name: Official vercel build
         run: scripts/vercel-build-local.sh

@@ -298,7 +298,16 @@ async function findOverflow(page, selector) {
         if (el.closest('svg') || !el.clientWidth) continue;
         const style = getComputedStyle(el);
         if (style.overflowX !== 'visible' || style.visibility === 'hidden') continue;
-        if (el.scrollWidth > el.clientWidth + 2) found.push(`${describe(el)} content ${el.scrollWidth}px > box ${el.clientWidth}px`);
+        if (el.scrollWidth > el.clientWidth + 2) {
+          // Name the innermost element that sticks out. Overflow caused only by
+          // hidden popovers (tooltips before they open) is not visible.
+          const edge = el.getBoundingClientRect().left + el.clientWidth;
+          const sticking = [...el.querySelectorAll('*')].filter((child) => child.getBoundingClientRect().right > edge + 2);
+          const visible = sticking.filter((child) => getComputedStyle(child).visibility !== 'hidden');
+          if (sticking.length && !visible.length) continue;
+          const culprit = visible[visible.length - 1] || null;
+          found.push(`${describe(el)} content ${el.scrollWidth}px > box ${el.clientWidth}px${culprit ? ` (sticks out: ${describe(culprit)})` : ''}`);
+        }
       }
     }
     return found;
@@ -306,6 +315,16 @@ async function findOverflow(page, selector) {
 }
 
 async function assertNoHorizontalOverflow(page, selector) {
+  if (page.textSpacing) {
+    await page.evaluate((spacing) => {
+      if (document.getElementById('ui-smoke-text-spacing')) return;
+      const style = document.createElement('style');
+      style.id = 'ui-smoke-text-spacing';
+      style.textContent = `body, button, input, select, textarea { letter-spacing: ${spacing} !important; }`;
+      document.head.appendChild(style);
+    }, page.textSpacing);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  }
   const found = await findOverflow(page, selector);
   if (found.length) problem(page.who, `layout overflow on ${new URL(page.url()).pathname}: ${found.slice(0, 5).join('; ')}`);
 }
@@ -1073,6 +1092,10 @@ section('i18n', async () => {
 
 section('mobile', async () => {
   const phone = await newPage('alice-mobile', { viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
+  // Fonts differ between machines (CI runners render noticeably wider than
+  // the Playwright image); overflow checks on the phone widen text a little
+  // so layouts that only just fit are caught everywhere.
+  phone.textSpacing = env.UI_MOBILE_LETTER_SPACING || '0.04em';
   await step('login on a phone viewport', async () => {
     await phone.goto(`${BASE}/login`);
     await login(phone, 'alice@example.com');

@@ -150,3 +150,27 @@
     gap: 4px;
   }
 }
+
+/* Narrow screens: let long org names, the fingerprint phrase and the tab row
+   wrap instead of widening the page. */
+.org-page > .card {
+  min-width: 0;
+}
+
+.org-switch-btn {
+  max-width: 100%;
+  text-align: left;
+}
+
+.org-switch-btn span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.org-fingerprint-note strong {
+  overflow-wrap: anywhere;
+}
+
+.org-tabs {
+  flex-wrap: wrap;
+}
