@@ -1035,7 +1035,8 @@ section('organizations', async () => {
     await syncVault(bob);
     await selectItem(bob, 'Shared Wifi');
     await bobDetail.getByText('edited-by-bob').waitFor();
-    await bobDetail.locator('.org-panel').waitFor();
+    // Wait for the new permission to render; the panel itself was already there.
+    await bobDetail.locator('.org-panel', { hasText: 'You can view this item but not change it' }).waitFor();
     assert(!(await bobDetail.locator('.detail-actions').getByRole('button', { name: 'Edit', exact: true }).isVisible()), 'read-only member still sees Edit');
     assert(!(await bobDetail.locator('.detail-actions').getByRole('button', { name: 'Delete', exact: true }).isVisible()), 'read-only member still sees Delete');
   });
