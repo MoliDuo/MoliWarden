@@ -69,3 +69,6 @@ opencode.jsonc
 .vercel
 .env
 .env.local
+
+# Browser smoke suite output
+tests/ui/.artifacts/

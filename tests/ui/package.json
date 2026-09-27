@@ -1,0 +1,9 @@
+{
+  "name": "moliwarden-ui-smoke",
+  "private": true,
+  "description": "Browser smoke suite for the bundled web vault. Installed on demand by scripts/test-ui.sh so the root install stays lean.",
+  "type": "module",
+  "dependencies": {
+    "playwright-core": "1.63.0"
+  }
+}
