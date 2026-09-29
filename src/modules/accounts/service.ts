@@ -6,10 +6,10 @@ import type { Deps } from '../../main/deps';
 import { randomAlphanumeric } from '../../platform/crypto';
 import { isEncString } from '../../platform/enc-string';
 import type { User } from '../../types';
-import { loadProfileOrganizations } from '../../utils/profile-response';
 import { recordAudit, requestMetadata } from '../audit/service';
 import { hashMasterPassword, requireMasterPassword } from '../auth/password';
 import { endAllSessions } from '../auth/sessions';
+import { profileOrganizations } from '../organizations/service';
 import { masterPasswordPolicy } from '../two-factor/login';
 import { factorsOf, hasSecondFactor } from '../two-factor/service';
 import { buildAccountKeys } from './decryption';
@@ -131,7 +131,7 @@ export async function passwordHint(deps: Deps, address: string, email: string) {
 
 export async function profile(deps: Deps, user: User) {
   const [organizations, factors] = await Promise.all([
-    loadProfileOrganizations(deps.legacyEnv.DB, user.id),
+    profileOrganizations(deps.db, user.id),
     factorsOf(deps.db, user),
   ]);
   return profileJson(user, {

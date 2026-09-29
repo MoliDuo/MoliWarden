@@ -70,4 +70,3 @@ export function orgCipherJson(cipher: Cipher, collectionIds: string[], attachmen
   return { ...content(cipher, attachments), collectionIds, object: 'cipherMiniDetails' };
 }
 
-export const listJson = <T>(data: T[], continuationToken: string | null = null) => ({ data, object: 'list', continuationToken });

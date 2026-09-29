@@ -8,6 +8,17 @@ import type { Row } from '../../platform/db/schema';
 export const MemberStatus = { Revoked: -1, Invited: 0, Accepted: 1, Confirmed: 2 } as const;
 export const MemberType = { Owner: 0, Admin: 1, User: 2, Manager: 3 } as const;
 
+export interface Organization {
+  id: string;
+  name: string;
+  billingEmail: string;
+  publicKey: string | null;
+  // Encrypted with the organization key.
+  privateKey: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Membership {
   id: string;
   orgId: string;
@@ -20,6 +31,14 @@ export interface Membership {
   invitedBy: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+// A membership as the organization's admins see it.
+export interface Member extends Membership {
+  email: string;
+  name: string | null;
+  publicKey: string | null;
+  hasTwoFactor: boolean;
 }
 
 export interface Collection {
@@ -38,6 +57,18 @@ export interface CollectionGrant {
   readOnly: boolean;
   hidePasswords: boolean;
   manage: boolean;
+}
+
+function toOrganization(row: Row<'organizations'>): Organization {
+  return {
+    id: row.id,
+    name: row.name,
+    billingEmail: row.billing_email,
+    publicKey: row.public_key,
+    privateKey: row.private_key,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
 }
 
 export function toMembership(row: Row<'org_memberships'>): Membership {
@@ -77,9 +108,162 @@ function toGrant(row: Row<'collection_members'>): CollectionGrant {
   };
 }
 
+// --- Organizations ---
+
+export async function findOrganization(db: Executor, id: string): Promise<Organization | null> {
+  const row = await db.selectFrom('organizations').selectAll().where('id', '=', id).executeTakeFirst();
+  return row ? toOrganization(row) : null;
+}
+
+export async function listOrganizations(db: Executor, ids: string[]): Promise<Organization[]> {
+  if (!ids.length) return [];
+  const rows = await db
+    .selectFrom('organizations')
+    .selectAll()
+    .where((eb) => eb('id', '=', eb.fn.any(eb.val(ids))))
+    .execute();
+  return rows.map(toOrganization);
+}
+
+export async function saveOrganization(db: Executor, org: Organization): Promise<void> {
+  const values = {
+    name: org.name,
+    billing_email: org.billingEmail,
+    public_key: org.publicKey,
+    private_key: org.privateKey,
+    updated_at: org.updatedAt,
+  };
+  await db
+    .insertInto('organizations')
+    .values({ id: org.id, created_at: org.createdAt, ...values })
+    .onConflict((oc) => oc.column('id').doUpdateSet(values))
+    .execute();
+}
+
+// Memberships, collections, grants and the organization's ciphers go with it.
+export async function deleteOrganization(db: Executor, id: string): Promise<void> {
+  await db.deleteFrom('organizations').where('id', '=', id).execute();
+}
+
+// --- Memberships ---
+
+export async function findMembership(db: Executor, id: string): Promise<Membership | null> {
+  const row = await db.selectFrom('org_memberships').selectAll().where('id', '=', id).executeTakeFirst();
+  return row ? toMembership(row) : null;
+}
+
+export async function findMembershipOf(db: Executor, orgId: string, userId: string): Promise<Membership | null> {
+  const row = await db
+    .selectFrom('org_memberships')
+    .selectAll()
+    .where('org_id', '=', orgId)
+    .where('user_id', '=', userId)
+    .executeTakeFirst();
+  return row ? toMembership(row) : null;
+}
+
+export async function listMembers(db: Executor, orgId: string): Promise<Member[]> {
+  const rows = await db
+    .selectFrom('org_memberships as m')
+    .innerJoin('users as u', 'u.id', 'm.user_id')
+    .selectAll('m')
+    .select((eb) => [
+      'u.email',
+      'u.name',
+      'u.public_key as user_public_key',
+      eb
+        .or([
+          eb('u.totp_secret', 'is not', null),
+          eb('u.yubikey_key1', 'is not', null),
+          eb.exists(
+            eb
+              .selectFrom('webauthn_credentials as w')
+              .select('w.id')
+              .whereRef('w.user_id', '=', 'u.id')
+              .where('w.purpose', '<>', 'login'),
+          ),
+        ])
+        .as('has_two_factor'),
+    ])
+    .where('m.org_id', '=', orgId)
+    .orderBy('m.created_at')
+    .execute();
+  return rows.map((row) => ({
+    ...toMembership(row),
+    email: row.email,
+    name: row.name,
+    publicKey: row.user_public_key,
+    hasTwoFactor: !!row.has_two_factor,
+  }));
+}
+
+export async function countOwners(db: Executor, orgId: string): Promise<number> {
+  const row = await db
+    .selectFrom('org_memberships')
+    .select((eb) => eb.fn.countAll<string>().as('count'))
+    .where('org_id', '=', orgId)
+    .where('type', '=', MemberType.Owner)
+    .where('status', '=', MemberStatus.Confirmed)
+    .executeTakeFirstOrThrow();
+  return Number(row.count);
+}
+
+export async function saveMemberships(db: Executor, memberships: Membership[]): Promise<void> {
+  if (!memberships.length) return;
+  await db
+    .insertInto('org_memberships')
+    .values(
+      memberships.map((membership) => ({
+        id: membership.id,
+        org_id: membership.orgId,
+        user_id: membership.userId,
+        status: membership.status,
+        type: membership.type,
+        access_all: membership.accessAll ? 1 : 0,
+        akey: membership.akey,
+        revoked_status: membership.revokedStatus,
+        invited_by: membership.invitedBy,
+        created_at: membership.createdAt,
+        updated_at: membership.updatedAt,
+      })),
+    )
+    .onConflict((oc) =>
+      oc.column('id').doUpdateSet((eb) => ({
+        status: eb.ref('excluded.status'),
+        type: eb.ref('excluded.type'),
+        access_all: eb.ref('excluded.access_all'),
+        akey: eb.ref('excluded.akey'),
+        revoked_status: eb.ref('excluded.revoked_status'),
+        updated_at: eb.ref('excluded.updated_at'),
+      })),
+    )
+    .execute();
+}
+
+export async function deleteMembership(db: Executor, id: string): Promise<void> {
+  await db.deleteFrom('org_memberships').where('id', '=', id).execute();
+}
+
 export async function listUserMemberships(db: Executor, userId: string): Promise<Membership[]> {
   const rows = await db.selectFrom('org_memberships').selectAll().where('user_id', '=', userId).orderBy('created_at').execute();
   return rows.map(toMembership);
+}
+
+// --- Collections and grants ---
+
+export async function findCollection(db: Executor, orgId: string, id: string): Promise<Collection | null> {
+  const row = await db.selectFrom('collections').selectAll().where('id', '=', id).where('org_id', '=', orgId).executeTakeFirst();
+  return row ? toCollection(row) : null;
+}
+
+export async function listOrgGrants(db: Executor, orgId: string): Promise<CollectionGrant[]> {
+  const rows = await db
+    .selectFrom('collection_members as g')
+    .innerJoin('collections as c', 'c.id', 'g.collection_id')
+    .selectAll('g')
+    .where('c.org_id', '=', orgId)
+    .execute();
+  return rows.map(toGrant);
 }
 
 export async function listGrants(db: Executor, membershipIds: string[]): Promise<CollectionGrant[]> {
@@ -118,6 +302,58 @@ export async function insertCollections(db: Executor, collections: Collection[])
       })),
     )
     .execute();
+}
+
+export async function saveCollection(db: Executor, collection: Collection): Promise<void> {
+  const values = { name: collection.name, external_id: collection.externalId, updated_at: collection.updatedAt };
+  await db
+    .insertInto('collections')
+    .values({ id: collection.id, org_id: collection.orgId, created_at: collection.createdAt, ...values })
+    .onConflict((oc) => oc.column('id').doUpdateSet(values).where('collections.org_id', '=', collection.orgId))
+    .execute();
+}
+
+// Ciphers stay in the organization; only their links to the collections go.
+export async function deleteCollections(db: Executor, orgId: string, ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  await db
+    .deleteFrom('collections')
+    .where('org_id', '=', orgId)
+    .where((eb) => eb('id', '=', eb.fn.any(eb.val(ids))))
+    .execute();
+}
+
+// Replaces the grants of the given memberships (or collections) with
+// `grants`. A grant only links a collection and a membership of the same
+// organization.
+export async function replaceGrants(
+  db: Executor,
+  scope: { membershipIds: string[] } | { collectionIds: string[] },
+  grants: CollectionGrant[],
+): Promise<void> {
+  const [column, ids] =
+    'membershipIds' in scope ? (['membership_id', scope.membershipIds] as const) : (['collection_id', scope.collectionIds] as const);
+  if (ids.length) {
+    await db
+      .deleteFrom('collection_members')
+      .where((eb) => eb(column, '=', eb.fn.any(eb.val(ids))))
+      .execute();
+  }
+  if (!grants.length) return;
+  await sql`
+    INSERT INTO collection_members (collection_id, membership_id, read_only, hide_passwords, manage)
+    SELECT col.id, m.id, g.read_only, g.hide_passwords, g.manage
+    FROM unnest(
+      ${grants.map((grant) => grant.collectionId)}::text[],
+      ${grants.map((grant) => grant.membershipId)}::text[],
+      ${grants.map((grant) => (grant.readOnly ? 1 : 0))}::int[],
+      ${grants.map((grant) => (grant.hidePasswords ? 1 : 0))}::int[],
+      ${grants.map((grant) => (grant.manage ? 1 : 0))}::int[]
+    ) AS g(collection_id, membership_id, read_only, hide_passwords, manage)
+    JOIN collections col ON col.id = g.collection_id
+    JOIN org_memberships m ON m.id = g.membership_id AND m.org_id = col.org_id
+    ON CONFLICT (collection_id, membership_id) DO UPDATE SET
+      read_only = excluded.read_only, hide_passwords = excluded.hide_passwords, manage = excluded.manage`.execute(db);
 }
 
 // cipher id -> the collections holding it.

@@ -1,14 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import type { Caller } from '../../http/authenticate';
 import { badRequest, conflict, forbidden, notFound } from '../../http/errors';
-import type { Deps } from '../../main/deps';
 import type { Executor } from '../../platform/db';
 import { isEncString } from '../../platform/enc-string';
-import { touchRevisionDate } from '../accounts/repo';
 import { findFolder } from '../folders/repo';
 import { canWriteCollection, type OrgContext } from '../organizations/access';
-import { listCollections, touchMemberRevisions } from '../organizations/repo';
-import type { PushEvent, PushType } from '../push/service';
+import { listCollections } from '../organizations/repo';
+import type { PushEvent } from '../push/service';
 import { TYPE_PARTS, type Cipher, type CipherData, type CipherInput } from './model';
 import { saveCiphers, saveUserStates } from './repo';
 
@@ -193,27 +190,3 @@ export const pushItem = (cipher: Cipher, collectionIds: string[] | null = null):
   collectionIds,
   revisionDate: cipher.updatedAt,
 });
-
-export interface Change {
-  // Organizations whose members see the change; the caller always does.
-  orgIds: Array<string | null>;
-  push: { type: PushType; item?: PushEvent['item'] };
-}
-
-// Runs `write` in one transaction that also moves the revision date of
-// everyone who sees the change, so their clients sync; then tells their
-// apps.
-export async function commit<T>(deps: Deps, caller: Caller, now: string, change: Change, write: (tx: Executor) => Promise<T>): Promise<T> {
-  const notified = new Set([caller.user.id]);
-  const result = await deps.db.transaction().execute(async (tx) => {
-    const value = await write(tx);
-    await touchRevisionDate(tx, caller.user.id, now);
-    for (const orgId of new Set(change.orgIds)) {
-      if (!orgId) continue;
-      for (const userId of await touchMemberRevisions(tx, orgId, now)) notified.add(userId);
-    }
-    return value;
-  });
-  for (const userId of notified) deps.push.notify({ ...change.push, userId, deviceIdentifier: caller.device });
-  return result;
-}

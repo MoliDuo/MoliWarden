@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono';
 import { authenticate, callerOf, type AuthedEnv } from '../../http/authenticate';
 import { id, readJson } from '../../http/body';
+import { listJson } from '../../http/list';
 import { idParam } from '../../http/params';
 import type { Deps } from '../../main/deps';
 import { importCiphers } from './import';
@@ -39,7 +40,6 @@ import {
   shareCiphers,
   type CollectionsVariant,
 } from './sharing';
-import { listJson } from './responses';
 
 const ciphers = (...suffixes: string[]) => suffixes.map((suffix) => `/api/ciphers${suffix}`);
 

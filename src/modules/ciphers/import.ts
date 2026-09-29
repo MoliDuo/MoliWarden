@@ -3,9 +3,10 @@ import type { Caller } from '../../http/authenticate';
 import type { Deps } from '../../main/deps';
 import { listFolders, saveFolders, type Folder } from '../folders/repo';
 import { PushType } from '../push/service';
+import { commit } from '../sync/changes';
 import { saveCiphers } from './repo';
 import type { ImportInput } from './schemas';
-import { commit, newCipher } from './writes';
+import { newCipher } from './writes';
 
 // Imports into the personal vault, all or nothing. Large imports arrive in
 // several requests: later ones may put items into the folders an earlier

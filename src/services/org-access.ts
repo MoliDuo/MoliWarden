@@ -1,10 +1,7 @@
 import type { Cipher } from '../types';
 import {
-  type Collection,
   type CollectionGrant,
-  listCollectionsByOrgIds,
   type OrgMembership,
-  listCipherCollectionIds,
   listGrantsByMemberships,
   listMembershipsByUser,
   ORG_MEMBER_STATUS,
@@ -38,11 +35,11 @@ export interface CipherAccess {
   collectionIds: string[];
 }
 
-export function isOrgAdminType(type: number): boolean {
+function isOrgAdminType(type: number): boolean {
   return type === ORG_MEMBER_TYPE.OWNER || type === ORG_MEMBER_TYPE.ADMIN;
 }
 
-export function hasFullOrgAccess(membership: OrgMembership): boolean {
+function hasFullOrgAccess(membership: OrgMembership): boolean {
   return membership.status === ORG_MEMBER_STATUS.CONFIRMED && (isOrgAdminType(membership.type) || membership.accessAll);
 }
 
@@ -112,17 +109,6 @@ export function computeCipherAccess(ctx: UserOrgContext, cipher: Cipher, cipherC
   return { personal: false, orgId, edit, viewPassword, manage, collectionIds: visibleCollectionIds };
 }
 
-export async function getCipherAccess(
-  db: D1Database,
-  ctx: UserOrgContext,
-  cipher: Cipher | null
-): Promise<CipherAccess | null> {
-  if (!cipher) return null;
-  if (!cipher.organizationId) return computeCipherAccess(ctx, cipher, []);
-  const links = await listCipherCollectionIds(db, [cipher.id]);
-  return computeCipherAccess(ctx, cipher, links.get(cipher.id) || []);
-}
-
 // Collections a member may assign ciphers to / edit contents of.
 export function canWriteCollection(ctx: UserOrgContext, orgId: string, collectionId: string): boolean {
   const membership = ctx.confirmedByOrg.get(orgId);
@@ -142,15 +128,3 @@ export function canManageCollection(ctx: UserOrgContext, orgId: string, collecti
   return grant.manage || (membership.type === ORG_MEMBER_TYPE.MANAGER && !grant.readOnly && !grant.hidePasswords);
 }
 
-// Collections shown to a member: all of a full-access org, otherwise the
-// ones the member holds a grant for (confirmed memberships only).
-export async function loadVisibleCollections(db: D1Database, ctx: UserOrgContext): Promise<Collection[]> {
-  const orgIds = Array.from(ctx.confirmedByOrg.keys());
-  if (!orgIds.length) return [];
-  const all = await listCollectionsByOrgIds(db, orgIds);
-  return all.filter((collection) => {
-    const membership = ctx.confirmedByOrg.get(collection.orgId);
-    if (!membership) return false;
-    return hasFullOrgAccess(membership) || ctx.grantsByCollection.has(collection.id);
-  });
-}

@@ -42,7 +42,7 @@ export interface OrgMembership {
   updatedAt: string;
 }
 
-export interface OrgMembershipWithUser extends OrgMembership {
+interface OrgMembershipWithUser extends OrgMembership {
   email: string;
   name: string | null;
   publicKey: string | null;
@@ -173,25 +173,6 @@ export async function getOrganization(db: D1Database, id: string): Promise<Organ
   return row ? toOrganization(row) : null;
 }
 
-export async function getOrganizationsByIds(db: D1Database, ids: string[]): Promise<Organization[]> {
-  if (!ids.length) return [];
-  const res = await db
-    .prepare(`SELECT id, name, billing_email, public_key, private_key, created_at, updated_at FROM organizations WHERE id IN (${placeholders(ids.length)})`)
-    .bind(...ids)
-    .all<OrganizationRow>();
-  return (res.results || []).map(toOrganization);
-}
-
-export function saveOrganizationStatement(db: D1Database, org: Organization): D1PreparedStatement {
-  return db
-    .prepare(
-      'INSERT INTO organizations(id, name, billing_email, public_key, private_key, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?) ' +
-      'ON CONFLICT(id) DO UPDATE SET name = excluded.name, billing_email = excluded.billing_email, ' +
-      'public_key = excluded.public_key, private_key = excluded.private_key, updated_at = excluded.updated_at'
-    )
-    .bind(org.id, org.name, org.billingEmail, org.publicKey, org.privateKey, org.createdAt, org.updatedAt);
-}
-
 export async function deleteOrganization(db: D1Database, id: string): Promise<void> {
   // ON DELETE CASCADE removes memberships, collections, grants and org ciphers
   // (and through ciphers: attachments rows, cipher_collections, cipher_user_state).
@@ -199,22 +180,6 @@ export async function deleteOrganization(db: D1Database, id: string): Promise<vo
 }
 
 // --- Memberships ---
-
-export async function getMembership(db: D1Database, id: string): Promise<OrgMembership | null> {
-  const row = await db
-    .prepare(`SELECT ${MEMBERSHIP_COLUMNS} FROM org_memberships m WHERE m.id = ?`)
-    .bind(id)
-    .first<MembershipRow>();
-  return row ? toMembership(row) : null;
-}
-
-export async function getMembershipByOrgAndUser(db: D1Database, orgId: string, userId: string): Promise<OrgMembership | null> {
-  const row = await db
-    .prepare(`SELECT ${MEMBERSHIP_COLUMNS} FROM org_memberships m WHERE m.org_id = ? AND m.user_id = ?`)
-    .bind(orgId, userId)
-    .first<MembershipRow>();
-  return row ? toMembership(row) : null;
-}
 
 export async function listMembershipsByUser(db: D1Database, userId: string): Promise<OrgMembership[]> {
   const res = await db
@@ -261,73 +226,11 @@ export async function countOwners(db: D1Database, orgId: string): Promise<number
   return Number(row?.count || 0);
 }
 
-export function saveMembershipStatement(db: D1Database, membership: OrgMembership): D1PreparedStatement {
-  return db
-    .prepare(
-      'INSERT INTO org_memberships(id, org_id, user_id, status, type, access_all, akey, revoked_status, invited_by, created_at, updated_at) ' +
-      'VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ' +
-      'ON CONFLICT(id) DO UPDATE SET status = excluded.status, type = excluded.type, access_all = excluded.access_all, ' +
-      'akey = excluded.akey, revoked_status = excluded.revoked_status, updated_at = excluded.updated_at'
-    )
-    .bind(
-      membership.id,
-      membership.orgId,
-      membership.userId,
-      membership.status,
-      membership.type,
-      membership.accessAll ? 1 : 0,
-      membership.akey,
-      membership.revokedStatus,
-      membership.invitedBy,
-      membership.createdAt,
-      membership.updatedAt
-    );
-}
-
 export async function deleteMembership(db: D1Database, id: string): Promise<void> {
   await db.prepare('DELETE FROM org_memberships WHERE id = ?').bind(id).run();
 }
 
 // --- Collections ---
-
-export async function getCollection(db: D1Database, id: string): Promise<Collection | null> {
-  const row = await db
-    .prepare('SELECT id, org_id, name, external_id, created_at, updated_at FROM collections WHERE id = ?')
-    .bind(id)
-    .first<CollectionRow>();
-  return row ? toCollection(row) : null;
-}
-
-export async function listCollectionsByOrg(db: D1Database, orgId: string): Promise<Collection[]> {
-  const res = await db
-    .prepare('SELECT id, org_id, name, external_id, created_at, updated_at FROM collections WHERE org_id = ? ORDER BY created_at ASC')
-    .bind(orgId)
-    .all<CollectionRow>();
-  return (res.results || []).map(toCollection);
-}
-
-export async function listCollectionsByOrgIds(db: D1Database, orgIds: string[]): Promise<Collection[]> {
-  if (!orgIds.length) return [];
-  const res = await db
-    .prepare(`SELECT id, org_id, name, external_id, created_at, updated_at FROM collections WHERE org_id IN (${placeholders(orgIds.length)}) ORDER BY created_at ASC`)
-    .bind(...orgIds)
-    .all<CollectionRow>();
-  return (res.results || []).map(toCollection);
-}
-
-export function saveCollectionStatement(db: D1Database, collection: Collection): D1PreparedStatement {
-  return db
-    .prepare(
-      'INSERT INTO collections(id, org_id, name, external_id, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?) ' +
-      'ON CONFLICT(id) DO UPDATE SET name = excluded.name, external_id = excluded.external_id, updated_at = excluded.updated_at ' +
-      'WHERE collections.org_id = excluded.org_id'
-    )
-    .bind(collection.id, collection.orgId, collection.name, collection.externalId, collection.createdAt, collection.updatedAt);
-}
-
-export function deleteCollectionStatement(db: D1Database, orgId: string, id: string): D1PreparedStatement {
-  return db.prepare('DELETE FROM collections WHERE id = ? AND org_id = ?').bind(id, orgId);
-}
 
 // --- Collection grants ---
 
@@ -340,52 +243,6 @@ export async function listGrantsByMemberships(db: D1Database, membershipIds: str
     .bind(...membershipIds)
     .all<GrantRow>();
   return (res.results || []).map(toGrant);
-}
-
-export async function listGrantsByOrg(db: D1Database, orgId: string): Promise<CollectionGrant[]> {
-  const res = await db
-    .prepare(
-      'SELECT g.collection_id, g.membership_id, g.read_only, g.hide_passwords, g.manage FROM collection_members g ' +
-      'INNER JOIN collections c ON c.id = g.collection_id WHERE c.org_id = ?'
-    )
-    .bind(orgId)
-    .all<GrantRow>();
-  return (res.results || []).map(toGrant);
-}
-
-export function replaceMembershipGrantsStatements(
-  db: D1Database,
-  membershipId: string,
-  grants: Array<Omit<CollectionGrant, 'membershipId'>>
-): D1PreparedStatement[] {
-  return [
-    db.prepare('DELETE FROM collection_members WHERE membership_id = ?').bind(membershipId),
-    ...grants.map((grant) => insertGrantStatement(db, { ...grant, membershipId })),
-  ];
-}
-
-export function replaceCollectionGrantsStatements(
-  db: D1Database,
-  collectionId: string,
-  grants: Array<Omit<CollectionGrant, 'collectionId'>>
-): D1PreparedStatement[] {
-  return [
-    db.prepare('DELETE FROM collection_members WHERE collection_id = ?').bind(collectionId),
-    ...grants.map((grant) => insertGrantStatement(db, { ...grant, collectionId })),
-  ];
-}
-
-// Grants only link a collection and a membership of the same organization.
-export function insertGrantStatement(db: D1Database, grant: CollectionGrant): D1PreparedStatement {
-  return db
-    .prepare(
-      'INSERT INTO collection_members(collection_id, membership_id, read_only, hide_passwords, manage) ' +
-      'SELECT col.id, m.id, ?, ?, ? FROM collections col INNER JOIN org_memberships m ON m.org_id = col.org_id ' +
-      'WHERE col.id = ? AND m.id = ? ' +
-      'ON CONFLICT(collection_id, membership_id) DO UPDATE SET read_only = excluded.read_only, ' +
-      'hide_passwords = excluded.hide_passwords, manage = excluded.manage'
-    )
-    .bind(grant.readOnly ? 1 : 0, grant.hidePasswords ? 1 : 0, grant.manage ? 1 : 0, grant.collectionId, grant.membershipId);
 }
 
 // --- Cipher <-> collection links ---
@@ -405,32 +262,6 @@ export async function listCipherCollectionIds(db: D1Database, cipherIds: string[
     }
   }
   return out;
-}
-
-export function replaceCipherCollectionsStatements(db: D1Database, cipherId: string, collectionIds: string[]): D1PreparedStatement[] {
-  return [
-    db.prepare('DELETE FROM cipher_collections WHERE cipher_id = ?').bind(cipherId),
-    ...collectionIds.map((collectionId) => addCipherCollectionStatement(db, cipherId, collectionId)),
-  ];
-}
-
-// Links only when the collection belongs to the cipher's organization *at
-// write time*, so a concurrent ownership change (e.g. racing shares into two
-// orgs) can never leave a cipher linked to another org's collection.
-export function addCipherCollectionStatement(db: D1Database, cipherId: string, collectionId: string): D1PreparedStatement {
-  return db
-    .prepare(
-      'INSERT INTO cipher_collections(cipher_id, collection_id) ' +
-      'SELECT c.id, col.id FROM ciphers c INNER JOIN collections col ON col.org_id = c.organization_id ' +
-      'WHERE c.id = ? AND col.id = ? ON CONFLICT DO NOTHING'
-    )
-    .bind(cipherId, collectionId);
-}
-
-export function removeCipherCollectionStatement(db: D1Database, cipherId: string, collectionId: string): D1PreparedStatement {
-  return db
-    .prepare('DELETE FROM cipher_collections WHERE cipher_id = ? AND collection_id = ?')
-    .bind(cipherId, collectionId);
 }
 
 // --- Per-user state of org ciphers ---

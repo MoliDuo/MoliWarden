@@ -49,7 +49,3 @@ export function protectedDeviceJson(device: Device) {
     object: 'protectedDevice',
   };
 }
-
-export function listJson<T>(data: T[]) {
-  return { data, object: 'list', continuationToken: null };
-}

@@ -21,7 +21,8 @@ import {
   setDevicePushToken,
   type DeviceKeys,
 } from './repo';
-import { deviceJson, listJson, protectedDeviceJson } from './responses';
+import { listJson } from '../../http/list';
+import { deviceJson, protectedDeviceJson } from './responses';
 import type { RegisterDeviceInput, TrustInput } from './schemas';
 
 // The devices a user is signed in on. A device may also be "remembered",

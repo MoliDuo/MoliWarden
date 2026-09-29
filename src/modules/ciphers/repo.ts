@@ -79,6 +79,16 @@ export async function listCiphers(
 }
 
 // The user's folder, favorite and archive state of the organization ciphers given.
+// The ciphers a user or an organization owns, by id only.
+export async function listCipherIds(db: Executor, owner: { userId: string } | { orgId: string }): Promise<string[]> {
+  const query = db.selectFrom('ciphers').select('id');
+  const rows = await ('orgId' in owner
+    ? query.where('organization_id', '=', owner.orgId)
+    : query.where('user_id', '=', owner.userId).where('organization_id', 'is', null)
+  ).execute();
+  return rows.map((row) => row.id);
+}
+
 export async function listUserStates(db: Executor, userId: string, cipherIds: string[]): Promise<Map<string, UserState>> {
   if (!cipherIds.length) return new Map();
   const rows = await db

@@ -7,9 +7,11 @@ import { recordAudit, requestMetadata } from '../audit/service';
 import { FULL_ACCESS, loadOrgContext, orgCipherAccess } from '../organizations/access';
 import { addCipherCollections } from '../organizations/repo';
 import { PushType } from '../push/service';
+import { commit } from '../sync/changes';
 import type { Cipher } from './model';
 import { deleteCiphers, saveCiphers } from './repo';
-import { cipherJson, listJson } from './responses';
+import { listJson } from '../../http/list';
+import { cipherJson } from './responses';
 import type { CipherBody } from './schemas';
 import { canEdit, listViews, loadViews, requireView, viewJson, viewsJson, type CipherView } from './views';
 import {
@@ -18,7 +20,6 @@ import {
   checkEncryptedFor,
   checkFolder,
   checkWritableCollections,
-  commit,
   newCipher,
   pushItem,
   saveStates,

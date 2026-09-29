@@ -14,6 +14,7 @@ import { folderRoutes } from '../modules/folders/routes';
 import { iconRoutes } from '../modules/icons/routes';
 import { identityRoutes } from '../modules/identity/routes';
 import { metaRoutes } from '../modules/meta/routes';
+import { organizationRoutes } from '../modules/organizations/routes';
 import { passkeyRoutes } from '../modules/passkeys/routes';
 import { syncRoutes } from '../modules/sync/routes';
 import { twoFactorRoutes } from '../modules/two-factor/routes';
@@ -109,6 +110,7 @@ export function createApp(deps: Deps): Hono {
   app.route('/', folderRoutes(deps));
   app.route('/', cipherRoutes(deps));
   app.route('/', domainRoutes(deps));
+  app.route('/', organizationRoutes(deps));
 
   // Routes not yet ported to src/modules.
   app.all('*', (c) => handleLegacyRequest(c.req.raw, deps.legacyEnv));

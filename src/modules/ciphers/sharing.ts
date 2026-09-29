@@ -22,10 +22,12 @@ import {
   type Collection,
 } from '../organizations/repo';
 import { PushType } from '../push/service';
+import { commit } from '../sync/changes';
 import type { Cipher, CipherInput } from './model';
 import { collectionJson } from '../organizations/responses';
 import { findCiphers, listCiphers, saveCiphers } from './repo';
-import { listJson, orgCipherJson } from './responses';
+import { listJson } from '../../http/list';
+import { orgCipherJson } from './responses';
 import type { OrgImportInput } from './schemas';
 import { canEdit, loadViews, requireView, viewJson, viewsJson, type CipherView } from './views';
 import {
@@ -33,7 +35,6 @@ import {
   attachmentChanges,
   checkEncryptedFor,
   checkWritableCollections,
-  commit,
   newCipher,
   pushItem,
   saveView,

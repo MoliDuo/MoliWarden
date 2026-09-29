@@ -1,9 +1,10 @@
-import { prepareUserRemovalFromOrganizations } from './organizations';
 import { Env, User, Invite } from '../types';
 import { AuthService } from '../services/auth';
 import { StorageService } from '../services/storage';
 import { jsonResponse, errorResponse } from '../utils/response';
 import { deleteBlobObject, getAttachmentObjectKey, getSendFileObjectKey } from '../services/blob-store';
+import { countOwners, deleteOrganization, getOrganization, listMembershipsByOrg, listMembershipsByUser, ORG_MEMBER_STATUS, ORG_MEMBER_TYPE } from '../services/storage-org-repo';
+import { deleteAllAttachmentsForCiphers } from './attachments';
 import { auditRequestMetadata, getAuditLogSettings, normalizeAuditLogSettings, saveAuditLogSettings, writeAuditEvent } from '../services/audit-events';
 
 function isAdmin(user: User): boolean {
@@ -23,6 +24,35 @@ async function requireMasterPasswordHash(
   const valid = await auth.verifyPassword(normalized, actorUser.masterPasswordHash, actorUser.email);
   if (!valid) {
     return errorResponse('Invalid password', 400);
+  }
+  return null;
+}
+
+// Before a user is deleted: organizations where they are the only member go
+// with them; being the last confirmed owner of an organization that has
+// other members refuses the deletion.
+async function prepareUserRemovalFromOrganizations(env: Env, userId: string): Promise<string | null> {
+  const soleMemberOrgs: string[] = [];
+  for (const membership of await listMembershipsByUser(env.DB, userId)) {
+    const members = await listMembershipsByOrg(env.DB, membership.orgId);
+    if (members.length === 1) {
+      soleMemberOrgs.push(membership.orgId);
+      continue;
+    }
+    if (
+      membership.type === ORG_MEMBER_TYPE.OWNER &&
+      membership.status === ORG_MEMBER_STATUS.CONFIRMED &&
+      (await countOwners(env.DB, membership.orgId)) <= 1
+    ) {
+      const org = await getOrganization(env.DB, membership.orgId);
+      return `User is the last owner of organization "${org?.name ?? membership.orgId}". Transfer ownership or delete the organization first.`;
+    }
+  }
+  for (const orgId of soleMemberOrgs) {
+    const rows = await env.DB.prepare('SELECT id FROM ciphers WHERE organization_id = ?').bind(orgId).all<{ id: string }>();
+    const cipherIds = (rows.results || []).map((row) => row.id);
+    if (cipherIds.length) await deleteAllAttachmentsForCiphers(env, cipherIds);
+    await deleteOrganization(env.DB, orgId);
   }
   return null;
 }
