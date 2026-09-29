@@ -314,14 +314,9 @@ test('disabled sends are not accessible until re-enabled', async () => {
 });
 
 test('expired sends are not accessible', async () => {
-  // Creating an already-expired send is either rejected or yields an inaccessible send.
+  // A send cannot be created expired, but can be edited to be.
   const pastCreate = await alice.request('/api/sends', { method: 'POST', json: textSendPayload({ expirationDate: inDays(-1) }) });
-  if (pastCreate.status === 200) {
-    const created = await pastCreate.json();
-    assert.equal((await accessV1(created.accessId)).status, 404);
-  } else {
-    assert.equal(pastCreate.status, 400);
-  }
+  assert.equal(pastCreate.status, 400);
 
   const send = await createTextSend(alice, { expirationDate: inDays(2) });
   assert.ok(send.expirationDate);
@@ -341,7 +336,7 @@ test('expired sends are not accessible', async () => {
   assert.equal((await accessV1(send.accessId)).status, 200);
 });
 
-test('deletion date: at most 31 days out, required, and a past one makes the send inaccessible', async () => {
+test('deletion date: in the future, at most 31 days out, and required', async () => {
   const tooFar = await alice.request('/api/sends', { method: 'POST', json: textSendPayload({ deletionDate: inDays(32) }) });
   assert.equal(tooFar.status, 400);
   assert.ok(errorText(await tooFar.json()));
@@ -356,11 +351,9 @@ test('deletion date: at most 31 days out, required, and a past one makes the sen
   assert.equal(new Date((await alice.json(`/api/sends/${send.id}`)).deletionDate).getTime(), new Date(send.deletionDate).getTime());
 
   const pastCreate = await alice.request('/api/sends', { method: 'POST', json: textSendPayload({ deletionDate: inDays(-1) }) });
-  if (pastCreate.status === 200) {
-    assert.equal((await accessV1((await pastCreate.json()).accessId)).status, 404);
-  } else {
-    assert.equal(pastCreate.status, 400);
-  }
+  assert.equal(pastCreate.status, 400);
+  const pastEdit = await alice.request(`/api/sends/${send.id}`, { method: 'PUT', json: textSendPayload({ deletionDate: inDays(-1) }) });
+  assert.equal(pastEdit.status, 400);
 });
 
 test('hideEmail hides the creator from recipients', async () => {

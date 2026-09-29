@@ -28,7 +28,9 @@ export interface Config {
   jwtSecret: string;
   jwtSecretProblem: 'missing' | 'too_short' | null;
   s3: S3Config;
-  maxUploadBytes?: string;
+  // The largest attachment or Send file; Vercel Functions take bodies of up
+  // to 4.5 MB.
+  maxUploadBytes: number;
   showPasswordHint: boolean;
   iconSource: IconSource;
   // Mobile apps are woken up through Bitwarden's push relay unless this is set.
@@ -58,7 +60,7 @@ const schema = z.object({
   S3_SECRET_ACCESS_KEY: text,
   S3_REGION: text,
   S3_FORCE_PATH_STYLE: text,
-  MAX_UPLOAD_BYTES: text,
+  MAX_UPLOAD_BYTES: text.transform((value) => (value === undefined ? 4_400_000 : Number(value))).pipe(z.number().int().positive()),
   SHOW_PASSWORD_HINT: flag,
   ICON_SOURCE: z.enum(['favicon', 'bitwarden', 'off']).default('favicon'),
   PUSH_RELAY_DISABLED: flag,

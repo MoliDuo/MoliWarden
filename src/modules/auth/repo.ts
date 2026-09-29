@@ -69,3 +69,14 @@ export async function deleteUserRefreshTokens(db: Executor, userId: string, devi
   const result = await query.executeTakeFirst();
   return Number(result.numDeletedRows);
 }
+
+// Download tokens work once. False when the token was used before.
+export async function useTokenOnce(db: Executor, jti: string, expiresAtSeconds: number): Promise<boolean> {
+  const row = await db
+    .insertInto('used_attachment_download_tokens')
+    .values({ jti, expires_at: expiresAtSeconds * 1000 })
+    .onConflict((oc) => oc.column('jti').doNothing())
+    .returning('jti')
+    .executeTakeFirst();
+  return !!row;
+}

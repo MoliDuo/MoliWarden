@@ -1,8 +1,8 @@
 import { Hono, type Context } from 'hono';
 import { authenticate, callerOf, type AuthedEnv } from '../../http/authenticate';
-import { id, readJson } from '../../http/body';
+import { readJson } from '../../http/body';
 import { listJson } from '../../http/list';
-import { idParam } from '../../http/params';
+import { idParam, idQuery } from '../../http/params';
 import type { Deps } from '../../main/deps';
 import { importCiphers } from './import';
 import {
@@ -43,7 +43,7 @@ import {
 
 const ciphers = (...suffixes: string[]) => suffixes.map((suffix) => `/api/ciphers${suffix}`);
 
-const organizationParam = (c: Context) => id.parse(c.req.query('organizationId') ?? '');
+const organizationParam = (c: Context) => idQuery(c, 'organizationId');
 
 export function cipherRoutes(deps: Deps): Hono<AuthedEnv> {
   const app = new Hono<AuthedEnv>();

@@ -26,11 +26,7 @@ export const tokenForm = z.object({
 
   // send_access
   send_id: text,
-  sendId: text,
   password_hash_b64: text,
-  passwordHashB64: text,
-  passwordHash: text,
-  password_hash: text,
 
   // The signing-in device.
   deviceIdentifier: text,

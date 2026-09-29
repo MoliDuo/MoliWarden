@@ -179,7 +179,7 @@ export const ROUTES: readonly Route[] = [
   ], 'user'),
 
   // --- attachments ---
-  ...each(['POST'], ['/api/ciphers/:id/attachment/v2', '/api/ciphers/:id/attachment', '/api/ciphers/:id/attachment-admin'], 'user'),
+  ['POST', '/api/ciphers/:id/attachment/v2', 'user'],
   ...each(['GET', 'POST', 'PUT', 'DELETE'], ['/api/ciphers/:id/attachment/:attachmentId'], 'user'),
   ...each(['POST', 'PUT'], ['/api/ciphers/:id/attachment/:attachmentId/metadata'], 'user'),
   ['DELETE', '/api/ciphers/:id/attachment/:attachmentId/admin', 'user'],

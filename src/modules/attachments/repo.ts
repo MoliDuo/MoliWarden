@@ -58,3 +58,28 @@ export async function renameAttachments(
     await db.updateTable('attachments').set(set).where('id', '=', change.id).where('cipher_id', '=', cipherId).execute();
   }
 }
+
+export async function findAttachment(db: Executor, cipherId: string, id: string): Promise<Attachment | null> {
+  const row = await db.selectFrom('attachments').selectAll().where('id', '=', id).where('cipher_id', '=', cipherId).executeTakeFirst();
+  return row ? toAttachment(row) : null;
+}
+
+export async function saveAttachment(db: Executor, attachment: Attachment): Promise<void> {
+  const row = {
+    id: attachment.id,
+    cipher_id: attachment.cipherId,
+    file_name: attachment.fileName,
+    key: attachment.key,
+    size: attachment.size,
+    size_name: attachment.sizeName,
+  };
+  await db
+    .insertInto('attachments')
+    .values(row)
+    .onConflict((oc) => oc.column('id').doUpdateSet({ file_name: row.file_name, key: row.key, size: row.size, size_name: row.size_name }))
+    .execute();
+}
+
+export async function deleteAttachment(db: Executor, id: string): Promise<void> {
+  await db.deleteFrom('attachments').where('id', '=', id).execute();
+}

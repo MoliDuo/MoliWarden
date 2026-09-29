@@ -34,9 +34,27 @@ const metaOf = (response: Response): BlobMeta => ({
   contentType: response.headers.get('content-type') || DEFAULT_CONTENT_TYPE,
 });
 
-async function failure(action: string, response: Response): Promise<Error> {
-  const detail = await response.text().catch(() => '');
-  return new Error(`S3 ${action} failed (${response.status}): ${detail.slice(0, 500)}`);
+// A failed S3 request. `message` is safe to show: the HTTP status and the
+// S3 error code (SignatureDoesNotMatch, NoSuchBucket, ...) carry no
+// secrets. The full answer of the service is in `detail`, for the logs.
+export class BlobStoreError extends Error {
+  constructor(
+    message: string,
+    readonly detail = '',
+  ) {
+    super(message);
+    this.name = 'BlobStoreError';
+  }
+}
+
+async function failure(action: string, response: Response): Promise<BlobStoreError> {
+  const detail = action === 'head' ? '' : await response.text().catch(() => '');
+  const code = detail.match(/<Code>([A-Za-z0-9.]+)<\/Code>/)?.[1];
+  const reason = [`HTTP ${response.status}`, code].filter(Boolean).join(' ');
+  return new BlobStoreError(
+    `File storage error (${reason}). Check the S3_* settings and the function logs.`,
+    `S3 ${action} failed (${response.status}): ${detail.slice(0, 500)}`,
+  );
 }
 
 export function createBlobStore(s3: S3Config): BlobStore {
@@ -60,7 +78,7 @@ export function createBlobStore(s3: S3Config): BlobStore {
   }
 
   function required(): AwsClient {
-    if (!client) throw new Error(BLOB_STORAGE_MISSING);
+    if (!client) throw new BlobStoreError(BLOB_STORAGE_MISSING);
     return client;
   }
 
@@ -81,7 +99,7 @@ export function createBlobStore(s3: S3Config): BlobStore {
       if (!client) return null;
       const response = await client.fetch(url(key), { method: 'HEAD' });
       if (response.status === 404) return null;
-      if (!response.ok) throw new Error(`S3 head failed (${response.status})`);
+      if (!response.ok) throw await failure('head', response);
       return metaOf(response);
     },
     async delete(key) {

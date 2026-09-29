@@ -1,4 +1,3 @@
-import type { Caller } from '../../http/authenticate';
 import type { Deps } from '../../main/deps';
 import type { Executor } from '../../platform/db';
 import { touchRevisionDate } from '../accounts/repo';
@@ -15,10 +14,14 @@ export interface Change {
   push: { type: PushType; item?: PushEvent['item'] };
 }
 
+// Who makes the change: a signed-in user, or someone opening a Send on its
+// owner's behalf. The device making it needs no telling.
+export type Changer = { user: { id: string }; device: string | null };
+
 // Runs `write` in one transaction that also moves the revision date of
 // everyone who sees the change, so their clients sync; then tells their
 // apps.
-export async function commit<T>(deps: Deps, caller: Caller, now: string, change: Change, write: (tx: Executor) => Promise<T>): Promise<T> {
+export async function commit<T>(deps: Deps, caller: Changer, now: string, change: Change, write: (tx: Executor) => Promise<T>): Promise<T> {
   const notified = new Set([caller.user.id, ...(change.userIds ?? [])]);
   const result = await deps.db.transaction().execute(async (tx) => {
     const value = await write(tx);

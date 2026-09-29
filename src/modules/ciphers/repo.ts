@@ -215,3 +215,9 @@ export async function unsetFolders(db: Executor, userId: string, folderIds: stri
     .where((eb) => eb('folder_id', '=', eb.fn.any(eb.val(folderIds))))
     .execute();
 }
+
+// Marks a cipher changed, when something that belongs to it (an attachment)
+// did.
+export async function touchCipher(db: Executor, id: string, date: string): Promise<void> {
+  await db.updateTable('ciphers').set({ updated_at: date }).where('id', '=', id).execute();
+}

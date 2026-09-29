@@ -53,3 +53,9 @@ export const optionalText = z.string().nullish().transform((value) => value ?? n
 export const encString = z.string().trim().refine(isEncString, 'Must be an encrypted string.');
 // Text a client may send as a string, a number or not at all; missing is ''.
 export const text = z.preprocess((value) => (value == null ? '' : String(value)), z.string());
+export const isoDate = z
+  .string()
+  .refine((value) => !Number.isNaN(Date.parse(value)), 'Must be a date.')
+  .transform((value) => new Date(value).toISOString());
+// Numbers some clients send as strings.
+export const integer = z.preprocess((value) => (typeof value === 'string' && value.trim() !== '' ? Number(value) : value), z.number().int());

@@ -67,8 +67,7 @@ export function identityRoutes(deps: Deps): Hono {
     }
 
     if (form.grant_type === 'send_access') {
-      const result = await sendAccessGrant(deps, form, address);
-      return result instanceof Response ? result : c.json(result, 200, NO_STORE);
+      return c.json(await sendAccessGrant(deps, form, address), 200, NO_STORE);
     }
     const grant = LOGIN_GRANTS[form.grant_type];
     if (!grant) throw new IdentityError('unsupported_grant_type', 'Unsupported grant type');

@@ -1,7 +1,6 @@
 import type { Caller } from '../../http/authenticate';
 import type { Deps } from '../../main/deps';
 import { isEncString } from '../../platform/enc-string';
-import { sendToResponse } from '../../handlers/sends-shared';
 import { buildUserDecryptionCompat, buildUserDecryptionOptions } from '../accounts/decryption';
 import { profile } from '../accounts/service';
 import { viewsJson, listViews } from '../ciphers/views';
@@ -12,6 +11,7 @@ import { collectionDetailsJson } from '../organizations/responses';
 import { listPasskeys } from '../passkeys/repo';
 import { prfDecryptionOption } from '../passkeys/webauthn';
 import { listSends } from '../sends/repo';
+import { sendJson } from '../sends/responses';
 
 export interface SyncOptions {
   excludeDomains: boolean;
@@ -44,7 +44,7 @@ export async function sync(deps: Deps, caller: Caller, options: SyncOptions) {
     domains,
     policies: [],
     policiesNew: [],
-    sends: sends.map(sendToResponse),
+    sends: sends.map(sendJson),
     UserDecryption: {
       MasterPasswordUnlock: decryptionOptions.MasterPasswordUnlock,
       TrustedDeviceOption: null,

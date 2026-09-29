@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { integer, isoDate } from '../../http/body';
 import { normalizeKeys } from '../../platform/camel-case';
 import { isEncString } from '../../platform/enc-string';
 
@@ -28,14 +29,6 @@ const encString = (max?: number) => {
   const text = z.string().trim();
   return (max ? text.max(max, `Must be at most ${max} characters.`) : text).refine(isEncString, 'Must be an encrypted string.');
 };
-
-const isoDate = z
-  .string()
-  .refine((value) => !Number.isNaN(Date.parse(value)), 'Must be a date.')
-  .transform((value) => new Date(value).toISOString());
-
-// Numbers some clients send as strings.
-const integer = z.preprocess((value) => (typeof value === 'string' && value.trim() !== '' ? Number(value) : value), z.number().int());
 
 function schemas(mode: Mode) {
   const lenient = <T extends z.ZodType>(schema: T) => (mode === 'input' ? schema : schema.catch(null as z.output<T>));

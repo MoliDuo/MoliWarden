@@ -5,6 +5,7 @@ import { runScheduledBackupIfDue } from '../handlers/backup';
 import { HttpError, IdentityError, misconfigured, payloadTooLarge, unauthorized } from '../http/errors';
 import { preflight, responseHeaders } from '../http/headers';
 import { accountRoutes } from '../modules/accounts/routes';
+import { attachmentRoutes } from '../modules/attachments/routes';
 import { deleteExpiredAuthRequests } from '../modules/auth-requests/repo';
 import { authRequestRoutes } from '../modules/auth-requests/routes';
 import { cipherRoutes } from '../modules/ciphers/routes';
@@ -16,15 +17,17 @@ import { identityRoutes } from '../modules/identity/routes';
 import { metaRoutes } from '../modules/meta/routes';
 import { organizationRoutes } from '../modules/organizations/routes';
 import { passkeyRoutes } from '../modules/passkeys/routes';
+import { sendRoutes } from '../modules/sends/routes';
 import { syncRoutes } from '../modules/sync/routes';
 import { twoFactorRoutes } from '../modules/two-factor/routes';
 import { constantTimeEqual } from '../platform/crypto';
+import { BlobStoreError } from '../platform/blob';
 import { handleRequest as handleLegacyRequest } from '../router';
 import { StorageService } from '../services/storage';
 import type { Deps } from './deps';
 
-// Routes whose bodies are file contents streamed to storage; their handlers
-// enforce the upload limits themselves.
+// Routes whose bodies are file contents; they enforce the upload limit
+// themselves.
 function isFileUpload(path: string): boolean {
   return (
     /^\/api\/ciphers\/[a-f0-9-]+\/attachment\/[a-f0-9-]+$/i.test(path) ||
@@ -73,6 +76,10 @@ export const handleError: ErrorHandler = (error, c) => {
   if (error instanceof IdentityError) {
     return c.json(error.body, error.status, { ...error.headers, 'Cache-Control': 'no-store', Pragma: 'no-cache' });
   }
+  if (error instanceof BlobStoreError) {
+    console.error('File storage error:', error.detail || error.message);
+    return c.json(new HttpError(500, error.message).body, 500);
+  }
   console.error('Request error:', error);
   return c.json(new HttpError(500, 'Internal server error').body, 500);
 };
@@ -108,9 +115,11 @@ export function createApp(deps: Deps): Hono {
   app.route('/', authRequestRoutes(deps));
   app.route('/', syncRoutes(deps));
   app.route('/', folderRoutes(deps));
+  app.route('/', attachmentRoutes(deps));
   app.route('/', cipherRoutes(deps));
   app.route('/', domainRoutes(deps));
   app.route('/', organizationRoutes(deps));
+  app.route('/', sendRoutes(deps));
 
   // Routes not yet ported to src/modules.
   app.all('*', (c) => handleLegacyRequest(c.req.raw, deps.legacyEnv));

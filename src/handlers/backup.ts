@@ -48,7 +48,6 @@ import { AuthService } from '../services/auth';
 import { auditRequestMetadata, writeAuditEvent } from '../services/audit-events';
 import { getBlobObject } from '../services/blob-store';
 import { notifyUserBackupProgress, notifyUserBackupRestoreProgress } from '../services/notifications';
-import { getMultipartRequestMaxBytes } from '../utils/direct-upload';
 import { verifyUserVerification } from '../modules/auth/user-verification';
 import { createTokenService } from '../platform/tokens';
 import { unzipSync } from 'fflate';
@@ -176,6 +175,7 @@ const REMOTE_ATTACHMENT_SYNC_SUBREQUEST_RESERVE = 6;
 const REMOTE_ATTACHMENT_SYNC_MAX_WEB_DAV_BATCH_SIZE = 18;
 const REMOTE_ATTACHMENT_SYNC_MAX_S3_BATCH_SIZE = 40;
 const REMOTE_ATTACHMENT_RESTORE_BATCH_SIZE = 40;
+const MULTIPART_OVERHEAD_BYTES = 256 * 1024;
 
 function countRemotePathSegments(value: string): number {
   return String(value || '').replace(/\\/g, '/').split('/').filter(Boolean).length;
@@ -1299,7 +1299,7 @@ export async function handleAdminImportBackup(request: Request, env: Env, actorU
     return errorResponse('Content-Type must be multipart/form-data', 400);
   }
   const declaredSize = parseRequestContentLength(request);
-  if (declaredSize !== null && declaredSize > getMultipartRequestMaxBytes(MAX_BACKUP_ARCHIVE_BYTES)) {
+  if (declaredSize !== null && declaredSize > MAX_BACKUP_ARCHIVE_BYTES + MULTIPART_OVERHEAD_BYTES) {
     return errorResponse(`Backup file too large. Maximum size is ${Math.floor(MAX_BACKUP_ARCHIVE_BYTES / (1024 * 1024))}MB`, 413);
   }
 

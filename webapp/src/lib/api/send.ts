@@ -261,10 +261,7 @@ async function buildPublicSendAccessPayload(password?: string, keyPart?: string 
   if (keyPart) {
     try {
       const sendKeyMaterial = base64UrlToBytes(keyPart);
-      const passwordHashB64 = await hashSendPasswordB64(plainPassword, sendKeyMaterial);
-      payload.passwordHash = passwordHashB64;
-      payload.password_hash_b64 = passwordHashB64;
-      payload.passwordHashB64 = passwordHashB64;
+      payload.password = await hashSendPasswordB64(plainPassword, sendKeyMaterial);
     } catch {
       // Key material invalid; server will reject as unauthorized.
     }

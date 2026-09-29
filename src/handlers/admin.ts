@@ -4,7 +4,6 @@ import { StorageService } from '../services/storage';
 import { jsonResponse, errorResponse } from '../utils/response';
 import { deleteBlobObject, getAttachmentObjectKey, getSendFileObjectKey } from '../services/blob-store';
 import { countOwners, deleteOrganization, getOrganization, listMembershipsByOrg, listMembershipsByUser, ORG_MEMBER_STATUS, ORG_MEMBER_TYPE } from '../services/storage-org-repo';
-import { deleteAllAttachmentsForCiphers } from './attachments';
 import { auditRequestMetadata, getAuditLogSettings, normalizeAuditLogSettings, saveAuditLogSettings, writeAuditEvent } from '../services/audit-events';
 
 function isAdmin(user: User): boolean {
@@ -51,7 +50,10 @@ async function prepareUserRemovalFromOrganizations(env: Env, userId: string): Pr
   for (const orgId of soleMemberOrgs) {
     const rows = await env.DB.prepare('SELECT id FROM ciphers WHERE organization_id = ?').bind(orgId).all<{ id: string }>();
     const cipherIds = (rows.results || []).map((row) => row.id);
-    if (cipherIds.length) await deleteAllAttachmentsForCiphers(env, cipherIds);
+    // The attachment rows go with the organization; their files do not.
+    for (const [cipherId, attachments] of await new StorageService(env.DB).getAttachmentsByCipherIds(cipherIds)) {
+      for (const attachment of attachments) await deleteBlobObject(env, getAttachmentObjectKey(cipherId, attachment.id));
+    }
     await deleteOrganization(env.DB, orgId);
   }
   return null;

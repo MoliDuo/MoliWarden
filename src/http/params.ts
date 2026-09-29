@@ -1,6 +1,6 @@
 import type { Context } from 'hono';
 import { id } from './body';
-import { notFound } from './errors';
+import { badRequest, notFound } from './errors';
 
 // A path parameter of a route registered under several paths, where Hono
 // cannot type it.
@@ -14,5 +14,12 @@ export function pathParam(c: Context, name: string): string {
 export function idParam(c: Context, name = 'id'): string {
   const parsed = id.safeParse(pathParam(c, name));
   if (!parsed.success) throw notFound();
+  return parsed.data;
+}
+
+// A required id in the query string.
+export function idQuery(c: Context, name: string): string {
+  const parsed = id.safeParse(c.req.query(name)?.trim() ?? '');
+  if (!parsed.success) throw badRequest(`${name} must be an id.`);
   return parsed.data;
 }
