@@ -30,7 +30,9 @@ A Bitwarden-compatible server for **Vercel**, with its own web vault.
 | Variable | Required | Notes |
 |---|---|---|
 | `DATABASE_URL` | ✅ | also accepts `POSTGRES_URL` |
-| `JWT_SECRET` | ✅ | 32+ random characters |
+| `JWT_SECRET` | ✅ | 32+ random characters; signs login tokens, changing it signs everyone out |
+| `ENCRYPTION_KEY` | ✅ | 32+ random characters, different from `JWT_SECRET`; encrypts the 2FA seeds, recovery codes, API keys and backup credentials the server keeps. Keep it: a changed key makes them unreadable |
+| `SHOW_PASSWORD_HINT` | | `1` to let the login page show password hints (off: a hint tells anyone who knows the email something about the password) |
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | ✅ | |
 | `S3_REGION` | | default `auto` |
 | `S3_FORCE_PATH_STYLE` | | `0` for virtual-hosted-style URLs |

@@ -22,7 +22,7 @@ export function createDemoInitialBootstrapState(): InitialAppBootstrapState {
     registrationInviteRequired: true,
     websiteIconsEnabled: true,
     passwordHintEnabled: true,
-    jwtWarning: null,
+    secretWarning: null,
     session: null,
     phase: 'login',
   };

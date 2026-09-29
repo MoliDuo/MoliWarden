@@ -73,6 +73,7 @@ export function testServerEnv(bucket: string): Record<string, string> {
   return {
     DATABASE_URL: TEST_DATABASE_URL,
     JWT_SECRET: 'test-secret-test-secret-test-secret-0123456789',
+    ENCRYPTION_KEY: 'test-encryption-key-test-encryption-key-0123',
     S3_ENDPOINT,
     S3_BUCKET: bucket,
     S3_ACCESS_KEY_ID,

@@ -34,7 +34,7 @@ export async function clientCredentialsGrant(deps: Deps, request: Request, form:
     await auditLoginFailure(deps, request, user, 'auth.login.failed.user_inactive', 'client_credentials', device);
     return failAttempt(deps, lockKey, accountDisabled());
   }
-  if (!verifyApiKey(form.client_secret, user.apiKey)) {
+  if (!verifyApiKey(deps.secrets, user, form.client_secret)) {
     await auditLoginFailure(deps, request, user, 'auth.login.failed.bad_api_key', 'client_credentials', device);
     return failAttempt(deps, lockKey, wrongCredentials());
   }

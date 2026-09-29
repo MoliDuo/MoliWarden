@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ConfigError, readConfig } from '../../src/main/config';
+import { ConfigError, readConfig, secretProblem } from '../../src/main/config';
 import { canonicalRequest } from '../../src/main/node';
 
 test('the original path Vercel passes as __mwpath is restored, other parameters kept', () => {
@@ -26,7 +26,11 @@ test('only a missing database is fatal', () => {
   const config = readConfig({ POSTGRES_URL: 'postgres://db', JWT_SECRET: ' short ' });
   assert.equal(config.databaseUrl, 'postgres://db');
   assert.equal(config.jwtSecretProblem, 'too_short');
-  assert.equal(readConfig({ DATABASE_URL: 'postgres://db' }).jwtSecretProblem, 'missing');
+  assert.deepEqual(secretProblem(config), { name: 'JWT_SECRET', reason: 'too_short' });
+  const unsealed = readConfig({ DATABASE_URL: 'postgres://db', JWT_SECRET: 'x'.repeat(32) });
+  assert.equal(unsealed.jwtSecretProblem, null);
+  assert.deepEqual(secretProblem(unsealed), { name: 'ENCRYPTION_KEY', reason: 'missing' });
+  assert.equal(secretProblem(readConfig({ DATABASE_URL: 'postgres://db', JWT_SECRET: 'x'.repeat(32), ENCRYPTION_KEY: 'y'.repeat(32) })), null);
 });
 
 test('flags and numbers are parsed', () => {

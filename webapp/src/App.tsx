@@ -8,7 +8,7 @@ import AuthViews from '@/components/AuthViews';
 import NotFoundPage from '@/components/NotFoundPage';
 import PublicSendPage from '@/components/PublicSendPage';
 import RecoverTwoFactorPage from '@/components/RecoverTwoFactorPage';
-import JwtWarningPage from '@/components/JwtWarningPage';
+import SecretWarningPage from '@/components/SecretWarningPage';
 import {
   createAuthedFetch,
   deriveLoginHash,
@@ -56,7 +56,6 @@ import {
   performTotpLogin,
   hydrateLockedSession,
   performUnlock,
-  type JwtUnsafeReason,
   type PendingPasskeyPassword,
   type PendingTotp,
 } from '@/lib/app-auth';
@@ -89,7 +88,7 @@ import {
   createDemoMainRoutesProps,
 } from '@/lib/demo';
 import type { AdminBackupSettings } from '@/lib/api/backup';
-import type { AdminInvite, AdminUser, AppPhase, AuditLogSettings, AuthRequest, AuthorizedDevice, Cipher, CustomEquivalentDomain, DomainRules, Folder as VaultFolder, Profile, Send, SessionState } from '@/lib/types';
+import type { AdminInvite, AdminUser, AppPhase, AuditLogSettings, AuthRequest, AuthorizedDevice, Cipher, CustomEquivalentDomain, DomainRules, Folder as VaultFolder, Profile, SecretWarning, Send, SessionState } from '@/lib/types';
 import type { VaultCoreSnapshot } from '@/lib/vault-cache';
 
 function isBackupProgressDetail(value: unknown): value is BackupProgressDetail {
@@ -218,7 +217,7 @@ export default function App() {
   const [defaultKdfIterations, setDefaultKdfIterations] = useState(initialBootstrap.defaultKdfIterations);
   const [registrationInviteRequired, setRegistrationInviteRequired] = useState(initialBootstrap.registrationInviteRequired);
   const [passwordHintEnabled, setPasswordHintEnabled] = useState(initialBootstrap.passwordHintEnabled);
-  const [jwtWarning, setJwtWarning] = useState<{ reason: JwtUnsafeReason; minLength: number } | null>(initialBootstrap.jwtWarning);
+  const [secretWarning, setSecretWarning] = useState<SecretWarning | null>(initialBootstrap.secretWarning);
 
   const [loginValues, setLoginValues] = useState({ email: '', password: '' });
   const [registerValues, setRegisterValues] = useState({
@@ -474,7 +473,7 @@ export default function App() {
       const isDemoPublicSendRoute = /^send\/[^/]+(?:\/[^/]+)?$/i.test(normalizedCurrentHashPath);
       setDefaultKdfIterations(initialBootstrap.defaultKdfIterations);
       setRegistrationInviteRequired(initialBootstrap.registrationInviteRequired);
-      setJwtWarning(null);
+      setSecretWarning(null);
       setSession(null);
       setProfile(null);
       setPhase('login');
@@ -491,7 +490,7 @@ export default function App() {
       setDefaultKdfIterations(boot.defaultKdfIterations);
       setRegistrationInviteRequired(boot.registrationInviteRequired);
       setPasswordHintEnabled(boot.passwordHintEnabled);
-      setJwtWarning(boot.jwtWarning);
+      setSecretWarning(boot.secretWarning);
       setSession(boot.session);
       setProfile(boot.profile);
       setPhase(boot.phase);
@@ -2281,8 +2280,8 @@ export default function App() {
       })
     : mainRoutesProps;
 
-  if (jwtWarning) {
-    return <JwtWarningPage reason={jwtWarning.reason} minLength={jwtWarning.minLength} />;
+  if (secretWarning) {
+    return <SecretWarningPage {...secretWarning} />;
   }
 
   if (publicSendMatch) {

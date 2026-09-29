@@ -442,10 +442,20 @@ export interface ListResponse<T> {
   continuationToken?: string | null;
 }
 
+// A server secret the operator still has to set.
+export interface SecretProblem {
+  name: 'JWT_SECRET' | 'ENCRYPTION_KEY';
+  reason: 'missing' | 'too_short';
+}
+
+export interface SecretWarning extends SecretProblem {
+  minLength: number;
+}
+
 export interface WebBootstrapResponse {
   defaultKdfIterations?: number;
-  jwtUnsafeReason?: 'missing' | 'too_short' | null;
-  jwtSecretMinLength?: number;
+  secretProblem?: SecretProblem | null;
+  secretMinLength?: number;
   registrationInviteRequired?: boolean;
   webAuthnAllowedOrigins?: string[];
   websiteIconsEnabled?: boolean;

@@ -187,7 +187,7 @@ test('export, attachment files, and local restore', async () => {
   assert.ok(!('sends' in dump) && !('devices' in dump) && !('refreshTokens' in dump));
   // Settings go in only in their portable form.
   const settings = dump.settings.find((record: any) => record.key === 'backup.settings');
-  assert.equal(JSON.parse(settings.value).portableOnly, true);
+  assert.equal(JSON.parse(settings.value).runtime, null);
   assert.ok(!JSON.stringify(dump).includes('mwsecret123'));
 
   // Credentials never go in a URL.

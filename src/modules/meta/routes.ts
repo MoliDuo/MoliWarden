@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { LIMITS } from '../../config/limits';
 import { rateLimit } from '../../http/rate-limit';
+import { secretProblem } from '../../main/config';
 import type { Deps } from '../../main/deps';
 import { getConfiguredWebAuthnAllowedOrigins } from '../../utils/origins';
 import { countUsers } from '../accounts/repo';
@@ -10,16 +11,17 @@ import { assetLinkCheck, fillAssistFiles, fillAssistManifest } from './fill-assi
 // What the web vault needs to know before anyone signs in.
 export interface WebBootstrap {
   defaultKdfIterations: number;
-  jwtUnsafeReason: 'missing' | 'too_short' | null;
-  jwtSecretMinLength: number;
+  // A secret the operator still has to set.
+  secretProblem: ReturnType<typeof secretProblem>;
+  secretMinLength: number;
   registrationInviteRequired: boolean;
   webAuthnAllowedOrigins: string[];
   websiteIconsEnabled: boolean;
   passwordHintEnabled: boolean;
 }
 
-// Public descriptions of the server. These answer even when JWT_SECRET is
-// unusable, so the web vault can explain what to fix.
+// Public descriptions of the server. These answer even when JWT_SECRET or
+// ENCRYPTION_KEY is unusable, so the web vault can explain what to fix.
 export function metaRoutes(deps: Deps): Hono {
   const app = new Hono();
   const read = rateLimit(deps.limiter, 'public-read');
@@ -35,8 +37,8 @@ export function metaRoutes(deps: Deps): Hono {
       const { config } = deps;
       const body: WebBootstrap = {
         defaultKdfIterations: LIMITS.auth.defaultKdfIterations,
-        jwtUnsafeReason: config.jwtSecretProblem,
-        jwtSecretMinLength: LIMITS.auth.jwtSecretMinLength,
+        secretProblem: secretProblem(config),
+        secretMinLength: LIMITS.auth.secretMinLength,
         registrationInviteRequired: (await countUsers(deps.db)) > 0,
         webAuthnAllowedOrigins: getConfiguredWebAuthnAllowedOrigins(config.webauthn.allowedOrigins),
         websiteIconsEnabled: config.iconSource !== 'off',

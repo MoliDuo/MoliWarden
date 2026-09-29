@@ -1,13 +1,12 @@
-import { constantTimeEqual, sha256Hex } from '../../platform/crypto';
+import { constantTimeEqual, type Sealed, type SecretBox } from '../../platform/crypto';
+import type { User } from '../../types';
 
-// The personal API key is stored as issued, since clients show it again.
-// Older servers stored "sha256:<hex>" instead; such keys still sign in
-// until the data migration clears them.
-const LEGACY_HASH_PREFIX = 'sha256:';
+// The personal API key is sealed with ENCRYPTION_KEY rather than hashed,
+// since clients show it again.
 
-export function verifyApiKey(given: string, stored: string | null | undefined): boolean {
-  const expected = stored?.trim();
-  if (!expected || !given) return false;
-  if (expected.startsWith(LEGACY_HASH_PREFIX)) return constantTimeEqual(LEGACY_HASH_PREFIX + sha256Hex(given), expected);
-  return constantTimeEqual(given, expected);
+export const sealApiKey = (box: SecretBox, userId: string, key: string) => box.seal(key, `api-key:${userId}`);
+export const openApiKey = (box: SecretBox, userId: string, sealed: Sealed) => box.open(sealed, `api-key:${userId}`);
+
+export function verifyApiKey(box: SecretBox, user: User, given: string): boolean {
+  return !!user.apiKey && !!given && constantTimeEqual(given, openApiKey(box, user.id, user.apiKey));
 }

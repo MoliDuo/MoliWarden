@@ -50,7 +50,9 @@
 | 变量 | 必填 | 说明 |
 |---|---|---|
 | `DATABASE_URL` | ✅ | Postgres 连接串（Neon 集成会自动设置；也支持 `POSTGRES_URL`） |
-| `JWT_SECRET` | ✅ | 至少 32 位的随机字符串，如 `openssl rand -base64 48` |
+| `JWT_SECRET` | ✅ | 至少 32 位的随机字符串，如 `openssl rand -base64 48`；用于签发登录令牌，更换后所有设备需要重新登录 |
+| `ENCRYPTION_KEY` | ✅ | 至少 32 位的随机字符串，不要与 `JWT_SECRET` 相同；用于加密服务端保存的两步登录密钥、恢复码、API Key 和备份凭据。**请妥善保管**，更换后这些数据将无法解密 |
+| `SHOW_PASSWORD_HINT` | | 设为 `1` 在登录页提供密码提示；默认关闭，因为知道邮箱的人都能看到提示 |
 | `S3_ENDPOINT` | ✅ | 例如 `https://<account>.r2.cloudflarestorage.com`、`https://s3.us-east-1.amazonaws.com` |
 | `S3_BUCKET` | ✅ | bucket 名称 |
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | ✅ | 访问密钥 |
@@ -87,7 +89,8 @@
 
 - 页面提示 `Server configuration error: DATABASE_URL is not configured`：没有设置数据库变量。
 - 提示 `Database unavailable. Check DATABASE_URL`：连接串错误或数据库不可达，具体原因在 Vercel 的函数日志里。
-- 注册时提示 `JWT_SECRET is not set` / `must be at least 32 characters`：设置 `JWT_SECRET` 后重新部署。
+- 页面显示密钥配置提示，或请求报 `JWT_SECRET is not set or too weak` / `ENCRYPTION_KEY is not set or too weak`：设置对应变量（至少 32 位）后重新部署。
+- 报错 `a stored secret cannot be decrypted. Was ENCRYPTION_KEY changed?`：`ENCRYPTION_KEY` 与写入数据时的不一致，改回原来的值。
 - 上传附件提示 `File storage is not configured`：缺少 `S3_*` 变量。
 - 修改环境变量后需要在 Vercel 里 **Redeploy** 才会生效。
 

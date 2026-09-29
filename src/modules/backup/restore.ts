@@ -7,6 +7,7 @@ import { listSends } from '../sends/repo';
 import { removeSendFiles } from '../sends/service';
 import { attachmentEntry, KIND_NAMES, type KindName, type ParsedArchive } from './archive';
 import { hasVaultData, listAttachmentKeys, replaceInstance } from './repo';
+import { sealSnapshotSecrets } from './secrets';
 
 // Restoring replaces every account and vault on the server with the
 // backup's. Attachment files are uploaded first and the rows replaced in
@@ -76,9 +77,11 @@ export async function restoreArchive(deps: Deps, caller: Caller, archive: Parsed
   const previousFiles = await listAttachmentKeys(deps.db);
   const previousSends = await listSends(deps.db, null);
 
+  // Checked before any file is uploaded.
+  const sealed = sealSnapshotSecrets(archive.snapshot, deps.secrets);
   const { uploaded, failed } = await uploadFiles(deps, archive, options);
   const snapshot = {
-    ...archive.snapshot,
+    ...sealed,
     attachments: archive.snapshot.attachments.filter((record) => uploaded.has(attachmentKey(String(record.cipherId), String(record.id)))),
   };
   const kept = new Set(previousFiles.map((file) => attachmentKey(file.cipherId, file.id)));

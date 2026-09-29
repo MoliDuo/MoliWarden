@@ -10,7 +10,8 @@ export const LIMITS = {
     // ...and after this long in any case.
     refreshTokenAbsoluteTtlMs: 365 * 24 * 60 * 60 * 1000,
     refreshTokenRandomBytes: 32,
-    jwtSecretMinLength: 32,
+    // JWT_SECRET and ENCRYPTION_KEY.
+    secretMinLength: 32,
     // PBKDF2 iterations for new accounts, and in prelogin for unknown emails.
     defaultKdfIterations: 600000,
     clientSecretLength: 30,

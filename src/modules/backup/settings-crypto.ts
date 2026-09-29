@@ -1,64 +1,55 @@
-import { constants, createCipheriv, createDecipheriv, createPublicKey, hkdfSync, publicEncrypt, randomBytes } from 'node:crypto';
+import { constants, createCipheriv, createPublicKey, publicEncrypt, randomBytes } from 'node:crypto';
+import type { Sealed as SealedSecret, SecretBox } from '../../platform/crypto';
 import type { User } from '../../types';
 
 // Backup settings hold the destinations' credentials, so they are stored
 // encrypted, twice:
-// - runtime: under a key derived from JWT_SECRET, for this server's own use;
+// - runtime: sealed with ENCRYPTION_KEY, for this server's own use;
 // - portable: under a random key that is wrapped with each admin's public
 //   key. After a restore onto another server the runtime copy is useless,
 //   and an admin's client unwraps the portable one to repair the settings.
 // Backup archives carry the portable copy only.
 
-// Wire constants of the stored envelope; renamed with the 3.3 migration.
-const RUNTIME_SALT = 'nodewarden.backup-settings.runtime.v2';
-const RUNTIME_INFO = 'runtime';
+const VERSION = 3;
+const CONTEXT = 'backup.settings';
 
-interface Sealed {
+// The portable copy as the web vault opens it: AES-256-GCM, base64.
+interface Encrypted {
   iv: string;
   ciphertext: string;
 }
 
-export interface PortableSettings extends Sealed {
+export interface PortableSettings extends Encrypted {
   wraps: Array<{ userId: string; wrappedKey: string }>;
 }
 
 interface Envelope {
-  version: 2;
-  portableOnly?: true;
-  runtime: Sealed;
+  version: typeof VERSION;
+  // Null in archives, and after a restore until an admin repairs the settings.
+  runtime: SealedSecret | null;
   portable: PortableSettings;
 }
 
-function seal(plaintext: string, key: Buffer): Sealed {
+function encrypt(plaintext: string, key: Buffer): Encrypted {
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', key, iv);
   const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final(), cipher.getAuthTag()]);
   return { iv: iv.toString('base64'), ciphertext: ciphertext.toString('base64') };
 }
 
-function open(sealed: Sealed, key: Buffer): string {
-  const iv = Buffer.from(sealed.iv, 'base64');
-  const body = Buffer.from(sealed.ciphertext, 'base64');
-  if (iv.length !== 12 || body.length < 16) throw new Error('Backup settings envelope is invalid');
-  const decipher = createDecipheriv('aes-256-gcm', key, iv);
-  decipher.setAuthTag(body.subarray(body.length - 16));
-  return Buffer.concat([decipher.update(body.subarray(0, body.length - 16)), decipher.final()]).toString('utf8');
-}
-
-const runtimeKey = (jwtSecret: string) => Buffer.from(hkdfSync('sha256', jwtSecret, RUNTIME_SALT, RUNTIME_INFO, 32));
-
 function parseEnvelope(raw: string): Envelope | null {
   try {
     const value = JSON.parse(raw) as Envelope;
-    const sealed = (part: Partial<Sealed> | undefined) => typeof part?.iv === 'string' && typeof part.ciphertext === 'string';
-    if (value?.version !== 2 || !sealed(value.runtime) || !sealed(value.portable) || !Array.isArray(value.portable.wraps)) return null;
+    const portable = value?.portable;
+    if (value?.version !== VERSION || (value.runtime !== null && typeof value.runtime !== 'string')) return null;
+    if (typeof portable?.iv !== 'string' || typeof portable.ciphertext !== 'string' || !Array.isArray(portable.wraps)) return null;
     return value;
   } catch {
     return null;
   }
 }
 
-export function sealSettings(plaintext: string, jwtSecret: string, users: User[]): string {
+export function sealSettings(plaintext: string, secrets: SecretBox, users: User[]): string {
   const dek = randomBytes(32);
   const wraps: PortableSettings['wraps'] = [];
   for (const user of users) {
@@ -72,20 +63,20 @@ export function sealSettings(plaintext: string, jwtSecret: string, users: User[]
     }
   }
   const envelope: Envelope = {
-    version: 2,
-    runtime: seal(plaintext, runtimeKey(jwtSecret)),
-    portable: { ...seal(plaintext, dek), wraps },
+    version: VERSION,
+    runtime: secrets.seal(plaintext, CONTEXT),
+    portable: { ...encrypt(plaintext, dek), wraps },
   };
   return JSON.stringify(envelope);
 }
 
 // The settings, or null when this server cannot read them: they were
 // encrypted elsewhere and need an admin to repair them.
-export function openSettings(raw: string, jwtSecret: string): string | null {
+export function openSettings(raw: string, secrets: SecretBox): string | null {
   const envelope = parseEnvelope(raw);
-  if (!envelope || envelope.portableOnly) return null;
+  if (!envelope?.runtime) return null;
   try {
-    return open(envelope.runtime, runtimeKey(jwtSecret));
+    return secrets.open(envelope.runtime, CONTEXT);
   } catch {
     return null;
   }
@@ -99,6 +90,6 @@ export function portableSettings(raw: string): PortableSettings | null {
 export function portableOnly(raw: string): string | null {
   const envelope = parseEnvelope(raw);
   if (!envelope) return null;
-  const exported: Envelope = { version: 2, portableOnly: true, runtime: { iv: '', ciphertext: '' }, portable: envelope.portable };
+  const exported: Envelope = { version: VERSION, runtime: null, portable: envelope.portable };
   return JSON.stringify(exported);
 }

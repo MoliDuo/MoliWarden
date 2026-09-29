@@ -1,4 +1,5 @@
 import type { ColumnType, Generated, Insertable, Selectable, Updateable } from 'kysely';
+import type { Sealed } from '../crypto';
 
 // The tables as migrations/ creates them. Timestamps read and write as ISO
 // strings (see createPool), JSON columns are written as JSON text.
@@ -35,8 +36,8 @@ export interface UsersTable {
   role: Generated<'admin' | 'user'>;
   status: Generated<'active' | 'banned'>;
   verify_devices: Generated<boolean>;
-  api_key: string | null;
-  recovery_code: string | null;
+  api_key: Sealed | null;
+  recovery_code: Sealed | null;
   custom_domains: ColumnType<unknown[], string | undefined, string>;
   excluded_global_domains: ColumnType<number[], number[] | undefined, number[]>;
   revision_date: Timestamp;

@@ -3,9 +3,18 @@ import type { Deps } from '../../main/deps';
 import { randomToken, sha256 } from '../../platform/crypto';
 import type { User } from '../../types';
 import { securityKeyAssertionOptions, verifySecurityKeyAssertion } from '../passkeys/service';
-import { recoveryCodeMatches } from './recovery-code';
 import { hasRememberToken, saveRememberToken } from './repo';
-import { checkYubiKeyOtp, factorsOf, hasSecondFactor, Provider, resetTwoFactor, useTotpCode, type Factors } from './service';
+import { openTotpSecret } from './secrets';
+import {
+  checkYubiKeyOtp,
+  factorsOf,
+  hasSecondFactor,
+  Provider,
+  recoveryCodeValid,
+  resetTwoFactor,
+  useTotpCode,
+  type Factors,
+} from './service';
 import { yubiKeyPublicId } from './yubico';
 
 // The second step of a password login. Each provider a client may answer
@@ -43,7 +52,8 @@ interface Check {
 // Each provider checks the answer; true means it passed.
 const CHECKS: Record<number, (check: Check) => Promise<boolean>> = {
   async [Provider.Authenticator]({ deps, user, factors, token }) {
-    return !!factors.totpSecret && (await useTotpCode(deps.db, user.id, factors.totpSecret, token));
+    if (!factors.totp) return false;
+    return useTotpCode(deps.db, user.id, openTotpSecret(deps.secrets, user.id, factors.totp.secret), token);
   },
   async [Provider.YubiKey]({ deps, user, factors, token }) {
     const publicId = yubiKeyPublicId(token);
@@ -64,7 +74,7 @@ const CHECKS: Record<number, (check: Check) => Promise<boolean>> = {
 // What the client needs to show for each provider the user has set up.
 async function challenge(deps: Deps, request: Request, user: User, factors: Factors): Promise<IdentityError> {
   const providers: Record<string, unknown> = {};
-  if (factors.totpSecret) providers[Provider.Authenticator] = null;
+  if (factors.totp) providers[Provider.Authenticator] = null;
   if (factors.yubiKeys.length) providers[Provider.YubiKey] = { Nfc: factors.yubiKey?.nfc ?? false };
   const webAuthn = await securityKeyAssertionOptions(deps, request, factors.securityKeys);
   if (webAuthn) providers[Provider.WebAuthn] = webAuthn;
@@ -124,7 +134,7 @@ export async function secondStep(deps: Deps, request: Request, user: User, input
 
   // The recovery code turns two-step login off, so there is nothing to remember.
   if (RECOVERY_CODE_PROVIDERS.has(provider)) {
-    if (!recoveryCodeMatches(token, user.recoveryCode)) return { status: 'failed' };
+    if (!recoveryCodeValid(deps, user, token)) return { status: 'failed' };
     await resetTwoFactor(deps, user);
     return { status: 'passed', rememberToken: null };
   }

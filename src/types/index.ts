@@ -1,7 +1,8 @@
+import type { Sealed } from '../platform/crypto';
+
 export type UserRole = 'admin' | 'user';
 export type UserStatus = 'active' | 'banned';
 
-// User model
 export interface User {
   id: string;
   email: string;
@@ -20,9 +21,9 @@ export interface User {
   status: UserStatus;
   verifyDevices?: boolean;
   // Turns two-step login off when every second factor is lost.
-  recoveryCode: string | null;
-  apiKey: string | null;
-  // Written only through setUserKeyIdIfUnset/clearUserKeyId, never by saveUser.
+  // Both sealed with ENCRYPTION_KEY.
+  recoveryCode: Sealed | null;
+  apiKey: Sealed | null;
   keyId?: string | null;
   createdAt: string;
   updatedAt: string;

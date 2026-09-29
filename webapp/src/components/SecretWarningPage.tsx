@@ -3,70 +3,61 @@ import { AlertTriangle, Copy, RefreshCw } from 'lucide-preact';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import StandalonePageFrame from '@/components/StandalonePageFrame';
 import { t } from '@/lib/i18n';
-
-interface JwtWarningPageProps {
-  reason: 'missing' | 'too_short';
-  minLength: number;
-}
+import type { SecretWarning } from '@/lib/types';
 
 const VERCEL_DASHBOARD_URL = 'https://vercel.com/dashboard';
 
-export default function JwtWarningPage(props: JwtWarningPageProps) {
+// Shown instead of the vault while JWT_SECRET or ENCRYPTION_KEY is missing
+// or too short, with the steps to set it.
+export default function SecretWarningPage(props: SecretWarning) {
   const [seed, setSeed] = useState(0);
   const [copyHint, setCopyHint] = useState('');
 
-  const generatedSecret = useMemo(() => generateJwtSecret(32), [seed]);
+  const generatedSecret = useMemo(() => generateSecret(Math.max(32, props.minLength)), [seed, props.minLength]);
 
-  const title =
-    props.reason === 'missing'
-      ? t('txt_jwt_title_missing')
-      : t('txt_jwt_title_too_short');
-
+  const name = props.name;
   const isMissing = props.reason === 'missing';
-  const fixTitle = isMissing ? t('txt_jwt_how_to_fix_add') : t('txt_jwt_how_to_fix_replace');
-  const fixStep1 = isMissing ? t('txt_jwt_add_step_1') : t('txt_jwt_replace_step_1', { min: props.minLength });
-  const fixStep2Prefix = isMissing ? t('txt_jwt_add_step_2_prefix') : t('txt_jwt_replace_step_2_prefix');
-  const fixStep2Suffix = isMissing ? t('txt_jwt_add_step_2_suffix') : t('txt_jwt_replace_step_2_suffix');
-  const fixStep3 = isMissing ? t('txt_jwt_add_step_3') : t('txt_jwt_replace_step_3');
+  const title = isMissing ? t('txt_secret_title_missing', { name }) : t('txt_secret_title_too_short', { name });
+  const fixTitle = isMissing ? t('txt_secret_how_to_fix_add', { name }) : t('txt_secret_how_to_fix_replace', { name });
+  const fixStep1 = isMissing ? t('txt_secret_add_step_1') : t('txt_secret_replace_step_1', { min: props.minLength });
+  const fixStep2Prefix = isMissing ? t('txt_secret_add_step_2_prefix') : t('txt_secret_replace_step_2_prefix');
+  const fixStep2Suffix = isMissing ? t('txt_secret_add_step_2_suffix', { name }) : t('txt_secret_replace_step_2_suffix', { name });
+  const fixStep3 = isMissing ? t('txt_secret_add_step_3') : t('txt_secret_replace_step_3');
+  const about = name === 'JWT_SECRET' ? t('txt_secret_jwt_body') : t('txt_secret_encryption_key_body');
 
   return (
     <div className="auth-page">
       <StandalonePageFrame title={title}>
         <div className="jwt-warning-head">
           <AlertTriangle size={20} />
-          <strong>{t('txt_jwt_warning_subtitle')}</strong>
+          <strong>{t('txt_secret_warning_subtitle')}</strong>
         </div>
 
         <div className="jwt-warning-box">
-          <div className="jwt-warning-label">{t('txt_jwt_what_is')}</div>
-          <p className="jwt-warning-copy">{t('txt_jwt_what_is_body')}</p>
+          <div className="jwt-warning-label">{t('txt_secret_what_is', { name })}</div>
+          <p className="jwt-warning-copy">{about}</p>
 
           <div className="jwt-warning-label">{fixTitle}</div>
           <ol className="jwt-warning-list">
             <li>{fixStep1}</li>
             <li>
               {fixStep2Prefix}
-              <a
-                href={VERCEL_DASHBOARD_URL}
-                className="jwt-inline-link"
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a href={VERCEL_DASHBOARD_URL} className="jwt-inline-link" target="_blank" rel="noreferrer">
                 {t('txt_settings')}
               </a>
               {fixStep2Suffix}
               <div className="jwt-secret-fields">
                 <div className="jwt-secret-row">
-                  <span>{t('txt_jwt_secret_type_label')}</span>
-                  <strong>{t('txt_jwt_secret_type_value')}</strong>
+                  <span>{t('txt_secret_type_label')}</span>
+                  <strong>{t('txt_secret_type_value')}</strong>
                 </div>
                 <div className="jwt-secret-row">
-                  <span>{t('txt_jwt_secret_name_label')}</span>
-                  <strong>JWT_SECRET</strong>
+                  <span>{t('txt_secret_name_label')}</span>
+                  <strong>{name}</strong>
                 </div>
                 <div className="jwt-secret-row">
-                  <span>{t('txt_jwt_secret_value_label')}</span>
-                  <strong>{t('txt_jwt_secret_value_requirement', { min: props.minLength })}</strong>
+                  <span>{t('txt_secret_value_label')}</span>
+                  <strong>{t('txt_secret_value_requirement', { min: props.minLength })}</strong>
                 </div>
               </div>
             </li>
@@ -104,7 +95,7 @@ export default function JwtWarningPage(props: JwtWarningPageProps) {
   );
 }
 
-function generateJwtSecret(length: number): string {
+function generateSecret(length: number): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
   let out = '';
   const maxUnbiasedByte = Math.floor(256 / chars.length) * chars.length;

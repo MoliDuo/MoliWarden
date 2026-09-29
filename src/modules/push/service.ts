@@ -1,7 +1,7 @@
 import { runInBackground } from '../../platform/background';
-import { randomAlphanumeric } from '../../platform/crypto';
+import { randomAlphanumeric, type SecretBox } from '../../platform/crypto';
 import type { Db } from '../../platform/db';
-import { findInstallation, findPushDevices, saveInstallation, type Installation } from './repo';
+import { findInstallation, findPushDevices, saveInstallation } from './repo';
 
 // Vercel Functions cannot hold the WebSocket connections desktop and browser
 // clients listen on, so those pick up changes on their regular sync. Mobile
@@ -15,6 +15,13 @@ const RELAY = 'https://push.bitwarden.com';
 const IDENTITY = 'https://identity.bitwarden.com';
 const INSTALLATIONS = 'https://api.bitwarden.com/installations';
 const TIMEOUT_MS = 5000;
+
+// The installation's key is sealed where it is stored.
+interface Installation {
+  id: string;
+  key: string;
+}
+const INSTALLATION_CONTEXT = 'push.installation';
 
 export const PushType = {
   SyncCipherUpdate: 0,
@@ -89,14 +96,18 @@ function payloadOf(event: PushEvent, date: string): Record<string, unknown> {
 
 // `installationDomain` names the operator in the address the installation
 // is registered under.
-export function createPushService(db: Db, options: { disabled: boolean; installationDomain?: string }): PushService {
+export function createPushService(
+  db: Db,
+  secrets: SecretBox,
+  options: { disabled: boolean; installationDomain?: string },
+): PushService {
   if (options.disabled) return DISABLED;
   let token: { value: string; expiresAt: number } | null = null;
   let installing: Promise<Installation | null> | null = null;
 
   async function findOrRegister(): Promise<Installation | null> {
     const existing = await findInstallation(db);
-    if (existing) return existing;
+    if (existing) return { id: existing.id, key: secrets.open(existing.key, INSTALLATION_CONTEXT) };
     const email = `${randomAlphanumeric(16).toLowerCase()}@${options.installationDomain || 'example.com'}`;
     const response = await call(INSTALLATIONS, {
       method: 'POST',
@@ -106,7 +117,7 @@ export function createPushService(db: Db, options: { disabled: boolean; installa
     const body = (await response?.json().catch(() => null)) as { id?: string; key?: string } | null;
     if (!body?.id || !body.key) return null;
     const created = { id: String(body.id), key: String(body.key) };
-    await saveInstallation(db, created);
+    await saveInstallation(db, { id: created.id, key: secrets.seal(created.key, INSTALLATION_CONTEXT) });
     return created;
   }
 

@@ -84,6 +84,7 @@ async function startServer() {
       ...env,
       DATABASE_URL,
       JWT_SECRET: 'ui-smoke-secret-ui-smoke-secret-0123456789',
+      ENCRYPTION_KEY: 'ui-smoke-encryption-key-ui-smoke-0123456789',
       S3_ENDPOINT,
       S3_BUCKET,
       S3_ACCESS_KEY_ID,

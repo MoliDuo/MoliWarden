@@ -1,20 +1,21 @@
+import type { Sealed } from '../../platform/crypto';
 import type { Executor } from '../../platform/db';
 import { readSetting, writeSetting } from '../../platform/db/settings';
 
 // The server's installation at the push relay.
 const INSTALLATION = 'push.installation';
 
-export interface Installation {
+export interface StoredInstallation {
   id: string;
-  key: string;
+  key: Sealed;
 }
 
-export async function findInstallation(db: Executor): Promise<Installation | null> {
-  const installation = await readSetting<Installation>(db, INSTALLATION);
+export async function findInstallation(db: Executor): Promise<StoredInstallation | null> {
+  const installation = await readSetting<StoredInstallation>(db, INSTALLATION);
   return installation?.id && installation.key ? installation : null;
 }
 
-export async function saveInstallation(db: Executor, installation: Installation): Promise<void> {
+export async function saveInstallation(db: Executor, installation: StoredInstallation): Promise<void> {
   await writeSetting(db, INSTALLATION, { id: installation.id, key: installation.key });
 }
 

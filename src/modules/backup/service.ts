@@ -59,7 +59,7 @@ export async function updateSettings(deps: Deps, caller: Caller, input: Settings
 // client can decrypt to repair them.
 export async function repairState(deps: Deps) {
   const raw = await readStoredSettings(deps.db);
-  const needsRepair = !!raw && openSettings(raw, deps.config.jwtSecret) === null;
+  const needsRepair = !!raw && openSettings(raw, deps.secrets) === null;
   return { object: 'backup-settings-repair', needsRepair, portable: needsRepair ? portableSettings(raw!) : null };
 }
 

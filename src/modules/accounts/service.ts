@@ -7,6 +7,7 @@ import { randomAlphanumeric } from '../../platform/crypto';
 import { isEncString } from '../../platform/enc-string';
 import type { User } from '../../types';
 import { recordAudit, requestMetadata } from '../audit/service';
+import { openApiKey, sealApiKey } from '../auth/api-key';
 import { hashMasterPassword, requireMasterPassword } from '../auth/password';
 import { endAllSessions } from '../auth/sessions';
 import { profileOrganizations } from '../organizations/service';
@@ -66,8 +67,9 @@ export async function register(deps: Deps, request: Request, input: RegisterInpu
   if (problem) throw badRequest(problem);
 
   const now = new Date().toISOString();
+  const id = randomUUID();
   const user: User = {
-    id: randomUUID(),
+    id,
     email: input.email,
     name: input.name ?? input.email,
     masterPasswordHint: input.masterPasswordHint,
@@ -84,7 +86,7 @@ export async function register(deps: Deps, request: Request, input: RegisterInpu
     status: 'active',
     recoveryCode: null,
     // Like upstream, every account starts with a personal API key.
-    apiKey: randomAlphanumeric(LIMITS.auth.clientSecretLength),
+    apiKey: sealApiKey(deps.secrets, id, randomAlphanumeric(LIMITS.auth.clientSecretLength)),
     createdAt: now,
     updatedAt: now,
   };
@@ -242,19 +244,16 @@ export async function setUserKeyId(deps: Deps, user: User, keyId: string): Promi
 // The personal API key is shown only after the master password is confirmed.
 export async function apiKey(deps: Deps, request: Request, user: User, secret: string, rotate: boolean) {
   await requireMasterPassword(user, secret);
-  // Older servers stored a hash, which cannot be shown.
-  if (!rotate && user.apiKey?.startsWith('sha256:')) {
-    throw conflict('This API key was created by an older server version and cannot be displayed. Rotate it to get a new one.');
-  }
-
   let action = 'account.api_key.view';
-  if (rotate || !user.apiKey) {
+  let key = user.apiKey && !rotate ? openApiKey(deps.secrets, user.id, user.apiKey) : null;
+  if (!key) {
     action = rotate ? 'account.api_key.rotate' : 'account.api_key.create';
-    user.apiKey = randomAlphanumeric(LIMITS.auth.clientSecretLength);
+    key = randomAlphanumeric(LIMITS.auth.clientSecretLength);
+    user.apiKey = sealApiKey(deps.secrets, user.id, key);
     user.updatedAt = await updateUser(deps.db, user.id, { apiKey: user.apiKey });
   }
   await audit(deps, request, user, action, rotate ? 'security' : 'info');
-  return { apiKey: user.apiKey, revisionDate: user.updatedAt, object: 'apiKey' };
+  return { apiKey: key, revisionDate: user.updatedAt, object: 'apiKey' };
 }
 
 // Milliseconds since the epoch, as Bitwarden sends it.

@@ -13,8 +13,8 @@
   },
   "body": {
     "defaultKdfIterations": 600000,
-    "jwtUnsafeReason": null,
-    "jwtSecretMinLength": 32,
+    "secretProblem": null,
+    "secretMinLength": 32,
     "registrationInviteRequired": true,
     "webAuthnAllowedOrigins": [
       "chrome-extension://nngceckbapebfimnlniiiahkandclblb",

@@ -24,9 +24,10 @@ import { passkeyRoutes } from '../modules/passkeys/routes';
 import { sendRoutes } from '../modules/sends/routes';
 import { syncRoutes } from '../modules/sync/routes';
 import { twoFactorRoutes } from '../modules/two-factor/routes';
-import { constantTimeEqual } from '../platform/crypto';
+import { constantTimeEqual, SecretBoxError } from '../platform/crypto';
 import { BlobStoreError } from '../platform/blob';
 import { migrateToLatest, schemaState } from '../platform/db/migrate';
+import { secretProblem } from './config';
 import type { Deps } from './deps';
 
 // Routes whose bodies are file contents; they enforce the upload limit
@@ -78,10 +79,11 @@ const LEGACY_DATABASE = new HttpError(
   'The database holds the data of an earlier MoliWarden version. Run `npm run db:migrate-legacy` against it (see the README), then reload.',
 );
 
-// Everything past this point signs or verifies tokens.
-function requireJwtSecret(deps: Deps): MiddlewareHandler {
+// Everything past this point signs tokens or keeps secrets.
+function requireSecrets(deps: Deps): MiddlewareHandler {
   return async (_c, next) => {
-    if (deps.config.jwtSecretProblem) throw misconfigured('JWT_SECRET is not set or too weak');
+    const problem = secretProblem(deps.config);
+    if (problem) throw misconfigured(`${problem.name} is not set or too weak`);
     await next();
   };
 }
@@ -94,6 +96,10 @@ export const handleError: ErrorHandler = (error, c) => {
   if (error instanceof BlobStoreError) {
     console.error('File storage error:', error.detail || error.message);
     return c.json(new HttpError(500, error.message).body, 500);
+  }
+  if (error instanceof SecretBoxError) {
+    console.error('Stored secret unreadable:', error.message);
+    return c.json(misconfigured('a stored secret cannot be decrypted. Was ENCRYPTION_KEY changed?').body, 500);
   }
   // An id that is not a UUID gets this far only where no schema checks it.
   if ((error as { code?: unknown }).code === INVALID_TEXT_REPRESENTATION) {
@@ -117,6 +123,9 @@ export function createApp(deps: Deps): Hono {
   app.route('/', metaRoutes(deps));
   app.route('/', iconRoutes(deps));
 
+  // Routes registered before this line answer on any configuration.
+  app.use(requireSecrets(deps));
+
   // Vercel Cron sends "Authorization: Bearer <CRON_SECRET>".
   app.get('/api/internal/cron', async (c) => {
     const secret = deps.config.cronSecret;
@@ -126,8 +135,6 @@ export function createApp(deps: Deps): Hono {
     return c.json({ ok: true });
   });
 
-  // Routes registered before this line answer on any configuration.
-  app.use(requireJwtSecret(deps));
   app.route('/', identityRoutes(deps));
   app.route('/', twoFactorRoutes(deps));
   app.route('/', passkeyRoutes(deps));

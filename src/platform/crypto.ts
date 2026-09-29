@@ -60,12 +60,20 @@ export function deriveKey(secret: Bytes, purpose: string, length = 32): Buffer {
 
 const SEALED_PREFIX = 'mw1.';
 
-// AES-256-GCM for server-side secrets (2FA seeds, API keys, backup
-// destination credentials). Sealed values look like mw1.<iv>.<ciphertext+tag>.
+// A secret as it is stored: mw1.<iv>.<ciphertext+tag>. The type keeps
+// sealed and plain values from being mixed up.
+export type Sealed = string & { readonly __sealed: true };
+
+// AES-256-GCM for the secrets the server keeps (2FA seeds, recovery codes,
+// API keys, provider credentials). The context names what a value is and
+// whose, so a sealed value cannot be moved to another place and still open.
 export interface SecretBox {
-  seal(plaintext: string, context: string): string;
-  open(sealed: string, context: string): string;
+  seal(plaintext: string, context: string): Sealed;
+  open(sealed: Sealed, context: string): string;
 }
+
+// A sealed value that does not open: damaged, or sealed under another key.
+export class SecretBoxError extends Error {}
 
 export function createSecretBox(encryptionKey: string): SecretBox {
   const key = deriveKey(encryptionKey, 'secret-box');
@@ -75,19 +83,23 @@ export function createSecretBox(encryptionKey: string): SecretBox {
       const cipher = createCipheriv('aes-256-gcm', key, iv);
       cipher.setAAD(Buffer.from(context, 'utf8'));
       const body = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final(), cipher.getAuthTag()]);
-      return `${SEALED_PREFIX}${iv.toString('base64url')}.${body.toString('base64url')}`;
+      return `${SEALED_PREFIX}${iv.toString('base64url')}.${body.toString('base64url')}` as Sealed;
     },
     open(sealed, context) {
       const [iv, body] = sealed.startsWith(SEALED_PREFIX) ? sealed.slice(SEALED_PREFIX.length).split('.') : [];
       const ivBytes = iv ? fromBase64url(iv) : null;
       const bodyBytes = body ? fromBase64url(body) : null;
       if (!ivBytes || ivBytes.length !== 12 || !bodyBytes || bodyBytes.length < 16) {
-        throw new Error('Malformed sealed secret');
+        throw new SecretBoxError(`Malformed sealed secret (${context})`);
       }
       const decipher = createDecipheriv('aes-256-gcm', key, ivBytes);
       decipher.setAAD(Buffer.from(context, 'utf8'));
       decipher.setAuthTag(bodyBytes.subarray(bodyBytes.length - 16));
-      return Buffer.concat([decipher.update(bodyBytes.subarray(0, bodyBytes.length - 16)), decipher.final()]).toString('utf8');
+      try {
+        return Buffer.concat([decipher.update(bodyBytes.subarray(0, bodyBytes.length - 16)), decipher.final()]).toString('utf8');
+      } catch {
+        throw new SecretBoxError(`Sealed secret does not open (${context})`);
+      }
     },
   };
 }

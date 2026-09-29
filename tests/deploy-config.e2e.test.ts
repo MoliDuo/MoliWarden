@@ -51,16 +51,27 @@ test('unreachable database points at DATABASE_URL without leaking details', asyn
   assert.doesNotMatch(message, /secret-password|ECONNREFUSED/);
 });
 
+const JWT_SECRET = 'deploy-config-test-secret-0123456789abcdef';
+const ENCRYPTION_KEY = 'deploy-config-encryption-key-0123456789abcdef';
+
 test('missing JWT_SECRET is reported to the web vault and on sign-up', async () => {
-  await deploy({ DATABASE_URL: TEST_DATABASE_URL });
+  await deploy({ DATABASE_URL: TEST_DATABASE_URL, ENCRYPTION_KEY });
   const boot = await (await fetch(`${baseUrl}/api/web-bootstrap`)).json();
-  assert.equal(boot.jwtUnsafeReason, 'missing');
+  assert.deepEqual(boot.secretProblem, { name: 'JWT_SECRET', reason: 'missing' });
   const client = new Client(baseUrl);
   await assert.rejects(client.register('first@example.com'), /JWT_SECRET is not set/);
 });
 
+test('a short ENCRYPTION_KEY is reported to the web vault and on sign-up', async () => {
+  await deploy({ DATABASE_URL: TEST_DATABASE_URL, JWT_SECRET, ENCRYPTION_KEY: 'short' });
+  const boot = await (await fetch(`${baseUrl}/api/web-bootstrap`)).json();
+  assert.deepEqual(boot.secretProblem, { name: 'ENCRYPTION_KEY', reason: 'too_short' });
+  const client = new Client(baseUrl);
+  await assert.rejects(client.register('first@example.com'), /ENCRYPTION_KEY is not set or too weak/);
+});
+
 test('missing S3 settings are named before any upload starts', async () => {
-  await deploy({ DATABASE_URL: TEST_DATABASE_URL, JWT_SECRET: 'deploy-config-test-secret-0123456789abcdef' });
+  await deploy({ DATABASE_URL: TEST_DATABASE_URL, JWT_SECRET, ENCRYPTION_KEY });
   const client = new Client(baseUrl);
   const alice = await client.registerAndLogin('alice@example.com');
   const cipher = await alice.json('/api/ciphers', { method: 'POST', json: cipherPayload('no-s3') });
@@ -94,7 +105,8 @@ test('missing S3 settings are named before any upload starts', async () => {
 test('wrong S3 credentials surface the S3 error code, not "not configured"', async () => {
   await deploy({
     ...testServerEnv('mw-deploy-config'),
-    JWT_SECRET: 'deploy-config-test-secret-0123456789abcdef',
+    JWT_SECRET,
+    ENCRYPTION_KEY,
     S3_SECRET_ACCESS_KEY: 'definitely-wrong-secret',
   });
   const client = new Client(baseUrl);

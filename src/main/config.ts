@@ -5,9 +5,10 @@ import { LIMITS } from '../config/limits';
 // Vercel: the project's Environment Variables). Nothing else in src/ reads
 // process.env.
 //
-// Only a missing database is fatal. A missing or weak JWT_SECRET and missing
-// S3 settings are reported by the features that need them, so a half-set-up
-// deployment can still tell its operator what to fix.
+// Only a missing database is fatal. A missing or weak JWT_SECRET or
+// ENCRYPTION_KEY and missing S3 settings are reported by the features that
+// need them, so a half-set-up deployment can still tell its operator what
+// to fix.
 
 export type Source = Record<string, string | undefined>;
 
@@ -22,11 +23,17 @@ export interface S3Config {
 
 export type IconSource = 'favicon' | 'bitwarden' | 'off';
 
+export type SecretProblem = 'missing' | 'too_short';
+
 export interface Config {
   databaseUrl: string;
   databasePoolMax: number;
+  // Signs tokens.
   jwtSecret: string;
-  jwtSecretProblem: 'missing' | 'too_short' | null;
+  jwtSecretProblem: SecretProblem | null;
+  // Seals the secrets the server keeps. Changing it makes them unreadable.
+  encryptionKey: string;
+  encryptionKeyProblem: SecretProblem | null;
   s3: S3Config;
   // The largest attachment or Send file; Vercel Functions take bodies of up
   // to 4.5 MB.
@@ -57,6 +64,7 @@ const schema = z.object({
   NEON_DATABASE_URL: text,
   DATABASE_POOL_MAX: text.transform((value) => (value === undefined ? 5 : Number(value))).pipe(z.number().int().positive()),
   JWT_SECRET: text,
+  ENCRYPTION_KEY: text,
   S3_ENDPOINT: text,
   S3_BUCKET: text,
   S3_ACCESS_KEY_ID: text,
@@ -76,6 +84,16 @@ const schema = z.object({
   globalSettings__yubico__validationUrls: text,
 });
 
+const problemOf = (secret: string): SecretProblem | null =>
+  !secret ? 'missing' : secret.length < LIMITS.auth.secretMinLength ? 'too_short' : null;
+
+// The first secret that keeps the server from working, for the operator.
+export function secretProblem(config: Config): { name: 'JWT_SECRET' | 'ENCRYPTION_KEY'; reason: SecretProblem } | null {
+  if (config.jwtSecretProblem) return { name: 'JWT_SECRET', reason: config.jwtSecretProblem };
+  if (config.encryptionKeyProblem) return { name: 'ENCRYPTION_KEY', reason: config.encryptionKeyProblem };
+  return null;
+}
+
 export function readConfig(source: Source): Config {
   const parsed = schema.safeParse(source);
   if (!parsed.success) {
@@ -87,11 +105,14 @@ export function readConfig(source: Source): Config {
   if (!databaseUrl) throw new ConfigError('DATABASE_URL is not configured');
 
   const jwtSecret = env.JWT_SECRET ?? '';
+  const encryptionKey = env.ENCRYPTION_KEY ?? '';
   return {
     databaseUrl,
     databasePoolMax: env.DATABASE_POOL_MAX,
     jwtSecret,
-    jwtSecretProblem: !jwtSecret ? 'missing' : jwtSecret.length < LIMITS.auth.jwtSecretMinLength ? 'too_short' : null,
+    jwtSecretProblem: problemOf(jwtSecret),
+    encryptionKey,
+    encryptionKeyProblem: problemOf(encryptionKey),
     s3: {
       endpoint: env.S3_ENDPOINT,
       bucket: env.S3_BUCKET,

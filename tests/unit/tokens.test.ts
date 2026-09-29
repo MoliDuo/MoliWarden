@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { constantTimeEqual, createSecretBox } from '../../src/platform/crypto';
+import { constantTimeEqual, createSecretBox, SecretBoxError, type Sealed } from '../../src/platform/crypto';
 import { createTokenService } from '../../src/platform/tokens';
 
 const SECRET = 'unit-test-secret-unit-test-secret-0123456789';
@@ -66,10 +66,10 @@ test('sealed secrets open only with the same key and context', () => {
   assert.match(sealed, /^mw1\.[\w-]+\.[\w-]+$/);
   assert.notEqual(box.seal('JBSWY3DPEHPK3PXP', 'totp:user-1'), sealed);
   assert.equal(box.open(sealed, 'totp:user-1'), 'JBSWY3DPEHPK3PXP');
-  assert.throws(() => box.open(sealed, 'totp:user-2'));
-  assert.throws(() => createSecretBox('another-key-another-key-another-key-0123').open(sealed, 'totp:user-1'));
-  assert.throws(() => box.open(sealed.slice(0, -2), 'totp:user-1'));
-  assert.throws(() => box.open('plaintext', 'totp:user-1'));
+  assert.throws(() => box.open(sealed, 'totp:user-2'), SecretBoxError);
+  assert.throws(() => createSecretBox('another-key-another-key-another-key-0123').open(sealed, 'totp:user-1'), SecretBoxError);
+  assert.throws(() => box.open(sealed.slice(0, -2) as Sealed, 'totp:user-1'), SecretBoxError);
+  assert.throws(() => box.open('plaintext' as Sealed, 'totp:user-1'), SecretBoxError);
 });
 
 test('constant-time comparison', () => {

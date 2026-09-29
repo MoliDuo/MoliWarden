@@ -1,6 +1,6 @@
+import type { Sealed } from '../../platform/crypto';
 import type { Executor } from '../../platform/db';
 import { readSetting, writeSetting } from '../../platform/db/settings';
-import type { YubicoCredentials } from './yubico';
 
 // --- Providers ---------------------------------------------------------------
 
@@ -11,7 +11,7 @@ export const TOTP = 0;
 export const YUBIKEY = 3;
 
 export interface TotpData {
-  secret: string;
+  secret: Sealed;
 }
 
 export interface YubiKeyData {
@@ -146,13 +146,18 @@ export async function deleteRememberTokens(db: Executor, userId: string, deviceI
 // --- Yubico ------------------------------------------------------------------
 
 // The server's credentials for Yubico's OTP validation API.
-const YUBICO_CREDENTIALS = 'yubico.credentials';
+export const YUBICO_CREDENTIALS = 'yubico.credentials';
 
-export async function findYubicoCredentials(db: Executor): Promise<YubicoCredentials | null> {
-  const credentials = await readSetting<YubicoCredentials>(db, YUBICO_CREDENTIALS);
+export interface StoredYubicoCredentials {
+  clientId: string;
+  secretKey: Sealed;
+}
+
+export async function findYubicoCredentials(db: Executor): Promise<StoredYubicoCredentials | null> {
+  const credentials = await readSetting<StoredYubicoCredentials>(db, YUBICO_CREDENTIALS);
   return credentials?.clientId && credentials.secretKey ? credentials : null;
 }
 
-export async function saveYubicoCredentials(db: Executor, credentials: YubicoCredentials): Promise<void> {
+export async function saveYubicoCredentials(db: Executor, credentials: StoredYubicoCredentials): Promise<void> {
   await writeSetting(db, YUBICO_CREDENTIALS, { clientId: credentials.clientId, secretKey: credentials.secretKey });
 }
