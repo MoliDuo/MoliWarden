@@ -5,23 +5,6 @@ import type { ImportResultSummary } from '@/components/ImportPage';
 
 const SEND_KEY_SALT = 'bitwarden-send';
 const SEND_KEY_PURPOSE = 'send';
-const SIGNALR_RECORD_SEPARATOR = String.fromCharCode(0x1e);
-
-export interface WebVaultSignalRInvocation {
-  type?: number;
-  target?: string;
-  arguments?: Array<{
-    ContextId?: string | null;
-    Type?: number;
-    Payload?: {
-      UserId?: string;
-      Date?: string;
-      RevisionDate?: string;
-      [key: string]: unknown;
-    };
-  }>;
-}
-
 export function looksLikeCipherString(value: string): boolean {
   return /^\d+\.[A-Za-z0-9+/=]+\|[A-Za-z0-9+/=]+(?:\|[A-Za-z0-9+/=]+)?$/.test(String(value || '').trim());
 }
@@ -331,21 +314,6 @@ export function importCipherToDraft(cipher: Record<string, unknown>, folderId: s
 
 export function buildPublicSendUrl(origin: string, accessId: string, keyPart: string): string {
   return `${origin}/#/send/${accessId}/${keyPart}`;
-}
-
-export function parseSignalRTextFrames(raw: string): WebVaultSignalRInvocation[] {
-  return raw
-    .split(SIGNALR_RECORD_SEPARATOR)
-    .map((frame) => frame.trim())
-    .filter(Boolean)
-    .map((frame) => {
-      try {
-        return JSON.parse(frame) as WebVaultSignalRInvocation;
-      } catch {
-        return null;
-      }
-    })
-    .filter((frame): frame is WebVaultSignalRInvocation => !!frame);
 }
 
 export async function deriveSendKeyParts(sendKeyMaterial: Uint8Array): Promise<{ enc: Uint8Array; mac: Uint8Array }> {
