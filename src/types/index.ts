@@ -1,6 +1,7 @@
 // Runtime environment (built from process.env in src/platform/env.ts).
 export interface Env {
   DB: D1Database;
+  PUSH: import('../modules/push/service').PushService;
   BACKUP_TRANSFER_RUNNER: import('../platform/in-process-object').InProcessObjectNamespace;
   JWT_SECRET: string;
   // S3-compatible storage for attachments and Send files.
@@ -304,7 +305,6 @@ export interface Device {
   encryptedPrivateKey: string | null;
   pushUuid: string | null;
   pushToken: string | null;
-  devicePendingAuthRequest?: DevicePendingAuthRequest | null;
   lastSeenAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -347,65 +347,10 @@ export interface AccountPasskeyChallenge {
   createdAt: number;
 }
 
-export interface DevicePendingAuthRequest {
-  id: string;
-  creationDate: string;
-}
 
-export type AuthRequestType = 0 | 1 | 2;
 
-export interface AuthRequestRecord {
-  id: string;
-  userId: string;
-  organizationId: string | null;
-  type: AuthRequestType;
-  requestDeviceIdentifier: string;
-  requestDeviceType: number;
-  requestIpAddress: string | null;
-  requestCountryName: string | null;
-  responseDeviceIdentifier: string | null;
-  accessCode: string;
-  publicKey: string;
-  key: string | null;
-  masterPasswordHash: string | null;
-  approved: boolean | null;
-  creationDate: string;
-  responseDate: string | null;
-  authenticationDate: string | null;
-}
 
-export interface DeviceResponse {
-  id: string;
-  userId?: string | null;
-  name: string;
-  systemName?: string | null;
-  deviceNote?: string | null;
-  identifier: string;
-  type: number;
-  creationDate: string;
-  revisionDate: string;
-  lastActivityDate?: string | null;
-  lastSeenAt?: string | null;
-  hasStoredDevice?: boolean;
-  isTrusted: boolean;
-  encryptedUserKey: string | null;
-  encryptedPublicKey: string | null;
-  devicePendingAuthRequest: DevicePendingAuthRequest | null;
-  object: string;
-  [key: string]: any;
-}
 
-export interface ProtectedDeviceResponse {
-  id: string;
-  name: string;
-  identifier: string;
-  type: number;
-  creationDate: string;
-  encryptedUserKey: string | null;
-  encryptedPublicKey: string | null;
-  object: string;
-  [key: string]: any;
-}
 
 export interface RefreshTokenRecord {
   userId: string;
@@ -419,11 +364,6 @@ export interface RefreshTokenRecord {
   clientType: string | null;
 }
 
-export interface TrustedDeviceTokenSummary {
-  deviceIdentifier: string;
-  expiresAt: number;
-  tokenCount: number;
-}
 
 export enum SendType {
   Text = 0,

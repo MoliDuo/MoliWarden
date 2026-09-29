@@ -123,7 +123,8 @@ export async function revokeSession(db: Executor, token: string): Promise<void> 
   else if (row) await deleteRefreshToken(db, key);
 }
 
-// Ends every session of the user once their access tokens expire.
-export function endAllSessions(db: Executor, userId: string): Promise<void> {
-  return deleteUserRefreshTokens(db, userId);
+// Ends every session of the user, or of one of their devices, once the
+// access tokens expire. Returns how many sessions there were.
+export function endAllSessions(db: Executor, userId: string, deviceIdentifier?: string): Promise<number> {
+  return deleteUserRefreshTokens(db, userId, deviceIdentifier);
 }

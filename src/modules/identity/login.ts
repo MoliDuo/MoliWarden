@@ -1,14 +1,13 @@
 import { LIMITS } from '../../config/limits';
 import { IdentityError, invalidGrant } from '../../http/errors';
 import type { Deps } from '../../main/deps';
-import { registerMobilePushDevice } from '../../services/push-relay';
 import type { Device, User, WebAuthnPrfDecryptionOption } from '../../types';
 import { buildAccountKeys, buildUserDecryptionOptions } from '../accounts/decryption';
 import { recordAudit, requestMetadata } from '../audit/service';
 import { signAccessToken } from '../auth/access-token';
 import { lockedFor, minutes, recordFailure } from '../auth/lockout';
 import { startSession, type ClientType } from '../auth/sessions';
-import { saveSignedInDevice, setDevicePushToken } from '../devices/repo';
+import { saveDevice, setDevicePushToken } from '../devices/repo';
 import { masterPasswordPolicy } from '../two-factor/login';
 import type { TokenForm } from './schemas';
 import { isWebSession } from './web-session';
@@ -127,15 +126,8 @@ export function tokenBody(deps: Deps, user: User, device: Device | null, extras:
 // to wake them up for sync. Registering again on every login lets a failed
 // registration heal.
 async function savePushToken(deps: Deps, user: User, device: Device, pushToken: string): Promise<void> {
-  await setDevicePushToken(deps.db, user.id, device.deviceIdentifier, pushToken);
-  if (!device.pushUuid) return;
-  await registerMobilePushDevice(deps.legacyEnv, {
-    userId: user.id,
-    deviceIdentifier: device.deviceIdentifier,
-    type: device.type,
-    pushUuid: device.pushUuid,
-    pushToken,
-  });
+  const saved = await setDevicePushToken(deps.db, user.id, device.deviceIdentifier, pushToken);
+  if (saved?.pushUuid) deps.push.register({ userId: user.id, identifier: saved.deviceIdentifier, type: saved.type, pushUuid: saved.pushUuid, pushToken });
 }
 
 export interface Login {
@@ -152,7 +144,7 @@ export interface Login {
 export async function issueLogin(deps: Deps, request: Request, login: Login): Promise<Tokens> {
   const { user, device: signingIn } = login;
   const device = signingIn.identifier
-    ? await saveSignedInDevice(deps.db, user.id, { identifier: signingIn.identifier, name: signingIn.name, type: signingIn.type })
+    ? await saveDevice(deps.db, user.id, { identifier: signingIn.identifier, name: signingIn.name, type: signingIn.type })
     : null;
   if (device && signingIn.pushToken) await savePushToken(deps, user, device, signingIn.pushToken);
 

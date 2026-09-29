@@ -31,6 +31,8 @@ export interface Config {
   maxUploadBytes?: string;
   showPasswordHint: boolean;
   iconSource: IconSource;
+  // Mobile apps are woken up through Bitwarden's push relay unless this is set.
+  pushRelayDisabled: boolean;
   cronSecret?: string;
   webauthn: { rpId?: string; rpName?: string; allowedOrigins?: string };
   yubicoValidationUrls?: string;
@@ -59,6 +61,7 @@ const schema = z.object({
   MAX_UPLOAD_BYTES: text,
   SHOW_PASSWORD_HINT: flag,
   ICON_SOURCE: z.enum(['favicon', 'bitwarden', 'off']).default('favicon'),
+  PUSH_RELAY_DISABLED: flag,
   CRON_SECRET: text,
   WEBAUTHN_RP_ID: text,
   WEBAUTHN_RP_NAME: text,
@@ -94,6 +97,7 @@ export function readConfig(source: Source): Config {
     maxUploadBytes: env.MAX_UPLOAD_BYTES,
     showPasswordHint: env.SHOW_PASSWORD_HINT,
     iconSource: env.ICON_SOURCE,
+    pushRelayDisabled: env.PUSH_RELAY_DISABLED,
     cronSecret: env.CRON_SECRET,
     webauthn: { rpId: env.WEBAUTHN_RP_ID, rpName: env.WEBAUTHN_RP_NAME, allowedOrigins: env.WEBAUTHN_ALLOWED_ORIGINS },
     yubicoValidationUrls: env.YUBICO_VALIDATION_URLS ?? env.globalSettings__yubico__validationUrls,

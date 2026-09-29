@@ -38,8 +38,48 @@ export async function hasRememberToken(
   return !!row;
 }
 
-export async function deleteRememberTokens(db: Executor, userId: string): Promise<void> {
-  await db.deleteFrom('trusted_two_factor_device_tokens').where('user_id', '=', userId).execute();
+// The devices that currently skip two-step login, latest expiry first.
+export async function listRememberedDevices(
+  db: Executor,
+  userId: string,
+  now: number,
+): Promise<Array<{ identifier: string; expiresAt: number; tokenCount: number }>> {
+  const rows = await db
+    .selectFrom('trusted_two_factor_device_tokens')
+    .select((eb) => ['device_identifier', eb.fn.max('expires_at').as('expires_at'), eb.fn.countAll<string>().as('token_count')])
+    .where('user_id', '=', userId)
+    .where('expires_at', '>=', now)
+    .groupBy('device_identifier')
+    .orderBy('expires_at', 'desc')
+    .execute();
+  return rows.map((row) => ({ identifier: row.device_identifier, expiresAt: Number(row.expires_at), tokenCount: Number(row.token_count) }));
+}
+
+// Moves the expiry of a device's unexpired tokens. Returns how many there were.
+export async function extendRememberTokens(
+  db: Executor,
+  userId: string,
+  deviceIdentifier: string,
+  expiresAt: number,
+  now: number,
+): Promise<number> {
+  const result = await db
+    .updateTable('trusted_two_factor_device_tokens')
+    .set({ expires_at: expiresAt })
+    .where('user_id', '=', userId)
+    .where('device_identifier', '=', deviceIdentifier)
+    .where('expires_at', '>=', now)
+    .executeTakeFirst();
+  return Number(result.numUpdatedRows);
+}
+
+// Forgets the tokens of the given devices, or of all the user's devices.
+export async function deleteRememberTokens(db: Executor, userId: string, deviceIdentifiers?: string[]): Promise<number> {
+  if (deviceIdentifiers && !deviceIdentifiers.length) return 0;
+  let query = db.deleteFrom('trusted_two_factor_device_tokens').where('user_id', '=', userId);
+  if (deviceIdentifiers) query = query.where('device_identifier', 'in', deviceIdentifiers);
+  const result = await query.executeTakeFirst();
+  return Number(result.numDeletedRows);
 }
 
 // Records an authenticator time step as used. False if it was used before.

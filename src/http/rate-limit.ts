@@ -19,6 +19,8 @@ export const RATE_POLICIES = {
   'refresh-session': { limit: 30, windowSeconds: 60 },
   refresh: { limit: 300, windowSeconds: 60 },
   register: { limit: 5, windowSeconds: 60 },
+  // Login requests from a new device, per address, per email and per device.
+  'auth-request': { limit: 5, windowSeconds: 60 },
   // Password hints, which tell something about a password to whoever knows the email.
   'password-hint': { limit: 1, windowSeconds: 60 },
   'password-hint-hourly': { limit: 3, windowSeconds: 3600 },

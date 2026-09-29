@@ -1,5 +1,6 @@
 import type pg from 'pg';
 import type { Config } from '../main/config';
+import type { PushService } from '../modules/push/service';
 import type { Env } from '../types';
 import { BackupTransferRunner } from '../durable/backup-transfer-runner';
 import { createInProcessNamespace } from './in-process-object';
@@ -7,10 +8,11 @@ import { PgD1Database } from './pg-d1';
 
 // The Env object the handlers that have not been ported yet expect, built
 // from the parsed configuration.
-export function createLegacyEnv(config: Config, pool: pg.Pool): Env {
+export function createLegacyEnv(config: Config, pool: pg.Pool, push: PushService): Env {
   const flag = (value: boolean) => (value ? '1' : undefined);
   const env: Env = {
     DB: new PgD1Database(pool),
+    PUSH: push,
     BACKUP_TRANSFER_RUNNER: createInProcessNamespace(
       () => env,
       (state, currentEnv) => new BackupTransferRunner(state, currentEnv)

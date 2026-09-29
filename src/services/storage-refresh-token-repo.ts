@@ -147,11 +147,3 @@ export async function deleteRefreshTokensByUserId(db: D1Database, userId: string
   const result = await db.prepare('DELETE FROM refresh_tokens WHERE user_id = ?').bind(userId).run();
   return Number(result.meta.changes ?? 0);
 }
-
-export async function deleteRefreshTokensByDevice(db: D1Database, userId: string, deviceIdentifier: string): Promise<number> {
-  const result = await db
-    .prepare('DELETE FROM refresh_tokens WHERE user_id = ? AND device_identifier = ?')
-    .bind(userId, deviceIdentifier)
-    .run();
-  return Number(result.meta.changes ?? 0);
-}

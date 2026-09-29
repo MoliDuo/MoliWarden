@@ -8,7 +8,7 @@ import { isEncString } from '../../platform/enc-string';
 import type { User } from '../../types';
 import { loadProfileOrganizations } from '../../utils/profile-response';
 import { recordAudit, requestMetadata } from '../audit/service';
-import { hashMasterPassword, verifyMasterPassword } from '../auth/password';
+import { hashMasterPassword, requireMasterPassword } from '../auth/password';
 import { endAllSessions } from '../auth/sessions';
 import { masterPasswordPolicy } from '../two-factor/login';
 import { factorsOf, hasSecondFactor } from '../two-factor/service';
@@ -46,12 +46,6 @@ function kdfProblem(input: Pick<RegisterInput, 'kdf' | 'kdfIterations' | 'kdfMem
   if (memory != null && memory < 16) return 'Argon2id memory must be at least 16 MiB';
   if (parallelism != null && parallelism < 1) return 'Argon2id parallelism must be at least 1';
   return null;
-}
-
-// Settings changes are confirmed with the master password.
-async function requirePassword(user: User, secret: string | null | undefined): Promise<void> {
-  if (!secret?.trim()) throw badRequest('masterPasswordHash is required');
-  if (!(await verifyMasterPassword(user, secret))) throw badRequest('Invalid password');
 }
 
 function audit(deps: Deps, request: Request, user: User, action: string, level: 'info' | 'security' = 'security', metadata = {}) {
@@ -185,7 +179,7 @@ export async function setKeys(
   user: User,
   input: { masterPasswordHash: string; key?: string; encryptedPrivateKey?: string; publicKey?: string },
 ) {
-  await requirePassword(user, input.masterPasswordHash);
+  await requireMasterPassword(user, input.masterPasswordHash);
   const changes = {
     ...(input.key ? { key: input.key } : {}),
     ...(input.encryptedPrivateKey ? { privateKey: input.encryptedPrivateKey } : {}),
@@ -226,7 +220,7 @@ function newCredentials(user: User, input: PasswordInput): { hash: string; key: 
 
 // Signs the user out everywhere: every session was opened with the old password.
 export async function changePassword(deps: Deps, request: Request, user: User, input: PasswordInput): Promise<void> {
-  await requirePassword(user, input.masterPasswordHash);
+  await requireMasterPassword(user, input.masterPasswordHash);
   const next = newCredentials(user, input);
   const masterPasswordHash = await hashMasterPassword(next.hash, user.email);
   await deps.db.transaction().execute(async (tx) => {
@@ -242,7 +236,7 @@ export async function changePassword(deps: Deps, request: Request, user: User, i
 }
 
 export async function verifyPassword(user: User, secret: string) {
-  await requirePassword(user, secret);
+  await requireMasterPassword(user, secret);
   return masterPasswordPolicy();
 }
 
@@ -254,7 +248,7 @@ export async function setUserKeyId(deps: Deps, user: User, keyId: string): Promi
 
 // The personal API key is shown only after the master password is confirmed.
 export async function apiKey(deps: Deps, request: Request, user: User, secret: string, rotate: boolean) {
-  await requirePassword(user, secret);
+  await requireMasterPassword(user, secret);
   // Older servers stored a hash, which cannot be shown.
   if (!rotate && user.apiKey?.startsWith('sha256:')) {
     throw conflict('This API key was created by an older server version and cannot be displayed. Rotate it to get a new one.');

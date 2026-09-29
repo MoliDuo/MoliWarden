@@ -67,9 +67,6 @@
     // Coarser IP budget; the per-session budget above remains the primary guard.
     // 更宽松的 IP 总预算；主要保护仍由每个 refresh session 的预算承担。
     refreshTokenRequestsPerIpMinute: 300,
-    // Passwordless/auth-request creation budget per IP/email/device per minute.
-    // 免密/设备审批请求创建接口每 IP/邮箱/设备每分钟配额。
-    authRequestRequestsPerMinute: 5,
     // Fixed window size for API rate limiting in seconds.
     // API 限流固定窗口大小（秒）。
     apiWindowSeconds: 60,

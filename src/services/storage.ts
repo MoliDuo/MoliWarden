@@ -1,7 +1,5 @@
-import { User, Cipher, Folder, Attachment, Device, Invite, AuditLog, Send, TrustedDeviceTokenSummary, RefreshTokenRecord, CustomEquivalentDomain, AccountPasskeyChallenge, AccountPasskeyChallengeScope, AccountPasskeyCredential, AuthRequestRecord } from '../types';
+import { User, Cipher, Folder, Attachment, Device, Invite, AuditLog, Send, RefreshTokenRecord, CustomEquivalentDomain, AccountPasskeyChallenge, AccountPasskeyChallengeScope, AccountPasskeyCredential } from '../types';
 import { LIMITS } from '../config/limits';
-import { ensurePushInstallationCredentials } from './push-relay';
-import { runInBackground } from '../platform/background';
 import { ensureStorageSchema, REQUIRED_SCHEMA_TABLE_NAMES } from './storage-schema';
 import {
   getConfigValue as getStoredConfigValue,
@@ -92,46 +90,19 @@ import {
   bindRefreshTokenDeviceStamp as bindStoredRefreshTokenDeviceStamp,
   bindRefreshTokenSecurityStamp as bindStoredRefreshTokenSecurityStamp,
   deleteRefreshToken as deleteStoredRefreshToken,
-  deleteRefreshTokensByDevice as deleteStoredRefreshTokensByDevice,
   deleteRefreshTokensByUserId as deleteStoredRefreshTokensByUserId,
   extendRefreshTokenExpiry as extendStoredRefreshTokenExpiry,
   getRefreshTokenRecord as findStoredRefreshTokenRecord,
   saveRefreshToken as saveStoredRefreshToken,
 } from './storage-refresh-token-repo';
 import {
-  deleteDevice as deleteStoredDevice,
-  deleteDevicesByUserId as deleteStoredDevicesByUserId,
-  clearDevicePushToken as clearStoredDevicePushToken,
-  clearDeviceKeys as clearStoredDeviceKeys,
-  deleteTrustedTwoFactorTokensByDevice as deleteStoredTrustedTokensByDevice,
-  deleteTrustedTwoFactorTokensByUserId as deleteStoredTrustedTokensByUserId,
   getDevice as findStoredDevice,
   getDevicePushUuid as findStoredDevicePushUuid,
-  getDevicesByUserId as listStoredDevicesByUserId,
-  getTrustedDeviceTokenSummariesByUserId as listStoredTrustedTokenSummaries,
   getTrustedTwoFactorDeviceTokenUserId as findStoredTrustedTokenUserId,
-  isKnownDevice as getKnownStoredDevice,
-  isKnownDeviceByEmail as getKnownStoredDeviceByEmail,
   saveTrustedTwoFactorDeviceToken as saveStoredTrustedDeviceToken,
   rotateDeviceSessionStamp as rotateStoredDeviceSessionStamp,
-  touchDeviceLastSeen as touchStoredDeviceLastSeen,
-  upsertDevice as saveStoredDevice,
-  updateDeviceName as updateStoredDeviceName,
-  updateDeviceKeys as updateStoredDeviceKeys,
-  updateDevicePushToken as updateStoredDevicePushToken,
-  updateTrustedTwoFactorTokensExpiryByDevice as updateStoredTrustedTokensExpiryByDevice,
   userHasPushDevice as getUserHasPushDevice,
 } from './storage-device-repo';
-import {
-  createAuthRequest as createStoredAuthRequest,
-  getAuthRequestById as findStoredAuthRequestById,
-  getAuthRequestByIdForUser as findStoredAuthRequestByIdForUser,
-  listAuthRequestsByUserId as listStoredAuthRequestsByUserId,
-  listPendingAuthRequestsByUserId as listStoredPendingAuthRequestsByUserId,
-  markAuthRequestAuthenticated as markStoredAuthRequestAuthenticated,
-  pruneExpiredAuthRequests as pruneStoredExpiredAuthRequests,
-  updateAuthRequestResponse as updateStoredAuthRequestResponse,
-} from './storage-auth-request-repo';
 import {
   consumeAttachmentDownloadToken as consumeStoredAttachmentDownloadToken,
 } from './storage-attachment-token-repo';
@@ -260,9 +231,6 @@ export class StorageService {
       await ensureStorageSchema(this.db);
       await saveConfigValue(this.db, STORAGE_SCHEMA_VERSION_KEY, STORAGE_SCHEMA_VERSION);
     }
-    // Registering with the Bitwarden push relay is a network call; do not
-    // block the first request of a cold start on it.
-    runInBackground(ensurePushInstallationCredentials(this.db));
   }
 
   // --- Config / setup ---
@@ -724,10 +692,6 @@ export class StorageService {
     return deleteStoredRefreshTokensByUserId(this.db, userId);
   }
 
-  async deleteRefreshTokensByDevice(userId: string, deviceIdentifier: string): Promise<number> {
-    return deleteStoredRefreshTokensByDevice(this.db, userId, deviceIdentifier);
-  }
-
   async extendRefreshTokenExpiry(token: string, requestedExpiresAtMs: number, nowMs: number = Date.now()): Promise<boolean> {
     return extendStoredRefreshTokenExpiry(this.db, this.refreshTokenKey.bind(this), token, requestedExpiresAtMs, nowMs);
   }
@@ -747,72 +711,12 @@ export class StorageService {
 
   // --- Devices ---
 
-  async upsertDevice(
-    userId: string,
-    deviceIdentifier: string,
-    name: string,
-    type: number,
-    sessionStamp?: string,
-    keys?: {
-      encryptedUserKey?: string | null;
-      encryptedPublicKey?: string | null;
-      encryptedPrivateKey?: string | null;
-    }
-  ): Promise<void> {
-    await saveStoredDevice(this.db, this.getDevice.bind(this), userId, deviceIdentifier, name, type, sessionStamp, keys);
-  }
-
-  async isKnownDevice(userId: string, deviceIdentifier: string): Promise<boolean> {
-    return getKnownStoredDevice(this.db, userId, deviceIdentifier);
-  }
-
-  async isKnownDeviceByEmail(email: string, deviceIdentifier: string): Promise<boolean> {
-    return getKnownStoredDeviceByEmail(this.getUser.bind(this), this.isKnownDevice.bind(this), email, deviceIdentifier);
-  }
-
-  async getDevicesByUserId(userId: string): Promise<Device[]> {
-    return listStoredDevicesByUserId(this.db, userId);
-  }
-
   async getDevice(userId: string, deviceIdentifier: string): Promise<Device | null> {
     return findStoredDevice(this.db, userId, deviceIdentifier);
   }
 
   async rotateDeviceSessionStamp(userId: string, deviceIdentifier: string, sessionStamp: string): Promise<boolean> {
     return rotateStoredDeviceSessionStamp(this.db, userId, deviceIdentifier, sessionStamp);
-  }
-
-  async updateDeviceKeys(
-    userId: string,
-    deviceIdentifier: string,
-    keys: {
-      encryptedUserKey?: string | null;
-      encryptedPublicKey?: string | null;
-      encryptedPrivateKey?: string | null;
-    }
-  ): Promise<boolean> {
-    return updateStoredDeviceKeys(this.db, userId, deviceIdentifier, keys);
-  }
-
-  async updateDeviceName(userId: string, deviceIdentifier: string, name: string): Promise<boolean> {
-    return updateStoredDeviceName(this.db, userId, deviceIdentifier, name);
-  }
-
-  async touchDeviceLastSeen(userId: string, deviceIdentifier: string): Promise<boolean> {
-    return touchStoredDeviceLastSeen(this.db, userId, deviceIdentifier);
-  }
-
-  async updateDevicePushToken(
-    userId: string,
-    deviceIdentifier: string,
-    pushUuid: string,
-    pushToken: string
-  ): Promise<boolean> {
-    return updateStoredDevicePushToken(this.db, userId, deviceIdentifier, pushUuid, pushToken);
-  }
-
-  async clearDevicePushToken(userId: string, deviceIdentifier: string): Promise<{ pushUuid: string | null } | null> {
-    return clearStoredDevicePushToken(this.db, userId, deviceIdentifier);
   }
 
   async getDevicePushUuid(userId: string, deviceIdentifier: string): Promise<string | null> {
@@ -823,76 +727,7 @@ export class StorageService {
     return getUserHasPushDevice(this.db, userId);
   }
 
-  async clearDeviceKeys(userId: string, deviceIdentifiers: string[]): Promise<number> {
-    return clearStoredDeviceKeys(this.db, userId, deviceIdentifiers);
-  }
-
-  async deleteDevice(userId: string, deviceIdentifier: string): Promise<boolean> {
-    return deleteStoredDevice(this.db, userId, deviceIdentifier);
-  }
-
-  async deleteDevicesByUserId(userId: string): Promise<number> {
-    return deleteStoredDevicesByUserId(this.db, userId);
-  }
-
   // --- Auth requests / Login with device ---
-
-  async createAuthRequest(request: AuthRequestRecord): Promise<void> {
-    await createStoredAuthRequest(this.db, request);
-  }
-
-  async getAuthRequestById(id: string): Promise<AuthRequestRecord | null> {
-    return findStoredAuthRequestById(this.db, id);
-  }
-
-  async getAuthRequestByIdForUser(id: string, userId: string): Promise<AuthRequestRecord | null> {
-    return findStoredAuthRequestByIdForUser(this.db, id, userId);
-  }
-
-  async listAuthRequestsByUserId(userId: string): Promise<AuthRequestRecord[]> {
-    return listStoredAuthRequestsByUserId(this.db, userId);
-  }
-
-  async listPendingAuthRequestsByUserId(userId: string): Promise<AuthRequestRecord[]> {
-    return listStoredPendingAuthRequestsByUserId(this.db, userId);
-  }
-
-  async updateAuthRequestResponse(
-    id: string,
-    userId: string,
-    update: {
-      approved: boolean;
-      responseDeviceIdentifier: string;
-      key?: string | null;
-      masterPasswordHash?: string | null;
-    }
-  ): Promise<boolean> {
-    return updateStoredAuthRequestResponse(this.db, id, userId, update);
-  }
-
-  async markAuthRequestAuthenticated(id: string): Promise<boolean> {
-    return markStoredAuthRequestAuthenticated(this.db, id);
-  }
-
-  async pruneExpiredAuthRequests(): Promise<number> {
-    return pruneStoredExpiredAuthRequests(this.db);
-  }
-
-  async getTrustedDeviceTokenSummariesByUserId(userId: string): Promise<TrustedDeviceTokenSummary[]> {
-    return listStoredTrustedTokenSummaries(this.db, userId);
-  }
-
-  async deleteTrustedTwoFactorTokensByDevice(userId: string, deviceIdentifier: string): Promise<number> {
-    return deleteStoredTrustedTokensByDevice(this.db, userId, deviceIdentifier);
-  }
-
-  async deleteTrustedTwoFactorTokensByUserId(userId: string): Promise<number> {
-    return deleteStoredTrustedTokensByUserId(this.db, userId);
-  }
-
-  async updateTrustedTwoFactorTokensExpiryByDevice(userId: string, deviceIdentifier: string, expiresAtMs: number): Promise<number> {
-    return updateStoredTrustedTokensExpiryByDevice(this.db, userId, deviceIdentifier, expiresAtMs);
-  }
 
   // --- Trusted 2FA remember tokens (device-bound) ---
 

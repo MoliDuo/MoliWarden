@@ -1,7 +1,8 @@
 import { pbkdf2 } from 'node:crypto';
 import { promisify } from 'node:util';
-import type { User } from '../../types';
+import { badRequest } from '../../http/errors';
 import { constantTimeEqual } from '../../platform/crypto';
+import type { User } from '../../types';
 
 // Clients never send the master password, only a hash of it (600k PBKDF2
 // rounds on the client). The server hashes that again before storing it, so
@@ -24,4 +25,13 @@ export async function verifyMasterPassword(
   const given = clientHash?.trim();
   if (!given || !user.masterPasswordHash.startsWith(PREFIX)) return false;
   return constantTimeEqual(await hashMasterPassword(given, user.email), user.masterPasswordHash);
+}
+
+// Settings changes are confirmed with the master password.
+export async function requireMasterPassword(
+  user: Pick<User, 'email' | 'masterPasswordHash'>,
+  clientHash: string | null | undefined,
+): Promise<void> {
+  if (!clientHash?.trim()) throw badRequest('masterPasswordHash is required');
+  if (!(await verifyMasterPassword(user, clientHash))) throw badRequest('Invalid password');
 }

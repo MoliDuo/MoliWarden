@@ -6,11 +6,6 @@ import {
   handleAccessSendFileV2,
   handleDownloadSendFile,
 } from './handlers/sends';
-import { handleKnownDevice } from './handlers/devices';
-import {
-  handleCreateAuthRequest,
-  handleGetAuthRequestResponse,
-} from './handlers/auth-requests';
 import { handlePublicDownloadAttachment } from './handlers/attachments';
 import { handlePublicUploadAttachment } from './handlers/attachments';
 import {
@@ -76,25 +71,6 @@ export async function handlePublicRoute(
   const sendDownloadMatch = path.match(/^\/api\/sends\/([^/]+)\/([^/]+)\/?$/i);
   if (sendDownloadMatch && method === 'GET') {
     return handleDownloadSendFile(request, env, sendDownloadMatch[1], sendDownloadMatch[2]);
-  }
-
-  if ((path === '/api/auth-requests' || path === '/api/auth-requests/' || path === '/auth-requests' || path === '/auth-requests/') && method === 'POST') {
-    const blocked = await enforcePublicRateLimit('public-sensitive', LIMITS.rateLimit.sensitivePublicRequestsPerMinute);
-    if (blocked) return blocked;
-    return handleCreateAuthRequest(request, env);
-  }
-
-  const authRequestResponseMatch = path.match(/^\/(?:api\/)?auth-requests\/([a-f0-9-]+)\/response$/i);
-  if (authRequestResponseMatch && method === 'GET') {
-    const blocked = await enforcePublicRateLimit('public-sensitive', LIMITS.rateLimit.sensitivePublicRequestsPerMinute);
-    if (blocked) return blocked;
-    return handleGetAuthRequestResponse(request, env, authRequestResponseMatch[1]);
-  }
-
-  if (path === '/api/devices/knowndevice' && method === 'GET') {
-    const blocked = await enforcePublicRateLimit();
-    if (blocked) return jsonResponse(false);
-    return handleKnownDevice(request, env);
   }
 
   if (path === '/notifications/hub/negotiate' && method === 'POST') {

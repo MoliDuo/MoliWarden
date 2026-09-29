@@ -5,6 +5,9 @@ import { runScheduledBackupIfDue } from '../handlers/backup';
 import { HttpError, IdentityError, misconfigured, payloadTooLarge, unauthorized } from '../http/errors';
 import { preflight, responseHeaders } from '../http/headers';
 import { accountRoutes } from '../modules/accounts/routes';
+import { deleteExpiredAuthRequests } from '../modules/auth-requests/repo';
+import { authRequestRoutes } from '../modules/auth-requests/routes';
+import { deviceRoutes } from '../modules/devices/routes';
 import { iconRoutes } from '../modules/icons/routes';
 import { identityRoutes } from '../modules/identity/routes';
 import { metaRoutes } from '../modules/meta/routes';
@@ -86,7 +89,7 @@ export function createApp(deps: Deps): Hono {
     const secret = deps.config.cronSecret;
     const provided = (c.req.header('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
     if (!secret || !provided || !constantTimeEqual(secret, provided)) throw unauthorized();
-    await runScheduledBackupIfDue(deps.legacyEnv);
+    await Promise.all([runScheduledBackupIfDue(deps.legacyEnv), deleteExpiredAuthRequests(deps.db)]);
     return c.json({ ok: true });
   });
 
@@ -96,6 +99,8 @@ export function createApp(deps: Deps): Hono {
   app.route('/', twoFactorRoutes(deps));
   app.route('/', passkeyRoutes(deps));
   app.route('/', accountRoutes(deps));
+  app.route('/', deviceRoutes(deps));
+  app.route('/', authRequestRoutes(deps));
 
   // Routes not yet ported to src/modules.
   app.all('*', (c) => handleLegacyRequest(c.req.raw, deps.legacyEnv));

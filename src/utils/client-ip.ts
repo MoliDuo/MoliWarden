@@ -1,1 +1,1 @@
-export { clientIp as getClientIp, clientCountry as getClientCountry } from '../http/client';
+export { clientIp as getClientIp } from '../http/client';

@@ -49,16 +49,8 @@ import {
   handleUpdateAttachmentMetadata,
   handleDeleteAttachment,
 } from './handlers/attachments';
-import { handleAuthenticatedDeviceRoute } from './router-devices';
 import { handleAdminRoute } from './router-admin';
 import { handleGetDomains, handleUpdateDomains } from './handlers/domains';
-import {
-  handleCreateAdminAuthRequest,
-  handleGetAuthRequest,
-  handleListAuthRequests,
-  handleListPendingAuthRequests,
-  handleUpdateAuthRequest,
-} from './handlers/auth-requests';
 
 import {
   handleAcceptInvitation,
@@ -360,28 +352,6 @@ export async function handleAuthenticatedRoute(
   const folderDeleteMatch = path.match(/^\/api\/folders\/([a-f0-9-]+)\/delete$/i);
   if (folderDeleteMatch && method === 'POST') return handleDeleteFolder(request, env, userId, folderDeleteMatch[1]);
 
-  if (path === '/api/auth-requests' || path === '/api/auth-requests/' || path === '/auth-requests' || path === '/auth-requests/') {
-    if (method === 'GET') return handleListAuthRequests(request, env, userId);
-    return errorResponse('Method not allowed', 405);
-  }
-
-  if (path === '/api/auth-requests/pending' || path === '/auth-requests/pending') {
-    if (method === 'GET') return handleListPendingAuthRequests(request, env, userId);
-    return errorResponse('Method not allowed', 405);
-  }
-
-  if (path === '/api/auth-requests/admin-request' || path === '/auth-requests/admin-request') {
-    if (method === 'POST') return handleCreateAdminAuthRequest(request, env, userId, currentUser.email);
-    return errorResponse('Method not allowed', 405);
-  }
-
-  const authRequestMatch = path.match(/^\/(?:api\/)?auth-requests\/([a-f0-9-]+)$/i);
-  if (authRequestMatch) {
-    if (method === 'GET') return handleGetAuthRequest(request, env, userId, authRequestMatch[1]);
-    if (method === 'PUT') return handleUpdateAuthRequest(request, env, userId, authRequestMatch[1]);
-    return errorResponse('Method not allowed', 405);
-  }
-
   if (path === '/api/collections' && method === 'GET') {
     return handleListMyCollections(env, currentUser);
   }
@@ -453,9 +423,6 @@ export async function handleAuthenticatedRoute(
     if (method === 'PUT' || method === 'POST') return handleUpdateDomains(request, env, userId);
     return null;
   }
-
-  const authenticatedDeviceResponse = await handleAuthenticatedDeviceRoute(request, env, userId, path, method);
-  if (authenticatedDeviceResponse) return authenticatedDeviceResponse;
 
   const adminResponse = await handleAdminRoute(request, env, currentUser, path, method);
   if (adminResponse) return adminResponse;

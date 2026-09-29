@@ -62,6 +62,10 @@ export async function deleteRefreshTokenFamily(db: Executor, familyId: string): 
   await db.deleteFrom('refresh_tokens').where('family_id', '=', familyId).execute();
 }
 
-export async function deleteUserRefreshTokens(db: Executor, userId: string): Promise<void> {
-  await db.deleteFrom('refresh_tokens').where('user_id', '=', userId).execute();
+// All the user's tokens, or those of one device. Returns how many there were.
+export async function deleteUserRefreshTokens(db: Executor, userId: string, deviceIdentifier?: string): Promise<number> {
+  let query = db.deleteFrom('refresh_tokens').where('user_id', '=', userId);
+  if (deviceIdentifier !== undefined) query = query.where('device_identifier', '=', deviceIdentifier);
+  const result = await query.executeTakeFirst();
+  return Number(result.numDeletedRows);
 }
