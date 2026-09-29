@@ -5,7 +5,7 @@ import type { Device, User, WebAuthnPrfDecryptionOption } from '../../types';
 import { buildAccountKeys, buildUserDecryptionOptions } from '../accounts/decryption';
 import { recordAudit, requestMetadata } from '../audit/service';
 import { signAccessToken } from '../auth/access-token';
-import { lockedFor, minutes, recordFailure } from '../auth/lockout';
+import { clearFailures, lockedFor, minutes, recordFailure, type Lockout } from '../auth/lockout';
 import { startSession, type ClientType } from '../auth/sessions';
 import { saveDevice, setDevicePushToken } from '../devices/repo';
 import { masterPasswordPolicy } from '../two-factor/login';
@@ -46,17 +46,24 @@ export function clientTypeOf(request: Request, clientId: string): ClientType {
 
 // --- Guessing ---------------------------------------------------------------
 
-export async function assertNotLockedOut(deps: Deps, key: string): Promise<void> {
-  const locked = await lockedFor(deps.limiter, key);
-  if (locked !== null) throw lockedOut(`Too many failed login attempts. Try again in ${minutes(locked)} minutes.`);
+export async function assertNotLockedOut(deps: Deps, ...lockouts: Lockout[]): Promise<void> {
+  for (const lockout of lockouts) {
+    const locked = await lockedFor(deps.limiter, lockout);
+    if (locked !== null) throw lockedOut(`Too many failed login attempts. Try again in ${minutes(locked)} minutes.`);
+  }
 }
 
-// Counts a failed attempt and ends the request with `error`, or with the
-// lockout it caused.
-export async function failAttempt(deps: Deps, key: string, error: IdentityError): Promise<never> {
-  const locked = await recordFailure(deps.limiter, key);
-  if (locked !== null) throw lockedOut(`Too many failed login attempts. Account locked for ${minutes(locked)} minutes.`);
+// Counts a failed attempt against each lockout and ends the request with
+// `error`, or with the lockout it caused.
+export async function failAttempt(deps: Deps, lockouts: Lockout[], error: IdentityError): Promise<never> {
+  const locked = await Promise.all(lockouts.map((lockout) => recordFailure(deps.limiter, lockout)));
+  const longest = Math.max(...locked.map((seconds) => seconds ?? 0));
+  if (longest > 0) throw lockedOut(`Too many failed login attempts. Account locked for ${minutes(longest)} minutes.`);
   throw error;
+}
+
+export async function clearAttempts(deps: Deps, lockouts: Lockout[]): Promise<void> {
+  await Promise.all(lockouts.map((lockout) => clearFailures(deps.limiter, lockout)));
 }
 
 const lockedOut = (message: string) => new IdentityError('TooManyRequests', message, 429);

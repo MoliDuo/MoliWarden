@@ -5,27 +5,47 @@ import type { RateLimiter } from '../../platform/rate-limit';
 // Guessing passwords, codes or keys locks the guesser out for a while after
 // a run of failures. A success clears the count.
 
-const MAX_FAILURES = LIMITS.rateLimit.loginMaxAttempts;
-const LOCKOUT_SECONDS = LIMITS.rateLimit.loginLockoutMinutes * 60;
+export interface Lockout {
+  key: string;
+  maxFailures: number;
+  seconds: number;
+}
 
-// Failures count per client address and per thing guessed (an account, an
-// API key), without keeping the thing itself.
-export function lockoutKey(address: string, kind: string, subject: string): string {
-  return `${address}:login:${kind}:${sha256Hex(`${kind}:${subject.trim() || 'unknown'}`)}`;
+const hashed = (kind: string, subject: string) => sha256Hex(`${kind}:${subject.trim() || 'unknown'}`);
+
+// Failures from one client address at one thing guessed (an account, an
+// API key, a Send), without keeping the thing itself: a few tries, then a
+// short pause.
+export function lockoutKey(address: string, kind: string, subject: string): Lockout {
+  return {
+    key: `${address}:login:${kind}:${hashed(kind, subject)}`,
+    maxFailures: LIMITS.rateLimit.loginMaxAttempts,
+    seconds: LIMITS.rateLimit.loginLockoutMinutes * 60,
+  };
+}
+
+// Failures at one account from any address, which a guesser spreading over
+// many addresses runs into: more tries, then a longer pause.
+export function accountLockoutKey(kind: string, subject: string): Lockout {
+  return {
+    key: `account:login:${kind}:${hashed(kind, subject)}`,
+    maxFailures: LIMITS.rateLimit.accountMaxAttempts,
+    seconds: LIMITS.rateLimit.accountLockoutMinutes * 60,
+  };
 }
 
 // Seconds until the lockout ends, or null.
-export function lockedFor(limiter: RateLimiter, key: string): Promise<number | null> {
-  return limiter.lockedFor(key);
+export function lockedFor(limiter: RateLimiter, lockout: Lockout): Promise<number | null> {
+  return limiter.lockedFor(lockout.key);
 }
 
 // Counts a failure. Returns the lockout in seconds when this one started it.
-export function recordFailure(limiter: RateLimiter, key: string): Promise<number | null> {
-  return limiter.fail(key, MAX_FAILURES, LOCKOUT_SECONDS);
+export function recordFailure(limiter: RateLimiter, lockout: Lockout): Promise<number | null> {
+  return limiter.fail(lockout.key, lockout.maxFailures, lockout.seconds);
 }
 
-export function clearFailures(limiter: RateLimiter, key: string): Promise<void> {
-  return limiter.clearFailures(key);
+export function clearFailures(limiter: RateLimiter, lockout: Lockout): Promise<void> {
+  return limiter.clearFailures(lockout.key);
 }
 
 export const minutes = (seconds: number) => Math.ceil(seconds / 60);

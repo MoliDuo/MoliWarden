@@ -215,6 +215,47 @@ test('a banned user is locked out of existing sessions and new logins', async ()
   await assert.rejects(client.login('erin@example.com'));
 });
 
+function passwordLogin(email: string, password: string, ip: string, deviceIdentifier: string = crypto.randomUUID()): Promise<Response> {
+  return client.fetch(
+    '/identity/connect/token',
+    {
+      ...form({
+        grant_type: 'password',
+        username: email,
+        password: Buffer.from(password).toString('base64'),
+        scope: 'api offline_access',
+        client_id: 'cli',
+        deviceType: '8',
+        deviceIdentifier,
+        deviceName: 'e2e',
+      }),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Forwarded-For': ip },
+    },
+  );
+}
+
+test('wrong passwords from one address lock that address out for a while', async () => {
+  await client.registerAndLogin('frank@example.com');
+  let last: Response | undefined;
+  for (let i = 0; i < 10; i++) last = await passwordLogin('frank@example.com', 'wrong', '203.0.113.10');
+  assert.equal(last?.status, 429);
+  assert.match((await last!.json()).error_description, /Too many failed login attempts/);
+  assert.equal((await passwordLogin('frank@example.com', 'hash-frank@example.com', '203.0.113.10')).status, 429);
+  assert.equal((await passwordLogin('frank@example.com', 'hash-frank@example.com', '203.0.113.11')).status, 200);
+});
+
+test('guesses spread over many addresses lock the account for new devices, not for known ones', async () => {
+  const known = await client.registerAndLogin('grace@example.com');
+  let status = 0;
+  for (let i = 0; i < 40 && status !== 429; i++) status = (await passwordLogin('grace@example.com', 'wrong', `198.18.0.${i + 1}`)).status;
+  assert.equal(status, 429);
+  // The right password from yet another address and a new device is refused too...
+  assert.equal((await passwordLogin('grace@example.com', 'hash-grace@example.com', '198.18.1.1')).status, 429);
+  // ...while a device that signed in before still gets in, and that ends the lockout.
+  assert.equal((await passwordLogin('grace@example.com', 'hash-grace@example.com', '198.18.1.2', known.deviceIdentifier)).status, 200);
+  assert.equal((await passwordLogin('grace@example.com', 'hash-grace@example.com', '198.18.1.3')).status, 200);
+});
+
 test('password hints are refused unless the server enables them', async () => {
   const bootstrap = await (await client.fetch('/api/web-bootstrap')).json();
   assert.equal(bootstrap.passwordHintEnabled, false);

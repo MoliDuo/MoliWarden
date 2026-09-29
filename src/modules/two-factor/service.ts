@@ -7,7 +7,7 @@ import { withLease } from '../../platform/db/lease';
 import type { User } from '../../types';
 import { findUserByEmail, updateUser } from '../accounts/repo';
 import { requestMetadata, recordAudit } from '../audit/service';
-import { clearFailures, lockedFor, minutes, recordFailure } from '../auth/lockout';
+import { accountLockoutKey, clearFailures, lockedFor, lockoutKey, minutes, recordFailure } from '../auth/lockout';
 import { verifyMasterPassword } from '../auth/password';
 import { endAllSessions } from '../auth/sessions';
 import { signUserVerification, verifyUserVerification } from '../auth/user-verification';
@@ -434,13 +434,15 @@ export async function recoverWithCode(
   address: string,
   input: { email: string; masterPasswordHash: string; recoveryCode: string },
 ) {
-  const lockKey = `${address}:recover-2fa`;
-  const locked = await lockedFor(deps.limiter, lockKey);
-  if (locked !== null) {
-    throw new HttpError(429, `Too many failed recovery attempts. Try again in ${minutes(locked)} minutes.`);
-  }
   if (!input.email || !input.masterPasswordHash || !input.recoveryCode) {
     throw badRequest('Email, masterPasswordHash and recoveryCode are required');
+  }
+  // This checks the master password too, so guesses count against the
+  // account as password logins do.
+  const lockouts = [lockoutKey(address, 'recover-2fa', input.email), accountLockoutKey('password', input.email)];
+  for (const lockout of lockouts) {
+    const locked = await lockedFor(deps.limiter, lockout);
+    if (locked !== null) throw new HttpError(429, `Too many failed recovery attempts. Try again in ${minutes(locked)} minutes.`);
   }
   const user = await findUserByEmail(deps.db, input.email);
   const valid =
@@ -449,11 +451,11 @@ export async function recoverWithCode(
     (await verifyMasterPassword(user, input.masterPasswordHash)) &&
     recoveryCodeValid(deps, user, input.recoveryCode);
   if (!valid) {
-    await recordFailure(deps.limiter, lockKey);
+    for (const lockout of lockouts) await recordFailure(deps.limiter, lockout);
     throw badRequest('Invalid credentials or recovery code');
   }
   const newRecoveryCode = await resetTwoFactor(deps, user);
-  await clearFailures(deps.limiter, lockKey);
+  for (const lockout of lockouts) await clearFailures(deps.limiter, lockout);
   await audit(deps, request, user, 'account.totp.recover');
   return { success: true, twoFactorEnabled: false, newRecoveryCode, object: 'twoFactorRecovery' };
 }

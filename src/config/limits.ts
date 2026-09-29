@@ -17,9 +17,14 @@ export const LIMITS = {
     clientSecretLength: 30,
   },
   rateLimit: {
-    // Failed logins before an account is locked, and for how long.
+    // Failed logins from one address before it is locked out of the
+    // account, and for how long.
     loginMaxAttempts: 10,
     loginLockoutMinutes: 2,
+    // Failed logins from any address before the account is locked for
+    // devices it has not signed in from, and for how long.
+    accountMaxAttempts: 30,
+    accountLockoutMinutes: 15,
   },
   cors: {
     preflightMaxAgeSeconds: 86400,

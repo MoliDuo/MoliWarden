@@ -4,13 +4,15 @@ import { constantTimeEqual } from '../../../platform/crypto';
 import type { User } from '../../../types';
 import { findUserByEmail } from '../../accounts/repo';
 import { findApprovedLoginRequest, markAuthRequestUsed } from '../../auth-requests/repo';
-import { lockoutKey, clearFailures } from '../../auth/lockout';
+import { accountLockoutKey, lockoutKey } from '../../auth/lockout';
 import { verifyMasterPassword } from '../../auth/password';
+import { findDevice } from '../../devices/repo';
 import { secondStep } from '../../two-factor/login';
 import {
   accountDisabled,
   assertNotLockedOut,
   auditLoginFailure,
+  clearAttempts,
   clientTypeOf,
   failAttempt,
   issueLogin,
@@ -39,23 +41,31 @@ async function firstStep(
 export async function passwordGrant(deps: Deps, request: Request, form: TokenForm, address: string): Promise<Tokens> {
   const email = form.username.trim().toLowerCase();
   if (!email || !form.password) throw new IdentityError('invalid_request', 'Email and password are required');
-  const lockKey = lockoutKey(address, 'password', email);
+  const addressLockout = lockoutKey(address, 'password', email);
   // Checked before the lookup, so a locked-out guesser learns nothing about the account.
-  await assertNotLockedOut(deps, lockKey);
+  await assertNotLockedOut(deps, addressLockout);
 
   const device = signingInDevice(form, request);
   const user = await findUserByEmail(deps.db, email);
-  if (!user) return failAttempt(deps, lockKey, wrongCredentials());
+  // A guesser spreading over many addresses still runs into a limit per
+  // account. It does not apply to devices the account signed in from, so
+  // the guessing cannot keep the owner out.
+  const accountLockout = accountLockoutKey('password', email);
+  const known = !!user && !!device.identifier && !!(await findDevice(deps.db, user.id, device.identifier));
+  const lockouts = known ? [addressLockout] : [addressLockout, accountLockout];
+  if (!known) await assertNotLockedOut(deps, accountLockout);
+
+  if (!user) return failAttempt(deps, lockouts, wrongCredentials());
   if (user.status !== 'active') {
     await auditLoginFailure(deps, request, user, 'auth.login.failed.user_inactive', 'password', device);
-    return failAttempt(deps, lockKey, accountDisabled());
+    return failAttempt(deps, lockouts, accountDisabled());
   }
 
   const first = await firstStep(deps, user, form);
   if (!first.ok) {
     const reason = form.authRequest.trim() ? 'bad_auth_request' : 'bad_password';
     await auditLoginFailure(deps, request, user, `auth.login.failed.${reason}`, 'password', device);
-    return failAttempt(deps, lockKey, wrongCredentials());
+    return failAttempt(deps, lockouts, wrongCredentials());
   }
 
   const second = await secondStep(deps, request, user, {
@@ -65,12 +75,12 @@ export async function passwordGrant(deps: Deps, request: Request, form: TokenFor
     deviceIdentifier: device.identifier,
   });
   if (second.status === 'challenge') throw second.error;
-  if (second.status === 'failed') return failAttempt(deps, lockKey, invalidGrant('Two-step token is invalid. Try again.'));
+  if (second.status === 'failed') return failAttempt(deps, lockouts, invalidGrant('Two-step token is invalid. Try again.'));
 
   // An approved request signs in once; of two concurrent logins only one gets a session.
   if (first.authRequestId && !(await markAuthRequestUsed(deps.db, first.authRequestId))) throw wrongCredentials();
 
-  await clearFailures(deps.limiter, lockKey);
+  await clearAttempts(deps, [addressLockout, accountLockout]);
   return issueLogin(deps, request, {
     user,
     grantType: 'password',

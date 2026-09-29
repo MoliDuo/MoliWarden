@@ -1,11 +1,11 @@
 import { IdentityError, invalidGrant } from '../../../http/errors';
 import type { Deps } from '../../../main/deps';
 import { recordAudit, requestMetadata } from '../../audit/service';
-import { clearFailures, lockoutKey } from '../../auth/lockout';
+import { lockoutKey } from '../../auth/lockout';
 import { signUserVerification } from '../../auth/user-verification';
 import { PasskeyRejected, verifyLoginAssertion } from '../../passkeys/service';
 import { prfDecryptionOption } from '../../passkeys/webauthn';
-import { accountDisabled, assertNotLockedOut, clientTypeOf, failAttempt, issueLogin, signingInDevice, type Tokens } from '../login';
+import { accountDisabled, assertNotLockedOut, clearAttempts, clientTypeOf, failAttempt, issueLogin, signingInDevice, type Tokens } from '../login';
 import type { TokenForm } from '../schemas';
 
 // Passwordless login with a passkey. A passkey with PRF keys also unlocks
@@ -37,13 +37,13 @@ export async function webAuthnGrant(deps: Deps, request: Request, form: TokenFor
       targetType: 'accountPasskey',
       metadata: { grantType: 'webauthn', reason: error.message, ...requestMetadata(request) },
     });
-    return failAttempt(deps, lockKey, invalidGrant('Passkey is invalid. Try again'));
+    return failAttempt(deps, [lockKey], invalidGrant('Passkey is invalid. Try again'));
   }
 
   const { user, passkey } = asserted;
-  if (user.status !== 'active') return failAttempt(deps, lockKey, accountDisabled());
+  if (user.status !== 'active') return failAttempt(deps, [lockKey], accountDisabled());
 
-  await clearFailures(deps.limiter, lockKey);
+  await clearAttempts(deps, [lockKey]);
   return issueLogin(deps, request, {
     user,
     grantType: 'webauthn',
