@@ -1,34 +1,11 @@
 import type { Context } from 'hono';
 import { z } from 'zod';
+import { normalizeKeys } from '../platform/camel-case';
 import { isEncString } from '../platform/enc-string';
 import { badRequest, type ValidationErrors } from './errors';
 
-// Request bodies are read through a zod schema. Official clients do not
-// agree on key casing (the iOS app sends `OrganizationID`, older clients
-// PascalCase), so keys are normalized to camelCase first and every schema
-// is written in camelCase only.
-
-// `Name` -> `name`, `organizationID` -> `organizationId`. Keys that are not
-// identifiers (ids used as map keys, for example) are left alone.
-function normalizeKey(key: string): string {
-  if (!/^[A-Za-z][A-Za-z0-9]*$/.test(key)) return key;
-  const camel = key[0].toLowerCase() + key.slice(1);
-  return camel.endsWith('ID') ? `${camel.slice(0, -2)}Id` : camel;
-}
-
-export function normalizeKeys(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(normalizeKeys);
-  if (value === null || typeof value !== 'object') return value;
-  const out: Record<string, unknown> = {};
-  const entries = Object.entries(value);
-  // A key already in camelCase wins over another spelling of it.
-  for (const [key, child] of entries) {
-    const normalized = normalizeKey(key);
-    if (normalized !== key && Object.hasOwn(value, normalized)) continue;
-    out[normalized] = normalizeKeys(child);
-  }
-  return out;
-}
+// Request bodies are read through a zod schema, after their keys are
+// normalized to camelCase; every schema is written in camelCase only.
 
 function validationErrors(error: z.ZodError): ValidationErrors {
   const errors: ValidationErrors = {};

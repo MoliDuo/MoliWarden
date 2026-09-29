@@ -12,6 +12,15 @@
     "x-frame-options": "DENY"
   },
   "body": {
+    "id": "<cipher:card>",
+    "organizationId": null,
+    "type": 3,
+    "name": "2.aXYtbmFtZS1jYXJk|Y3QtbmFtZS1jYXJk|bWFjLW5hbWUtY2FyZA==",
+    "notes": "2.aXYtbm90ZXMtY2FyZA==|Y3Qtbm90ZXMtY2FyZA==|bWFjLW5vdGVzLWNhcmQ=",
+    "key": null,
+    "reprompt": 0,
+    "login": null,
+    "secureNote": null,
     "card": {
       "cardholderName": "2.aXYtaG9sZGVy|Y3QtaG9sZGVy|bWFjLWhvbGRlcg==",
       "brand": "2.aXYtYnJhbmQ=|Y3QtYnJhbmQ=|bWFjLWJyYW5k",
@@ -20,28 +29,20 @@
       "expYear": "2.aXYteWVhcg==|Y3QteWVhcg==|bWFjLXllYXI=",
       "code": "2.aXYtY29kZQ==|Y3QtY29kZQ==|bWFjLWNvZGU="
     },
-    "login": null,
     "identity": null,
-    "secureNote": null,
     "sshKey": null,
     "bankAccount": null,
     "driversLicense": null,
     "passport": null,
-    "passwordHistory": null,
     "fields": null,
-    "id": "<cipher:card>",
-    "organizationId": null,
-    "type": 3,
-    "folderId": null,
-    "name": "2.aXYtbmFtZS1jYXJk|Y3QtbmFtZS1jYXJk|bWFjLW5hbWUtY2FyZA==",
-    "notes": "2.aXYtbm90ZXMtY2FyZA==|Y3Qtbm90ZXMtY2FyZA==|bWFjLW5vdGVzLWNhcmQ=",
-    "favorite": false,
-    "reprompt": 0,
-    "key": null,
+    "passwordHistory": null,
+    "attachments": null,
     "organizationUseTotp": true,
     "creationDate": "<date>",
     "revisionDate": "<date>",
     "deletedDate": null,
+    "folderId": null,
+    "favorite": false,
     "archivedDate": null,
     "edit": true,
     "viewPassword": true,
@@ -49,10 +50,7 @@
       "delete": true,
       "restore": true
     },
-    "object": "cipherDetails",
     "collectionIds": [],
-    "attachments": null,
-    "data": null,
-    "encryptedFor": null
+    "object": "cipherDetails"
   }
 }

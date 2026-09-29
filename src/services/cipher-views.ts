@@ -3,15 +3,10 @@ import {
   type CipherAccess,
   type UserOrgContext,
   computeCipherAccess,
-  fullAccessOrgIds,
-  grantedCollectionIds,
   loadUserOrgContext,
 } from './org-access';
 import {
-  getAllCiphers,
   getCipher,
-  getCiphersByCollectionIds,
-  getCiphersByOrgIds,
   saveOrgCipherStatement,
 } from './storage-cipher-repo';
 import {
@@ -43,39 +38,6 @@ function applyUserState(cipher: Cipher, state: CipherUserState | undefined): Cip
   };
 }
 
-export async function listVisibleCipherViews(
-  db: D1Database,
-  userId: string,
-  ctx?: UserOrgContext
-): Promise<{ views: CipherView[]; ctx: UserOrgContext }> {
-  const orgCtx = ctx || (await loadUserOrgContext(db, userId));
-  const [personal, fullOrgCiphers, collectionCiphers] = await Promise.all([
-    getAllCiphers(db, userId),
-    getCiphersByOrgIds(db, fullAccessOrgIds(orgCtx)),
-    getCiphersByCollectionIds(db, grantedCollectionIds(orgCtx)),
-  ]);
-
-  const orgCiphers = new Map<string, Cipher>();
-  for (const cipher of [...fullOrgCiphers, ...collectionCiphers]) orgCiphers.set(cipher.id, cipher);
-  const orgIds = Array.from(orgCiphers.keys());
-  const [links, states] = await Promise.all([
-    listCipherCollectionIds(db, orgIds),
-    listCipherUserStates(db, userId, orgIds),
-  ]);
-
-  const views: CipherView[] = [];
-  for (const cipher of personal) {
-    views.push({ cipher, access: computeCipherAccess(orgCtx, cipher, [])! });
-  }
-  for (const cipher of orgCiphers.values()) {
-    const access = computeCipherAccess(orgCtx, cipher, links.get(cipher.id) || []);
-    if (!access) continue;
-    views.push({ cipher: applyUserState(cipher, states.get(cipher.id)), access });
-  }
-  views.sort((a, b) => (a.cipher.updatedAt < b.cipher.updatedAt ? 1 : -1));
-  return { views, ctx: orgCtx };
-}
-
 export async function loadCipherView(
   db: D1Database,
   userId: string,
@@ -97,20 +59,6 @@ export async function loadCipherView(
   const access = computeCipherAccess(orgCtx, cipher, links.get(cipher.id) || []);
   if (!access) return null;
   return { cipher: applyUserState(cipher, states.get(cipher.id)), access };
-}
-
-export async function loadCipherViews(
-  db: D1Database,
-  userId: string,
-  cipherIds: string[]
-): Promise<CipherView[]> {
-  const ctx = await loadUserOrgContext(db, userId);
-  const views: CipherView[] = [];
-  for (const id of cipherIds) {
-    const view = await loadCipherView(db, userId, id, ctx);
-    if (view) views.push(view);
-  }
-  return views;
 }
 
 // Writing an org cipher: `edit` rights are the caller's responsibility.
@@ -141,12 +89,3 @@ export async function saveOrgCipherForUser(
   return revisionDate;
 }
 
-export async function saveUserStateOnly(db: D1Database, cipher: Cipher, userId: string): Promise<void> {
-  await saveCipherUserStateStatement(db, {
-    cipherId: cipher.id,
-    userId,
-    folderId: cipher.folderId ?? null,
-    favorite: !!cipher.favorite,
-    archivedAt: cipher.archivedAt ?? null,
-  }).run();
-}

@@ -12,20 +12,36 @@
     "x-frame-options": "DENY"
   },
   "body": {
+    "id": "<cipher:login>",
+    "organizationId": null,
+    "type": 1,
+    "name": "2.aXYtbmFtZS1sb2dpbg==|Y3QtbmFtZS1sb2dpbg==|bWFjLW5hbWUtbG9naW4=",
+    "notes": "2.aXYtbm90ZXMtbG9naW4=|Y3Qtbm90ZXMtbG9naW4=|bWFjLW5vdGVzLWxvZ2lu",
+    "key": null,
+    "reprompt": 0,
     "login": {
-      "username": "2.aXYtdXNlcm5hbWU=|Y3QtdXNlcm5hbWU=|bWFjLXVzZXJuYW1l",
-      "password": "2.aXYtcGFzc3dvcmQ=|Y3QtcGFzc3dvcmQ=|bWFjLXBhc3N3b3Jk",
-      "totp": "2.aXYtdG90cA==|Y3QtdG90cA==|bWFjLXRvdHA=",
+      "uri": null,
       "uris": [
         {
           "uri": "2.aXYtdXJp|Y3QtdXJp|bWFjLXVyaQ==",
-          "match": 0,
-          "uriChecksum": null
+          "uriChecksum": null,
+          "match": 0
         }
       ],
+      "username": "2.aXYtdXNlcm5hbWU=|Y3QtdXNlcm5hbWU=|bWFjLXVzZXJuYW1l",
+      "password": "2.aXYtcGFzc3dvcmQ=|Y3QtcGFzc3dvcmQ=|bWFjLXBhc3N3b3Jk",
       "passwordRevisionDate": "<date>",
+      "totp": "2.aXYtdG90cA==|Y3QtdG90cA==|bWFjLXRvdHA=",
+      "autofillOnPageLoad": null,
       "fido2Credentials": null
     },
+    "secureNote": null,
+    "card": null,
+    "identity": null,
+    "sshKey": null,
+    "bankAccount": null,
+    "driversLicense": null,
+    "passport": null,
     "fields": [
       {
         "name": "2.aXYtZmllbGQtbmFtZQ==|Y3QtZmllbGQtbmFtZQ==|bWFjLWZpZWxkLW5hbWU=",
@@ -40,26 +56,13 @@
         "lastUsedDate": "<date>"
       }
     ],
-    "card": null,
-    "identity": null,
-    "secureNote": null,
-    "sshKey": null,
-    "bankAccount": null,
-    "driversLicense": null,
-    "passport": null,
-    "id": "<cipher:login>",
-    "organizationId": null,
-    "type": 1,
-    "folderId": "<folder>",
-    "name": "2.aXYtbmFtZS1sb2dpbg==|Y3QtbmFtZS1sb2dpbg==|bWFjLW5hbWUtbG9naW4=",
-    "notes": "2.aXYtbm90ZXMtbG9naW4=|Y3Qtbm90ZXMtbG9naW4=|bWFjLW5vdGVzLWxvZ2lu",
-    "favorite": true,
-    "reprompt": 0,
-    "key": null,
+    "attachments": null,
     "organizationUseTotp": true,
     "creationDate": "<date>",
     "revisionDate": "<date>",
     "deletedDate": null,
+    "folderId": "<folder>",
+    "favorite": true,
     "archivedDate": null,
     "edit": true,
     "viewPassword": true,
@@ -67,10 +70,7 @@
       "delete": true,
       "restore": true
     },
-    "object": "cipherDetails",
     "collectionIds": [],
-    "attachments": null,
-    "data": null,
-    "encryptedFor": null
+    "object": "cipherDetails"
   }
 }

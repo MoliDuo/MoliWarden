@@ -1,5 +1,5 @@
 import type { UserDomainSettings } from '../types';
-import { normalizeCustomEquivalentDomains, normalizeEquivalentDomains } from './domain-rules';
+import { normalizeCustomEquivalentDomains, normalizeEquivalentDomains } from '../modules/domains/rules';
 
 // Storage adapter for the domain_settings table.
 //

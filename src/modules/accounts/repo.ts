@@ -162,3 +162,11 @@ export async function findRevisionDate(db: Executor, userId: string): Promise<st
     .execute();
   return now;
 }
+
+export async function touchRevisionDate(db: Executor, userId: string, date: string): Promise<void> {
+  await db
+    .insertInto('user_revisions')
+    .values({ user_id: userId, revision_date: date })
+    .onConflict((oc) => oc.column('user_id').doUpdateSet({ revision_date: date }))
+    .execute();
+}

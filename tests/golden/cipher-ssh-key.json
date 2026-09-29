@@ -12,34 +12,34 @@
     "x-frame-options": "DENY"
   },
   "body": {
-    "sshKey": {
-      "privateKey": "2.aXYtcHJpdmF0ZQ==|Y3QtcHJpdmF0ZQ==|bWFjLXByaXZhdGU=",
-      "publicKey": "2.aXYtcHVibGlj|Y3QtcHVibGlj|bWFjLXB1YmxpYw==",
-      "keyFingerprint": "2.aXYtZmluZ2VycHJpbnQ=|Y3QtZmluZ2VycHJpbnQ=|bWFjLWZpbmdlcnByaW50",
-      "fingerprint": "2.aXYtZmluZ2VycHJpbnQ=|Y3QtZmluZ2VycHJpbnQ=|bWFjLWZpbmdlcnByaW50"
-    },
-    "login": null,
-    "card": null,
-    "identity": null,
-    "secureNote": null,
-    "bankAccount": null,
-    "driversLicense": null,
-    "passport": null,
-    "passwordHistory": null,
-    "fields": null,
     "id": "<cipher:ssh-key>",
     "organizationId": null,
     "type": 5,
-    "folderId": null,
     "name": "2.aXYtbmFtZS1zc2gta2V5|Y3QtbmFtZS1zc2gta2V5|bWFjLW5hbWUtc3NoLWtleQ==",
     "notes": "2.aXYtbm90ZXMtc3NoLWtleQ==|Y3Qtbm90ZXMtc3NoLWtleQ==|bWFjLW5vdGVzLXNzaC1rZXk=",
-    "favorite": false,
-    "reprompt": 0,
     "key": null,
+    "reprompt": 0,
+    "login": null,
+    "secureNote": null,
+    "card": null,
+    "identity": null,
+    "sshKey": {
+      "privateKey": "2.aXYtcHJpdmF0ZQ==|Y3QtcHJpdmF0ZQ==|bWFjLXByaXZhdGU=",
+      "publicKey": "2.aXYtcHVibGlj|Y3QtcHVibGlj|bWFjLXB1YmxpYw==",
+      "keyFingerprint": "2.aXYtZmluZ2VycHJpbnQ=|Y3QtZmluZ2VycHJpbnQ=|bWFjLWZpbmdlcnByaW50"
+    },
+    "bankAccount": null,
+    "driversLicense": null,
+    "passport": null,
+    "fields": null,
+    "passwordHistory": null,
+    "attachments": null,
     "organizationUseTotp": true,
     "creationDate": "<date>",
     "revisionDate": "<date>",
     "deletedDate": null,
+    "folderId": null,
+    "favorite": false,
     "archivedDate": null,
     "edit": true,
     "viewPassword": true,
@@ -47,10 +47,7 @@
       "delete": true,
       "restore": true
     },
-    "object": "cipherDetails",
     "collectionIds": [],
-    "attachments": null,
-    "data": null,
-    "encryptedFor": null
+    "object": "cipherDetails"
   }
 }

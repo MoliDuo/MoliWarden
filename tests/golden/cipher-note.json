@@ -12,31 +12,32 @@
     "x-frame-options": "DENY"
   },
   "body": {
+    "id": "<cipher:note>",
+    "organizationId": null,
+    "type": 2,
+    "name": "2.aXYtbmFtZS1ub3Rl|Y3QtbmFtZS1ub3Rl|bWFjLW5hbWUtbm90ZQ==",
+    "notes": "2.aXYtbm90ZXMtbm90ZQ==|Y3Qtbm90ZXMtbm90ZQ==|bWFjLW5vdGVzLW5vdGU=",
+    "key": null,
+    "reprompt": 0,
+    "login": null,
     "secureNote": {
       "type": 0
     },
-    "login": null,
     "card": null,
     "identity": null,
     "sshKey": null,
     "bankAccount": null,
     "driversLicense": null,
     "passport": null,
-    "passwordHistory": null,
     "fields": null,
-    "id": "<cipher:note>",
-    "organizationId": null,
-    "type": 2,
-    "folderId": null,
-    "name": "2.aXYtbmFtZS1ub3Rl|Y3QtbmFtZS1ub3Rl|bWFjLW5hbWUtbm90ZQ==",
-    "notes": "2.aXYtbm90ZXMtbm90ZQ==|Y3Qtbm90ZXMtbm90ZQ==|bWFjLW5vdGVzLW5vdGU=",
-    "favorite": false,
-    "reprompt": 0,
-    "key": null,
+    "passwordHistory": null,
+    "attachments": null,
     "organizationUseTotp": true,
     "creationDate": "<date>",
     "revisionDate": "<date>",
     "deletedDate": null,
+    "folderId": null,
+    "favorite": false,
     "archivedDate": null,
     "edit": true,
     "viewPassword": true,
@@ -44,10 +45,7 @@
       "delete": true,
       "restore": true
     },
-    "object": "cipherDetails",
     "collectionIds": [],
-    "attachments": null,
-    "data": null,
-    "encryptedFor": null
+    "object": "cipherDetails"
   }
 }

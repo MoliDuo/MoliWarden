@@ -21,7 +21,6 @@ import { readResponseBytesWithProgress } from '../download';
 import { loadVaultCoreSyncSnapshot } from './vault-sync';
 
 type CipherLoginData = NonNullable<Cipher['login']>;
-const MOLIWARDEN_WEB_REPAIR_HEADER = 'X-MoliWarden-Web';
 
 export async function getFolders(authedFetch: AuthedFetch, cacheKey: string): Promise<Folder[]> {
   const body = await loadVaultCoreSyncSnapshot(authedFetch, cacheKey);
@@ -1124,7 +1123,7 @@ export async function repairCipherUriChecksums(
 
     const resp = await authedFetch(`/api/ciphers/${encodeURIComponent(cipher.id)}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', [MOLIWARDEN_WEB_REPAIR_HEADER]: '1' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     if (!resp.ok) throw new Error(await parseErrorMessage(resp, 'Repair URI checksum failed'));
@@ -1326,8 +1325,7 @@ export async function repairCipherKeyMismatches(
       session,
       cipher,
       draftFromDecryptedCipher(cipher),
-      { preserveRevisionDate: true },
-      { webRepair: true }
+      { preserveRevisionDate: true }
     );
     repaired += 1;
   }
@@ -1539,8 +1537,7 @@ export async function updateCipher(
   session: SessionState,
   cipher: Cipher,
   draft: VaultDraft,
-  extraPayload?: Record<string, unknown>,
-  options?: { webRepair?: boolean }
+  extraPayload?: Record<string, unknown>
 ): Promise<Cipher> {
   const payload = await buildCipherPayload(session, draft, cipher);
   if (extraPayload) {
@@ -1549,10 +1546,7 @@ export async function updateCipher(
 
   const resp = await authedFetch(`/api/ciphers/${encodeURIComponent(cipher.id)}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options?.webRepair ? { [MOLIWARDEN_WEB_REPAIR_HEADER]: '1' } : {}),
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (!resp.ok) throw new Error('Update item failed');

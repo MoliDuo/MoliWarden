@@ -7,11 +7,15 @@ import { preflight, responseHeaders } from '../http/headers';
 import { accountRoutes } from '../modules/accounts/routes';
 import { deleteExpiredAuthRequests } from '../modules/auth-requests/repo';
 import { authRequestRoutes } from '../modules/auth-requests/routes';
+import { cipherRoutes } from '../modules/ciphers/routes';
 import { deviceRoutes } from '../modules/devices/routes';
+import { domainRoutes } from '../modules/domains/routes';
+import { folderRoutes } from '../modules/folders/routes';
 import { iconRoutes } from '../modules/icons/routes';
 import { identityRoutes } from '../modules/identity/routes';
 import { metaRoutes } from '../modules/meta/routes';
 import { passkeyRoutes } from '../modules/passkeys/routes';
+import { syncRoutes } from '../modules/sync/routes';
 import { twoFactorRoutes } from '../modules/two-factor/routes';
 import { constantTimeEqual } from '../platform/crypto';
 import { handleRequest as handleLegacyRequest } from '../router';
@@ -101,6 +105,10 @@ export function createApp(deps: Deps): Hono {
   app.route('/', accountRoutes(deps));
   app.route('/', deviceRoutes(deps));
   app.route('/', authRequestRoutes(deps));
+  app.route('/', syncRoutes(deps));
+  app.route('/', folderRoutes(deps));
+  app.route('/', cipherRoutes(deps));
+  app.route('/', domainRoutes(deps));
 
   // Routes not yet ported to src/modules.
   app.all('*', (c) => handleLegacyRequest(c.req.raw, deps.legacyEnv));

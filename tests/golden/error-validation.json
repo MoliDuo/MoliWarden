@@ -12,8 +12,12 @@
     "x-frame-options": "DENY"
   },
   "body": {
-    "message": "Cipher name must be an encrypted string up to 1000 characters.",
-    "validationErrors": null,
+    "message": "cipher.name: Must be an encrypted string.",
+    "validationErrors": {
+      "cipher.name": [
+        "Must be an encrypted string."
+      ]
+    },
     "object": "error"
   }
 }

@@ -1,6 +1,7 @@
 import { attachDatabasePool } from '@vercel/functions';
 import type pg from 'pg';
 import { createPushService, type PushService } from '../modules/push/service';
+import { createBlobStore, type BlobStore } from '../platform/blob';
 import { createDb, type Db } from '../platform/db';
 import { createLegacyEnv } from '../platform/env';
 import { createPgPool } from '../platform/pg-d1';
@@ -17,6 +18,7 @@ export interface Deps {
   tokens: TokenService;
   limiter: RateLimiter;
   push: PushService;
+  blobs: BlobStore;
   // For the handlers that have not been ported to src/modules yet.
   legacyEnv: Env;
 }
@@ -38,6 +40,7 @@ export function createDeps(config: Config): { deps: Deps; dispose(): Promise<voi
     tokens: createTokenService(config.jwtSecret),
     limiter: createRateLimiter(db),
     push,
+    blobs: createBlobStore(config.s3),
     legacyEnv: createLegacyEnv(config, pool, push),
   };
   return { deps, dispose: () => pool.end() };

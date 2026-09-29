@@ -1,7 +1,7 @@
-import bitwardenGlobalDomainsRaw from '../static/global_domains.bitwarden.json';
-import customGlobalDomainsRaw from '../static/global_domains.custom.json';
-import type { CustomEquivalentDomain, DomainRulesResponse, GlobalEquivalentDomain } from '../types';
-import { normalizeEquivalentDomain } from '../../shared/domain-normalize';
+import bitwardenGlobalDomainsRaw from '../../static/global_domains.bitwarden.json';
+import customGlobalDomainsRaw from '../../static/global_domains.custom.json';
+import type { CustomEquivalentDomain, DomainRulesResponse, GlobalEquivalentDomain } from '../../types';
+import { normalizeEquivalentDomain } from '../../../shared/domain-normalize';
 
 // CONTRACT:
 // Equivalent domains are a Bitwarden compatibility surface. The DB stores both

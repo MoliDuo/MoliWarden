@@ -1,4 +1,4 @@
-import type { MiddlewareHandler } from 'hono';
+import type { Context, MiddlewareHandler } from 'hono';
 import type { Deps } from '../main/deps';
 import type { AccessClaims } from '../modules/auth/access-token';
 import { findSession } from '../modules/auth/repo';
@@ -14,6 +14,20 @@ export interface Actor {
 }
 
 export type AuthedEnv = { Variables: { actor: Actor } };
+
+// Who a vault change is made by, as services see it: the device is left
+// out of the push notifications the change causes.
+export interface Caller {
+  user: User;
+  device: string | null;
+  request: Request;
+}
+
+export const callerOf = (c: Context<AuthedEnv>): Caller => ({
+  user: c.var.actor.user,
+  device: c.var.actor.device?.deviceIdentifier ?? null,
+  request: c.req.raw,
+});
 
 // Verifies the bearer token against the current state of the account: a
 // changed security stamp (password, 2FA), a logged-out device or a ban

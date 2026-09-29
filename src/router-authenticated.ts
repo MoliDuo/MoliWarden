@@ -2,32 +2,6 @@ import type { Env, User } from './types';
 import { errorResponse, jsonResponse } from './utils/response';
 import { listJson } from './services/org-json';
 import {
-  handleGetCiphers,
-  handleGetCipher,
-  handleCreateCipher,
-  handleUpdateCipher,
-  handleDeleteCipher,
-  handlePermanentDeleteCipher,
-  handleRestoreCipher,
-  handleBulkArchiveCiphers,
-  handlePartialUpdateCipher,
-  handleBulkUnarchiveCiphers,
-  handleBulkMoveCiphers,
-  handleBulkDeleteCiphers,
-  handleBulkPermanentDeleteCiphers,
-  handleBulkRestoreCiphers,
-  handleArchiveCipher,
-  handleUnarchiveCipher,
-} from './handlers/ciphers';
-import {
-  handleGetFolders,
-  handleGetFolder,
-  handleCreateFolder,
-  handleUpdateFolder,
-  handleDeleteFolder,
-  handleBulkDeleteFolders,
-} from './handlers/folders';
-import {
   handleGetSends,
   handleGetSend,
   handleCreateSend,
@@ -40,8 +14,6 @@ import {
   handleRemoveSendPassword,
   handleRemoveSendAuth,
 } from './handlers/sends';
-import { handleSync } from './handlers/sync';
-import { handleCiphersImport } from './handlers/import';
 import {
   handleCreateAttachment,
   handleUploadAttachment,
@@ -50,7 +22,6 @@ import {
   handleDeleteAttachment,
 } from './handlers/attachments';
 import { handleAdminRoute } from './router-admin';
-import { handleGetDomains, handleUpdateDomains } from './handlers/domains';
 
 import {
   handleAcceptInvitation,
@@ -89,15 +60,6 @@ import {
   handleUpdateCollection,
   handleUpdateOrganization,
 } from './handlers/organizations';
-import {
-  handleBulkCipherCollections,
-  handleBulkShareCiphers,
-  handleExportOrganization,
-  handleImportOrganization,
-  handleOrganizationCipherDetails,
-  handleShareCipher,
-  handleUpdateCipherCollections,
-} from './handlers/org-ciphers';
 
 async function routeOrganizations(
   request: Request,
@@ -129,7 +91,6 @@ async function routeOrganizations(
   if (sub === '/leave' && method === 'POST') return handleLeaveOrganization(env, user, orgId);
   if ((sub === '/keys' || sub === '/public-key') && method === 'GET') return handleGetOrganizationKeys(env, user, orgId);
   if (sub === '/keys' && method === 'POST') return handleSetOrganizationKeys(request, env, user, orgId);
-  if (sub === '/export' && method === 'GET') return handleExportOrganization(env, user, orgId);
   if ((sub === '/policies' || sub === '/policies/token') && method === 'GET') return handleListPolicies();
   // Policies are not supported: every single policy reads as disabled.
   const policyMatch = sub.match(/^\/policies\/(\d+|master-password)$/i);
@@ -213,65 +174,8 @@ export async function handleAuthenticatedRoute(
   path: string,
   method: string
 ): Promise<Response | null> {
-  if (path === '/api/sync' && method === 'GET') {
-    return handleSync(request, env, userId);
-  }
-
   if (path.startsWith('/notifications/')) {
     return errorResponse('Not found', 404);
-  }
-
-  if (path === '/api/ciphers' || path === '/api/ciphers/create' || path === '/api/ciphers/admin') {
-    if (method === 'GET' && path === '/api/ciphers') return handleGetCiphers(request, env, userId);
-    if (method === 'POST') return handleCreateCipher(request, env, userId);
-    if (method === 'DELETE' && path !== '/api/ciphers/create') return handleBulkPermanentDeleteCiphers(request, env, userId);
-    return null;
-  }
-
-  if (path === '/api/ciphers/organization-details' && method === 'GET') {
-    return handleOrganizationCipherDetails(request, env, currentUser);
-  }
-
-  if (path === '/api/ciphers/share' && (method === 'PUT' || method === 'POST')) {
-    return handleBulkShareCiphers(request, env, currentUser);
-  }
-
-  if (path === '/api/ciphers/bulk-collections' && method === 'POST') {
-    return handleBulkCipherCollections(request, env, currentUser);
-  }
-
-  if (path === '/api/ciphers/import-organization' && method === 'POST') {
-    return handleImportOrganization(request, env, currentUser);
-  }
-
-  if (path === '/api/ciphers/import' && method === 'POST') {
-    return handleCiphersImport(request, env, userId);
-  }
-
-  if ((path === '/api/ciphers/delete' || path === '/api/ciphers/delete-admin') && (method === 'POST' || method === 'PUT')) {
-    // Bitwarden: PUT = soft delete (trash), POST = permanent delete.
-    if (method === 'PUT') return handleBulkDeleteCiphers(request, env, userId);
-    return handleBulkPermanentDeleteCiphers(request, env, userId);
-  }
-
-  if (path === '/api/ciphers/delete-permanent' && method === 'POST') {
-    return handleBulkPermanentDeleteCiphers(request, env, userId);
-  }
-
-  if ((path === '/api/ciphers/restore' || path === '/api/ciphers/restore-admin') && (method === 'POST' || method === 'PUT')) {
-    return handleBulkRestoreCiphers(request, env, userId);
-  }
-
-  if (path === '/api/ciphers/archive' && (method === 'PUT' || method === 'POST')) {
-    return handleBulkArchiveCiphers(request, env, userId);
-  }
-
-  if (path === '/api/ciphers/unarchive' && (method === 'PUT' || method === 'POST')) {
-    return handleBulkUnarchiveCiphers(request, env, userId);
-  }
-
-  if (path === '/api/ciphers/move' && (method === 'POST' || method === 'PUT')) {
-    return handleBulkMoveCiphers(request, env, userId);
   }
 
   const cipherMatch = path.match(/^\/api\/ciphers\/([a-f0-9-]+)(\/.*)?$/i);
@@ -279,32 +183,6 @@ export async function handleAuthenticatedRoute(
     const cipherId = cipherMatch[1];
     const subPath = cipherMatch[2] || '';
 
-    if (subPath === '' || subPath === '/' || subPath === '/admin') {
-      if (method === 'GET') return handleGetCipher(request, env, userId, cipherId);
-      if (method === 'PUT' || method === 'POST') return handleUpdateCipher(request, env, userId, cipherId);
-      // Bitwarden clients use DELETE for "delete permanently" and PUT .../delete for the trash.
-      if (method === 'DELETE') return handlePermanentDeleteCipher(request, env, userId, cipherId);
-    }
-
-    if ((subPath === '/delete' || subPath === '/delete-admin') && method === 'PUT') return handleDeleteCipher(request, env, userId, cipherId);
-    if ((subPath === '/delete' || subPath === '/delete-admin') && (method === 'DELETE' || method === 'POST')) {
-      return handlePermanentDeleteCipher(request, env, userId, cipherId);
-    }
-    if ((subPath === '/restore' || subPath === '/restore-admin') && method === 'PUT') return handleRestoreCipher(request, env, userId, cipherId);
-    if (subPath === '/share' && (method === 'PUT' || method === 'POST')) return handleShareCipher(request, env, currentUser, cipherId);
-    if (subPath === '/collections' && (method === 'PUT' || method === 'POST')) {
-      return handleUpdateCipherCollections(request, env, currentUser, cipherId, 'v1');
-    }
-    if (subPath === '/collections_v2' && (method === 'PUT' || method === 'POST')) {
-      return handleUpdateCipherCollections(request, env, currentUser, cipherId, 'v2');
-    }
-    if (subPath === '/collections-admin' && (method === 'PUT' || method === 'POST')) {
-      return handleUpdateCipherCollections(request, env, currentUser, cipherId, 'admin');
-    }
-    if (subPath === '/archive' && (method === 'PUT' || method === 'POST')) return handleArchiveCipher(request, env, userId, cipherId);
-    if (subPath === '/unarchive' && (method === 'PUT' || method === 'POST')) return handleUnarchiveCipher(request, env, userId, cipherId);
-    if (subPath === '/partial' && (method === 'PUT' || method === 'POST')) return handlePartialUpdateCipher(request, env, userId, cipherId);
-    if (subPath === '/details' && method === 'GET') return handleGetCipher(request, env, userId, cipherId);
     if (subPath === '/attachment/v2' && method === 'POST') return handleCreateAttachment(request, env, userId, cipherId);
     if ((subPath === '/attachment' || subPath === '/attachment-admin') && method === 'POST') return handleCreateAttachment(request, env, userId, cipherId);
 
@@ -331,26 +209,6 @@ export async function handleAuthenticatedRoute(
       return handleDeleteAttachment(request, env, userId, cipherId, attachmentDeleteMatch[1]);
     }
   }
-
-  if (path === '/api/folders') {
-    if (method === 'GET') return handleGetFolders(request, env, userId);
-    if (method === 'POST') return handleCreateFolder(request, env, userId);
-    return null;
-  }
-
-  if (path === '/api/folders/delete' && method === 'POST') {
-    return handleBulkDeleteFolders(request, env, userId);
-  }
-
-  const folderMatch = path.match(/^\/api\/folders\/([a-f0-9-]+)$/i);
-  if (folderMatch) {
-    const folderId = folderMatch[1];
-    if (method === 'GET') return handleGetFolder(request, env, userId, folderId);
-    if (method === 'PUT' || method === 'POST') return handleUpdateFolder(request, env, userId, folderId);
-    if (method === 'DELETE') return handleDeleteFolder(request, env, userId, folderId);
-  }
-  const folderDeleteMatch = path.match(/^\/api\/folders\/([a-f0-9-]+)\/delete$/i);
-  if (folderDeleteMatch && method === 'POST') return handleDeleteFolder(request, env, userId, folderDeleteMatch[1]);
 
   if (path === '/api/collections' && method === 'GET') {
     return handleListMyCollections(env, currentUser);
@@ -416,12 +274,6 @@ export async function handleAuthenticatedRoute(
   const publicKeyMatch = path.match(/^\/api\/users\/([a-f0-9-]+)\/public-key$/i);
   if (publicKeyMatch && method === 'GET') {
     return handleGetUserPublicKey(env, publicKeyMatch[1]);
-  }
-
-  if (path === '/api/settings/domains' || path === '/settings/domains') {
-    if (method === 'GET') return handleGetDomains(env, userId);
-    if (method === 'PUT' || method === 'POST') return handleUpdateDomains(request, env, userId);
-    return null;
   }
 
   const adminResponse = await handleAdminRoute(request, env, currentUser, path, method);
