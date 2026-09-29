@@ -1,6 +1,6 @@
 import { IdentityError, invalidGrant } from '../../../http/errors';
 import type { Deps } from '../../../main/deps';
-import { verifyApiKey } from '../../../utils/api-key';
+import { verifyApiKey } from '../../auth/api-key';
 import { findUserById } from '../../accounts/repo';
 import { clearFailures, lockoutKey } from '../../auth/lockout';
 import {
@@ -34,7 +34,7 @@ export async function clientCredentialsGrant(deps: Deps, request: Request, form:
     await auditLoginFailure(deps, request, user, 'auth.login.failed.user_inactive', 'client_credentials', device);
     return failAttempt(deps, lockKey, accountDisabled());
   }
-  if (!(await verifyApiKey(form.client_secret, user.apiKey))) {
+  if (!verifyApiKey(form.client_secret, user.apiKey)) {
     await auditLoginFailure(deps, request, user, 'auth.login.failed.bad_api_key', 'client_credentials', device);
     return failAttempt(deps, lockKey, wrongCredentials());
   }
