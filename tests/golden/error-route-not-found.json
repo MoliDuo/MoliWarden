@@ -12,11 +12,8 @@
     "x-frame-options": "DENY"
   },
   "body": {
-    "error": "Route not found",
-    "error_description": "Route not found",
-    "ErrorModel": {
-      "Message": "Route not found",
-      "Object": "error"
-    }
+    "message": "Route not found",
+    "validationErrors": null,
+    "object": "error"
   }
 }

@@ -473,7 +473,6 @@ export async function handlePutTwoFactorWebAuthn(request: Request, env: Env, use
     await storage.saveUser(user);
   }
   await storage.deleteRefreshTokensByUserId(userId);
-  AuthService.invalidateUserCache(userId);
 
   await safeWriteAuditEvent(env, {
     actorUserId: userId,
@@ -514,7 +513,6 @@ export async function handleDeleteTwoFactorWebAuthn(request: Request, env: Env, 
   const deleted = await storage.deleteAccountPasskeyCredential(userId, credential.id, 'twoFactor');
   if (!deleted) return errorResponse('Unable to delete WebAuthn credential.', 400);
   await storage.deleteRefreshTokensByUserId(userId);
-  AuthService.invalidateUserCache(userId);
 
   await safeWriteAuditEvent(env, {
     actorUserId: userId,

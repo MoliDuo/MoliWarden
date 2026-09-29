@@ -13,27 +13,15 @@ function jwtSecretUnsafeReason(env: Env): 'missing' | 'too_short' | null {
   return null;
 }
 
-function canServeWithUnsafeJwtSecret(path: string, method: string): boolean {
-  if (method === 'GET' && (path === '/api/web-bootstrap' || path === '/web-bootstrap')) return true;
-  if (method === 'GET' && (path === '/config' || path === '/api/config' || path === '/api/version' || path === '/api/alive')) return true;
-  if (method === 'GET' && path === '/.well-known/appspecific/com.chrome.devtools.json') return true;
-  if (method === 'GET' && path === '/fill-assist/manifest.json') return true;
-  if (method === 'GET' && /^\/fill-assist\/[^/]+$/i.test(path)) return true;
-  if (method === 'GET' && (path === '/v1/assetlinks:check' || path === '/api/v1/assetlinks:check')) return true;
-  if (method === 'GET' && /^\/icons\/[^/]+\/icon\.png$/i.test(path)) return true;
-  return false;
-}
-
-function isImportBypassRequest(request: Request, path: string, method: string): boolean {
-  if (request.headers.get('X-MoliWarden-Import') !== '1') return false;
-
-  if (method === 'POST') {
-    if (path === '/api/ciphers/import') return true;
-    if (/^\/api\/ciphers\/[a-f0-9-]+\/attachment\/v2$/i.test(path)) return true;
-    if (/^\/api\/ciphers\/[a-f0-9-]+\/attachment\/[a-f0-9-]+$/i.test(path)) return true;
-  }
-
-  return false;
+// Imports and attachment uploads send one request per item, so they draw
+// from a larger budget of their own.
+function isBulkRequest(path: string, method: string): boolean {
+  if (method !== 'POST') return false;
+  return (
+    path === '/api/ciphers/import' ||
+    /^\/api\/ciphers\/[a-f0-9-]+\/attachment\/v2$/i.test(path) ||
+    /^\/api\/ciphers\/[a-f0-9-]+\/attachment\/[a-f0-9-]+$/i.test(path)
+  );
 }
 
 export async function handleRequest(request: Request, env: Env): Promise<Response> {
@@ -83,8 +71,7 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
   }
 
   try {
-    const secretIssue = jwtSecretUnsafeReason(env);
-    if (secretIssue && !canServeWithUnsafeJwtSecret(path, method)) {
+    if (jwtSecretUnsafeReason(env)) {
       return errorResponse('Server configuration error: JWT_SECRET is not set or too weak', 500);
     }
 
@@ -99,37 +86,25 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
     }
     const { payload, user: currentUser } = verified;
 
+    // Handlers read the acting device from this header; never from the client.
+    const actingHeaders = new Headers(request.headers);
+    actingHeaders.delete('X-MoliWarden-Acting-Device-Id');
     const actingDeviceId = String(payload.did || '').trim();
-    if (actingDeviceId) {
-      const nextHeaders = new Headers(request.headers);
-      nextHeaders.set('X-MoliWarden-Acting-Device-Id', actingDeviceId);
-      request = new Request(request, { headers: nextHeaders });
-    }
+    if (actingDeviceId) actingHeaders.set('X-MoliWarden-Acting-Device-Id', actingDeviceId);
+    request = new Request(request, { headers: actingHeaders });
 
     const userId = payload.sub;
     if (currentUser.status !== 'active') {
       return errorResponse('Account is disabled', 403);
     }
 
-    if (!isImportBypassRequest(request, path, method)) {
-      const rateLimit = new RateLimitService(env.DB);
-      const rateLimitCheck = await rateLimit.consumeBudget(`${userId}:api`, LIMITS.rateLimit.apiRequestsPerMinute);
-      if (!rateLimitCheck.allowed) {
-        return new Response(
-          JSON.stringify({
-            error: 'Too many requests',
-            error_description: `Rate limit exceeded. Try again in ${rateLimitCheck.retryAfterSeconds} seconds.`,
-          }),
-          {
-            status: 429,
-            headers: {
-              'Content-Type': 'application/json',
-              'Retry-After': String(rateLimitCheck.retryAfterSeconds || 60),
-              'X-RateLimit-Remaining': '0',
-            },
-          }
-        );
-      }
+    const bulk = isBulkRequest(path, method);
+    const rateLimitCheck = await new RateLimitService(env.DB).consumeBudget(
+      `${userId}:${bulk ? 'bulk' : 'api'}`,
+      bulk ? 1000 : LIMITS.rateLimit.apiRequestsPerMinute
+    );
+    if (!rateLimitCheck.allowed) {
+      return errorResponse(`Rate limit exceeded. Try again in ${rateLimitCheck.retryAfterSeconds} seconds.`, 429);
     }
 
     const authenticatedResponse = await handleAuthenticatedRoute(request, env, userId, currentUser, path, method);

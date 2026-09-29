@@ -61,7 +61,6 @@ type Notify = (type: 'success' | 'error' | 'warning', text: string) => void;
 
 interface UseVaultSendActionsOptions {
   authedFetch: AuthedFetch;
-  importAuthedFetch: AuthedFetch;
   session: SessionState | null;
   profile: Profile | null;
   defaultKdfIterations: number;
@@ -287,7 +286,6 @@ function hasUnresolvedCipherData(cipher: Cipher): boolean {
 export default function useVaultSendActions(options: UseVaultSendActionsOptions) {
   const {
     authedFetch,
-    importAuthedFetch,
     session,
     profile,
     defaultKdfIterations,
@@ -509,7 +507,7 @@ export default function useVaultSendActions(options: UseVaultSendActionsOptions)
         try {
           setUploadingAttachmentName(name);
           setAttachmentUploadPercent(0);
-          await uploadCipherAttachment(importAuthedFetch, session, targetCipherId, file, cipher, setAttachmentUploadPercent);
+          await uploadCipherAttachment(authedFetch, session, targetCipherId, file, cipher, setAttachmentUploadPercent);
           imported += 1;
         } catch (error) {
           failed.push({
@@ -1123,7 +1121,7 @@ export default function useVaultSendActions(options: UseVaultSendActionsOptions)
           nextPayload.ciphers.push(cipherPayload);
         }
 
-        const importedCipherMap = await importCiphers(importAuthedFetch, nextPayload, {
+        const importedCipherMap = await importCiphers(authedFetch, nextPayload, {
           returnCipherMap: attachments.length > 0,
         });
         await Promise.all([refetchFolders(), refetchCiphers()]);
@@ -1151,7 +1149,7 @@ export default function useVaultSendActions(options: UseVaultSendActionsOptions)
           for (const raw of nextPayload.ciphers) (raw as Record<string, unknown>).folderId = targetFolderId;
         }
 
-        const importedCipherMap = await importCiphers(importAuthedFetch, nextPayload, {
+        const importedCipherMap = await importCiphers(authedFetch, nextPayload, {
           returnCipherMap: attachments.length > 0,
         });
         await Promise.all([refetchCiphers(), refetchFolders()]);
@@ -1410,7 +1408,6 @@ export default function useVaultSendActions(options: UseVaultSendActionsOptions)
     downloadingAttachmentKey,
     encryptedCiphers,
     encryptedFolders,
-    importAuthedFetch,
     onNotify,
     orgKeys,
     patchDecryptedCiphers,

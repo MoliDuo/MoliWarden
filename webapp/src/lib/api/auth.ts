@@ -20,7 +20,7 @@ import type {
 } from '../types';
 import type { AccountPasskeyAssertion, AccountPasskeyPrfKeySet } from '../account-passkeys';
 import { recordServerReachable, recordServerUnreachable } from '../network-status';
-import { parseJson, type AuthedFetch, type SessionSetter } from './shared';
+import { parseJson, serverErrorText, type AuthedFetch, type SessionSetter } from './shared';
 
 const SESSION_KEY = 'moliwarden.web.session.v4';
 const PROFILE_SNAPSHOT_KEY = 'moliwarden.web.profile-snapshot.v1';
@@ -312,7 +312,7 @@ export async function getAccountPasskeyAssertionOptions(): Promise<{ options: un
   const resp = await fetch('/identity/accounts/webauthn/assertion-options');
   if (!resp.ok) {
     const json = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(json?.error_description || json?.error, t('txt_login_failed')));
+    throw new Error(translateServerError(serverErrorText(json), t('txt_login_failed')));
   }
   const body = (await parseJson<{ options?: unknown; token?: string }>(resp)) || {};
   if (!body.options || !body.token) throw new Error('Invalid passkey assertion options');
@@ -369,7 +369,7 @@ export async function refreshAccessToken(session: SessionState): Promise<Refresh
       return {
         ok: false,
         transient: !isPermanentRefreshFailure(resp.status, json?.error),
-        error: translateServerError(json?.error_description || json?.error, t('txt_session_refresh_temporarily_unavailable')),
+        error: translateServerError(serverErrorText(json), t('txt_session_refresh_temporarily_unavailable')),
         ...(Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
           ? { retryAfterMs: retryAfterSeconds * 1000 }
           : {}),
@@ -479,7 +479,7 @@ export async function registerAccount(args: {
 
     if (!resp.ok) {
       const json = await parseJson<TokenError>(resp);
-      return { ok: false, message: translateServerError(json?.error_description || json?.error, t('txt_register_failed')) };
+      return { ok: false, message: translateServerError(serverErrorText(json), t('txt_register_failed')) };
     }
     return { ok: true };
   } catch (error) {
@@ -498,7 +498,7 @@ export async function getPasswordHint(email: string): Promise<{ masterPasswordHi
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_password_hint_load_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_password_hint_load_failed')));
   }
   const body = (await parseJson<{ masterPasswordHint?: string | null }>(resp)) || {};
   return { masterPasswordHint: body.masterPasswordHint ?? null };
@@ -596,7 +596,7 @@ export async function updateProfile(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_save_profile_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_save_profile_failed')));
   }
   const body = await parseJson<Profile>(resp);
   if (!body) throw new Error('Invalid profile');
@@ -679,7 +679,7 @@ export async function setTotp(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_totp_update_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_totp_update_failed')));
   }
 }
 
@@ -712,7 +712,7 @@ export async function getYubiKeyOtpSettings(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_master_password_verify_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_master_password_verify_failed')));
   }
   return normalizeYubiKeySettings(await parseJson<unknown>(resp));
 }
@@ -736,7 +736,7 @@ export async function saveYubiKeyOtpSettings(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_yubikey_update_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_yubikey_update_failed')));
   }
   return normalizeYubiKeySettings(await parseJson<unknown>(resp));
 }
@@ -752,7 +752,7 @@ export async function saveYubiKeyOtpApiCredentials(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_yubikey_config_update_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_yubikey_config_update_failed')));
   }
   return normalizeYubiKeySettings(await parseJson<unknown>(resp));
 }
@@ -768,7 +768,7 @@ export async function bootstrapYubiKeyOtpApiCredentials(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_yubikey_auto_config_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_yubikey_auto_config_failed')));
   }
   return normalizeYubiKeySettings(await parseJson<unknown>(resp));
 }
@@ -784,7 +784,7 @@ export async function disableYubiKeyOtp(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_disable_yubikey_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_disable_yubikey_failed')));
   }
 }
 
@@ -813,7 +813,7 @@ export async function getTwoFactorPasskeySettings(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_master_password_verify_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_master_password_verify_failed')));
   }
   return normalizeTwoFactorPasskeySettings(await parseJson<unknown>(resp));
 }
@@ -829,7 +829,7 @@ export async function getTwoFactorPasskeyChallenge(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_passkey_setup_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_passkey_setup_failed')));
   }
   return parseJson<unknown>(resp);
 }
@@ -845,7 +845,7 @@ export async function saveTwoFactorPasskey(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_passkey_setup_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_passkey_setup_failed')));
   }
   return normalizeTwoFactorPasskeySettings(await parseJson<unknown>(resp));
 }
@@ -861,7 +861,7 @@ export async function deleteTwoFactorPasskey(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_delete_item_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_delete_item_failed')));
   }
   return normalizeTwoFactorPasskeySettings(await parseJson<unknown>(resp));
 }
@@ -877,7 +877,7 @@ export async function disableTwoFactorPasskeys(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_disable_passkey_two_step_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_disable_passkey_two_step_failed')));
   }
 }
 
@@ -892,7 +892,7 @@ export async function verifyMasterPassword(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_master_password_verify_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_master_password_verify_failed')));
   }
 }
 
@@ -927,7 +927,7 @@ export async function getAccountPasskeyAttestationOptions(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_master_password_verify_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_master_password_verify_failed')));
   }
   const body = (await parseJson<{ options?: unknown; token?: string }>(resp)) || {};
   if (!body.options || !body.token) throw new Error('Invalid passkey creation options');
@@ -946,7 +946,7 @@ export async function getAccountPasskeyUpdateAssertionOptions(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_master_password_verify_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_master_password_verify_failed')));
   }
   const body = (await parseJson<{ options?: unknown; token?: string }>(resp)) || {};
   if (!body.options || !body.token) throw new Error('Invalid passkey assertion options');
@@ -978,7 +978,7 @@ export async function saveAccountPasskey(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_save_profile_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_save_profile_failed')));
   }
   const body = await parseJson<unknown>(resp);
   return normalizeAccountPasskeyCredential(body);
@@ -1005,7 +1005,7 @@ export async function enableAccountPasskeyDirectUnlock(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_save_profile_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_save_profile_failed')));
   }
 }
 
@@ -1021,7 +1021,7 @@ export async function deleteAccountPasskey(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_delete_item_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_delete_item_failed')));
   }
 }
 
@@ -1066,7 +1066,7 @@ export async function getTotpRecoveryCode(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_get_recovery_code_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_get_recovery_code_failed')));
   }
   const body = (await parseJson<{ code?: string }>(resp)) || {};
   return String(body.code || '');
@@ -1088,7 +1088,7 @@ export async function recoverTwoFactor(
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_recover_2fa_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_recover_2fa_failed')));
   }
   return (await parseJson<{ newRecoveryCode?: string }>(resp)) || {};
 }
@@ -1175,7 +1175,7 @@ export async function getApiKey(authedFetch: AuthedFetch, masterPasswordHash: st
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_get_api_key_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_get_api_key_failed')));
   }
   const body = (await parseJson<{ apiKey?: string }>(resp)) || {};
   return String(body.apiKey || '');
@@ -1189,7 +1189,7 @@ export async function rotateApiKey(authedFetch: AuthedFetch, masterPasswordHash:
   });
   if (!resp.ok) {
     const body = await parseJson<TokenError>(resp);
-    throw new Error(translateServerError(body?.error_description || body?.error, t('txt_rotate_api_key_failed')));
+    throw new Error(translateServerError(serverErrorText(body), t('txt_rotate_api_key_failed')));
   }
   const body = (await parseJson<{ apiKey?: string }>(resp)) || {};
   return String(body.apiKey || '');

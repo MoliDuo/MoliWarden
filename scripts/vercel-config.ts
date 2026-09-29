@@ -1,7 +1,7 @@
 // Routing for the Vercel Build Output API bundle (.vercel/output/config.json).
 // Kept separate from build-vercel.ts so tests can check it without building.
 import { FRAMEABLE_CONNECTOR_CSP } from '../src/http/headers';
-import { BACKEND_EXACT_PATHS, BACKEND_PATH_PREFIXES } from '../src/web-vault-visibility';
+import { BACKEND_EXACT_PATHS, BACKEND_PATH_PREFIXES } from '../src/main/backend-paths';
 
 // The single function serving every API route (.vercel/output/functions/<name>.func).
 export const FUNCTION_NAME = '_moliwarden';

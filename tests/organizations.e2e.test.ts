@@ -447,7 +447,11 @@ test('instance backup round-trips organizations', async () => {
   const restored = await alice.request('/api/admin/backup/import', { method: 'POST', body: form });
   assert.equal(restored.status, 200, await restored.clone().text());
 
+  // A restore replaces the devices, which ends every session.
   const relogin = await client.login('alice@example.com');
+  alice = relogin;
+  bob = Object.assign(await client.login('bob@example.com'), { publicKey: bob.publicKey });
+  carol = await client.login('carol@example.com');
   const sync = await relogin.json('/api/sync');
   assert.equal(sync.profile.organizations.length, 1);
   const restoredItem = sync.ciphers.find((c: any) => c.id === item.id);

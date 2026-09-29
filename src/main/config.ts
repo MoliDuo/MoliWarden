@@ -20,6 +20,8 @@ export interface S3Config {
   forcePathStyle?: string;
 }
 
+export type IconSource = 'favicon' | 'bitwarden' | 'off';
+
 export interface Config {
   databaseUrl: string;
   databasePoolMax: number;
@@ -27,8 +29,8 @@ export interface Config {
   jwtSecretProblem: 'missing' | 'too_short' | null;
   s3: S3Config;
   maxUploadBytes?: string;
-  hideWebVault: boolean;
   showPasswordHint: boolean;
+  iconSource: IconSource;
   cronSecret?: string;
   webauthn: { rpId?: string; rpName?: string; allowedOrigins?: string };
   yubicoValidationUrls?: string;
@@ -55,8 +57,8 @@ const schema = z.object({
   S3_REGION: text,
   S3_FORCE_PATH_STYLE: text,
   MAX_UPLOAD_BYTES: text,
-  HIDE_WEB_VAULT: flag,
   SHOW_PASSWORD_HINT: flag,
+  ICON_SOURCE: z.enum(['favicon', 'bitwarden', 'off']).default('favicon'),
   CRON_SECRET: text,
   WEBAUTHN_RP_ID: text,
   WEBAUTHN_RP_NAME: text,
@@ -90,8 +92,8 @@ export function readConfig(source: Source): Config {
       forcePathStyle: env.S3_FORCE_PATH_STYLE,
     },
     maxUploadBytes: env.MAX_UPLOAD_BYTES,
-    hideWebVault: env.HIDE_WEB_VAULT,
     showPasswordHint: env.SHOW_PASSWORD_HINT,
+    iconSource: env.ICON_SOURCE,
     cronSecret: env.CRON_SECRET,
     webauthn: { rpId: env.WEBAUTHN_RP_ID, rpName: env.WEBAUTHN_RP_NAME, allowedOrigins: env.WEBAUTHN_ALLOWED_ORIGINS },
     yubicoValidationUrls: env.YUBICO_VALIDATION_URLS ?? env.globalSettings__yubico__validationUrls,

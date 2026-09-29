@@ -23,7 +23,6 @@ export function createLegacyEnv(config: Config, pool: pg.Pool): Env {
     S3_REGION: config.s3.region,
     S3_FORCE_PATH_STYLE: config.s3.forcePathStyle,
     MAX_UPLOAD_BYTES: config.maxUploadBytes,
-    HIDE_WEB_VAULT: flag(config.hideWebVault),
     SHOW_PASSWORD_HINT: flag(config.showPasswordHint),
     CRON_SECRET: config.cronSecret,
     WEBAUTHN_RP_ID: config.webauthn.rpId,

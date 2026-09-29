@@ -8,17 +8,6 @@ import { StorageService } from './storage';
 // This second layer only needs to be non-trivial, not expensive.
 const SERVER_HASH_ITERATIONS = 100_000;
 const SERVER_HASH_PREFIX = '$s$';
-const AUTH_CONTEXT_CACHE_TTL_MS = 15 * 1000;
-
-interface CachedUserEntry {
-  user: User | null;
-  expiresAt: number;
-}
-
-interface CachedDeviceEntry {
-  device: Awaited<ReturnType<StorageService['getDevice']>>;
-  expiresAt: number;
-}
 
 export interface VerifiedAccessContext {
   payload: JWTPayload;
@@ -44,94 +33,24 @@ export type RefreshAccessTokenResult =
 
 export class AuthService {
   private storage: StorageService;
-  private static userCache = new Map<string, CachedUserEntry>();
-  private static deviceCache = new Map<string, CachedDeviceEntry>();
-
   constructor(private env: Env) {
     this.storage = new StorageService(env.DB);
   }
 
-  static invalidateUserCache(userId: string): void {
-    const normalizedUserId = String(userId || '').trim();
-    if (!normalizedUserId) return;
-    AuthService.userCache.delete(normalizedUserId);
-    const prefix = `${normalizedUserId}:`;
-    for (const key of AuthService.deviceCache.keys()) {
-      if (key.startsWith(prefix)) {
-        AuthService.deviceCache.delete(key);
-      }
-    }
+  private getCachedUser(userId: string): Promise<User | null> {
+    return this.storage.getUserById(userId);
   }
 
-  static invalidateDeviceCache(userId: string, deviceId: string): void {
-    const normalizedUserId = String(userId || '').trim();
-    const normalizedDeviceId = String(deviceId || '').trim();
-    if (!normalizedUserId || !normalizedDeviceId) return;
-    AuthService.deviceCache.delete(`${normalizedUserId}:${normalizedDeviceId}`);
+  private getFreshUser(userId: string): Promise<User | null> {
+    return this.storage.getUserById(userId);
   }
 
-  private readCachedUser(userId: string): User | null | undefined {
-    const cached = AuthService.userCache.get(userId);
-    if (!cached) return undefined;
-    if (cached.expiresAt <= Date.now()) {
-      AuthService.userCache.delete(userId);
-      return undefined;
-    }
-    return cached.user;
+  private getCachedDevice(userId: string, deviceId: string) {
+    return this.storage.getDevice(userId, deviceId);
   }
 
-  private writeCachedUser(userId: string, user: User | null): void {
-    AuthService.userCache.set(userId, {
-      user,
-      expiresAt: Date.now() + AUTH_CONTEXT_CACHE_TTL_MS,
-    });
-  }
-
-  private async getCachedUser(userId: string): Promise<User | null> {
-    const cached = this.readCachedUser(userId);
-    if (cached !== undefined) return cached;
-    const user = await this.storage.getUserById(userId);
-    this.writeCachedUser(userId, user);
-    return user;
-  }
-
-  private async getFreshUser(userId: string): Promise<User | null> {
-    const user = await this.storage.getUserById(userId);
-    this.writeCachedUser(userId, user);
-    return user;
-  }
-
-  private readCachedDevice(userId: string, deviceId: string) {
-    const cacheKey = `${userId}:${deviceId}`;
-    const cached = AuthService.deviceCache.get(cacheKey);
-    if (!cached) return undefined;
-    if (cached.expiresAt <= Date.now()) {
-      AuthService.deviceCache.delete(cacheKey);
-      return undefined;
-    }
-    return cached.device;
-  }
-
-  private writeCachedDevice(userId: string, deviceId: string, device: Awaited<ReturnType<StorageService['getDevice']>>): void {
-    const cacheKey = `${userId}:${deviceId}`;
-    AuthService.deviceCache.set(cacheKey, {
-      device,
-      expiresAt: Date.now() + AUTH_CONTEXT_CACHE_TTL_MS,
-    });
-  }
-
-  private async getCachedDevice(userId: string, deviceId: string) {
-    const cached = this.readCachedDevice(userId, deviceId);
-    if (cached !== undefined) return cached;
-    const device = await this.storage.getDevice(userId, deviceId);
-    this.writeCachedDevice(userId, deviceId, device);
-    return device;
-  }
-
-  private async getFreshDevice(userId: string, deviceId: string) {
-    const device = await this.storage.getDevice(userId, deviceId);
-    this.writeCachedDevice(userId, deviceId, device);
-    return device;
+  private getFreshDevice(userId: string, deviceId: string) {
+    return this.storage.getDevice(userId, deviceId);
   }
 
   // Second-layer hash: PBKDF2-SHA256(clientHash, email-salt, iterations).

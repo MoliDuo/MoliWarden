@@ -785,7 +785,6 @@ export async function handleChangePassword(request: Request, env: Env, userId: s
   user.updatedAt = new Date().toISOString();
   await storage.saveUser(user);
   await storage.deleteRefreshTokensByUserId(user.id);
-  AuthService.invalidateUserCache(user.id);
   await writeAuditEvent(storage, {
     actorUserId: user.id,
     action: 'user.password.change',
@@ -1027,7 +1026,6 @@ export async function handlePutTwoFactorAuthenticator(request: Request, env: Env
   user.updatedAt = new Date().toISOString();
   await storage.saveUser(user);
   await storage.deleteRefreshTokensByUserId(user.id);
-  AuthService.invalidateUserCache(user.id);
   await writeAuditEvent(storage, {
     actorUserId: user.id,
     action: 'account.totp.enable',
@@ -1106,7 +1104,6 @@ export async function handlePutTwoFactorYubiKey(request: Request, env: Env, user
   user.updatedAt = new Date().toISOString();
   await storage.saveUser(user);
   await storage.deleteRefreshTokensByUserId(user.id);
-  AuthService.invalidateUserCache(user.id);
   await writeAuditEvent(storage, {
     actorUserId: user.id,
     action: 'account.yubikey.enable',
@@ -1259,7 +1256,6 @@ export async function handleDisableTwoFactorProvider(request: Request, env: Env,
   user.updatedAt = new Date().toISOString();
   await storage.saveUser(user);
   await storage.deleteRefreshTokensByUserId(user.id);
-  AuthService.invalidateUserCache(user.id);
   await writeAuditEvent(storage, {
     actorUserId: user.id,
     action: type === TWO_FACTOR_PROVIDER_AUTHENTICATOR
@@ -1330,7 +1326,6 @@ export async function handleSetTotpStatus(request: Request, env: Env, userId: st
     user.updatedAt = new Date().toISOString();
     await storage.saveUser(user);
     await storage.deleteRefreshTokensByUserId(user.id);
-    AuthService.invalidateUserCache(user.id);
     await writeAuditEvent(storage, {
       actorUserId: user.id,
       action: 'account.totp.enable',
@@ -1354,7 +1349,6 @@ export async function handleSetTotpStatus(request: Request, env: Env, userId: st
     user.updatedAt = new Date().toISOString();
     await storage.saveUser(user);
     await storage.deleteRefreshTokensByUserId(user.id);
-    AuthService.invalidateUserCache(user.id);
     await writeAuditEvent(storage, {
       actorUserId: user.id,
       action: 'account.totp.disable',
@@ -1483,7 +1477,6 @@ export async function handleRecoverTwoFactor(request: Request, env: Env): Promis
   user.updatedAt = new Date().toISOString();
   await storage.saveUser(user);
   await storage.deleteRefreshTokensByUserId(user.id);
-  AuthService.invalidateUserCache(user.id);
   await rateLimit.clearLoginAttempts(recoverLimitKey);
   await safeWriteAuditEvent(env, {
     actorUserId: user.id,
@@ -1565,7 +1558,6 @@ export async function handleSetUserKeyId(request: Request, env: Env, userId: str
   if (!(await storage.setUserKeyIdIfUnset(userId, keyId))) {
     return errorResponse('User key id is already set', 422);
   }
-  AuthService.invalidateUserCache(userId);
   return new Response(null, { status: 200 });
 }
 
@@ -1615,7 +1607,6 @@ async function apiKey(request: Request, env: Env, userId: string, rotate: boolea
     user.apiKey = randomStringAlphanum(LIMITS.auth.clientSecretLength);
     user.updatedAt = new Date().toISOString();
     await storage.saveUser(user);
-    AuthService.invalidateUserCache(user.id);
     auditAction = rotate ? 'account.api_key.rotate' : 'account.api_key.create';
   }
   await writeAuditEvent(storage, {

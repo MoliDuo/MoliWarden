@@ -43,8 +43,9 @@ export async function createJWT(payload: Omit<JWTPayload, 'iat' | 'exp' | 'iss' 
   const header = { alg: 'HS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
   
-  const fullPayload: JWTPayload = {
+  const fullPayload: JWTPayload & { typ: 'access' } = {
     ...payload,
+    typ: 'access',
     email_verified: true,  // required by mobile client
     amr: ['Application'],  // authentication methods reference - required by mobile client
     iat: now,
@@ -84,8 +85,9 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
     const valid = await crypto.subtle.verify('HMAC', key, signature, encoder.encode(data));
     if (!valid) return null;
 
-    const payload: JWTPayload = JSON.parse(new TextDecoder().decode(base64UrlDecode(payloadB64)));
-    
+    const payload: JWTPayload & { typ?: string } = JSON.parse(new TextDecoder().decode(base64UrlDecode(payloadB64)));
+    if (payload.typ !== 'access') return null;
+
     // Check expiration
     const now = Math.floor(Date.now() / 1000);
     if (payload.exp < now) return null;

@@ -13,8 +13,6 @@ export interface Env {
   S3_FORCE_PATH_STYLE?: string;
   // Override the per-request upload cap (bytes). Defaults to the Vercel body limit.
   MAX_UPLOAD_BYTES?: string;
-  // Set to "1" to return 404 for the Web Vault while keeping client APIs available.
-  HIDE_WEB_VAULT?: string;
   // Set to "1" to let anyone who knows an email address read its master
   // password hint. Off by default.
   SHOW_PASSWORD_HINT?: string;

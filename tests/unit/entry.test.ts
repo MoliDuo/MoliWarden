@@ -30,9 +30,8 @@ test('only a missing database is fatal', () => {
 });
 
 test('flags and numbers are parsed', () => {
-  const config = readConfig({ DATABASE_URL: 'postgres://db', SHOW_PASSWORD_HINT: '1', HIDE_WEB_VAULT: '0', DATABASE_POOL_MAX: '3' });
+  const config = readConfig({ DATABASE_URL: 'postgres://db', SHOW_PASSWORD_HINT: '1', DATABASE_POOL_MAX: '3' });
   assert.equal(config.showPasswordHint, true);
-  assert.equal(config.hideWebVault, false);
   assert.equal(config.databasePoolMax, 3);
   assert.equal(readConfig({ DATABASE_URL: 'postgres://db' }).databasePoolMax, 5);
   assert.throws(() => readConfig({ DATABASE_URL: 'postgres://db', DATABASE_POOL_MAX: 'many' }), /DATABASE_POOL_MAX/);

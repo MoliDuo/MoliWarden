@@ -12,11 +12,8 @@
     "x-frame-options": "DENY"
   },
   "body": {
-    "error": "Unauthorized",
-    "error_description": "Unauthorized",
-    "ErrorModel": {
-      "Message": "Unauthorized",
-      "Object": "error"
-    }
+    "message": "Unauthorized",
+    "validationErrors": null,
+    "object": "error"
   }
 }

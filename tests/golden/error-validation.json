@@ -12,11 +12,8 @@
     "x-frame-options": "DENY"
   },
   "body": {
-    "error": "Cipher name must be an encrypted string up to 1000 characters.",
-    "error_description": "Cipher name must be an encrypted string up to 1000 characters.",
-    "ErrorModel": {
-      "Message": "Cipher name must be an encrypted string up to 1000 characters.",
-      "Object": "error"
-    }
+    "message": "Cipher name must be an encrypted string up to 1000 characters.",
+    "validationErrors": null,
+    "object": "error"
   }
 }

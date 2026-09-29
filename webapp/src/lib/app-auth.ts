@@ -27,6 +27,7 @@ import {
   unlockOfflineVaultWithMasterKey,
 } from '@/lib/offline-auth';
 import { probeServer } from '@/lib/network-status';
+import { serverErrorText } from '@/lib/api/shared';
 import { setWebsiteIconsEnabled } from '@/lib/website-icon-settings';
 import type { AccountPasskeyPrfOption, AppPhase, Profile, SessionState, TokenSuccess, WebBootstrapResponse } from '@/lib/types';
 
@@ -589,7 +590,7 @@ export async function performPasswordLogin(
 
   return {
     kind: 'error',
-    message: translateServerError(tokenError.error_description || tokenError.error, t('txt_login_failed')),
+    message: translateServerError(serverErrorText(tokenError), t('txt_login_failed')),
   };
 }
 
@@ -603,7 +604,7 @@ export async function performPasskeyLogin(fallbackIterations: number, expectedEm
       const tokenError = token as { error_description?: string; error?: string };
       return {
         kind: 'error',
-        message: translateServerError(tokenError.error_description || tokenError.error, t('txt_login_failed')),
+        message: translateServerError(serverErrorText(tokenError), t('txt_login_failed')),
       };
     }
 
@@ -666,7 +667,7 @@ export async function performTotpLogin(
   const fallback = pendingTotp.providerType === TWO_FACTOR_PROVIDER_WEBAUTHN
     ? t('txt_passkey_verification_failed')
     : t('txt_totp_verify_failed');
-  throw new Error(translateServerError(tokenError.error_description || tokenError.error, fallback));
+  throw new Error(translateServerError(serverErrorText(tokenError), fallback));
 }
 
 export async function performRecoverTwoFactorLogin(
@@ -791,7 +792,7 @@ export async function performUnlock(
 
   return {
     kind: 'error',
-    message: translateServerError(tokenError.error_description || tokenError.error, t('txt_unlock_failed')),
+    message: translateServerError(serverErrorText(tokenError), t('txt_unlock_failed')),
   };
 }
 

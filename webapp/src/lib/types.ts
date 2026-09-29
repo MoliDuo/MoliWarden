@@ -491,7 +491,10 @@ export interface TokenSuccess {
   };
 }
 
+// Error bodies: Bitwarden's ErrorResponseModel (`message`), or the OAuth
+// shape (`error`, `error_description`) from the token endpoint.
 export interface TokenError {
+  message?: string;
   error?: string;
   error_description?: string;
   TwoFactorProviders?: unknown;

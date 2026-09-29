@@ -12,11 +12,8 @@
     "x-frame-options": "DENY"
   },
   "body": {
-    "error": "Cipher not found",
-    "error_description": "Cipher not found",
-    "ErrorModel": {
-      "Message": "Cipher not found",
-      "Object": "error"
-    }
+    "message": "Cipher not found",
+    "validationErrors": null,
+    "object": "error"
   }
 }

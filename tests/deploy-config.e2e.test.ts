@@ -32,7 +32,7 @@ after(async () => {
 
 async function errorMessage(response: Response): Promise<string> {
   const body = await response.json();
-  return body.ErrorModel?.Message ?? body.error_description ?? body.error;
+  return body.message ?? body.error_description ?? body.error;
 }
 
 test('missing DATABASE_URL is named in the error', async () => {

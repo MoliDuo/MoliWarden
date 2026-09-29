@@ -10,6 +10,7 @@
     "sstamp": "<volatile>",
     "did": "<device>",
     "dstamp": "<volatile>",
+    "typ": "access",
     "email_verified": true,
     "amr": [
       "Application"

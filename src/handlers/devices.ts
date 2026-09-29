@@ -415,7 +415,6 @@ export async function handleDeleteDevice(
   const deleted = await storage.deleteDevice(userId, normalized);
   if (deleted) {
     await unregisterMobilePushDevice(env, device?.pushUuid);
-    AuthService.invalidateDeviceCache(userId, normalized);
     notifyUserLogout(env, userId, normalized);
   }
   await writeAuditEvent(storage, {
@@ -492,7 +491,6 @@ export async function handleDeleteAllDevices(request: Request, env: Env, userId:
   user.securityStamp = generateUUID();
   user.updatedAt = new Date().toISOString();
   await storage.saveUser(user);
-  AuthService.invalidateUserCache(userId);
   notifyUserLogout(env, userId, null);
   await writeAuditEvent(storage, {
     actorUserId: userId,
@@ -644,7 +642,6 @@ export async function handleDeactivateDevice(
   const deleted = await storage.deleteDevice(userId, normalized);
   if (deleted) {
     await unregisterMobilePushDevice(env, device?.pushUuid);
-    AuthService.invalidateDeviceCache(userId, normalized);
     notifyUserLogout(env, userId, normalized);
   }
   await writeAuditEvent(storage, {

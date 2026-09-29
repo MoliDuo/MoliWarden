@@ -44,9 +44,13 @@ export function parseContentDispositionFileName(response: Response, fallback: st
   return normalized || fallback;
 }
 
+export function serverErrorText(body: TokenError | null | undefined): string | undefined {
+  return body?.message || body?.error_description || body?.error;
+}
+
 export async function parseErrorMessage(resp: Response, fallback: string): Promise<string> {
   const body = await parseJson<TokenError>(resp);
-  return translateServerError(body?.error_description || body?.error, fallback);
+  return translateServerError(serverErrorText(body), fallback);
 }
 
 export function createApiError(message: string, status?: number): Error & { status?: number } {

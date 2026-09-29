@@ -450,14 +450,6 @@ export default function App() {
       ),
     [session]
   );
-  const importAuthedFetch = useMemo(
-    () => async (input: string, init?: RequestInit) => {
-      const headers = new Headers(init?.headers || {});
-      headers.set('X-MoliWarden-Import', '1');
-      return authedFetch(input, { ...init, headers });
-    },
-    [authedFetch]
-  );
   const vaultCacheKey = String(profile?.id || session?.email || '').trim();
   const backupActions = useBackupActions({
     authedFetch,
@@ -1878,7 +1870,6 @@ export default function App() {
   const vaultSendActions = useVaultSendActions({
     orgKeys,
     authedFetch,
-    importAuthedFetch,
     session,
     profile,
     defaultKdfIterations,

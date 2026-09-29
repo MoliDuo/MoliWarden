@@ -10,19 +10,9 @@ export function jsonResponse(data: any, status: number = 200, headers: Record<st
   });
 }
 
-// Error response helper
+// Error response helper; the body is Bitwarden's ErrorResponseModel (see src/http/errors.ts).
 export function errorResponse(message: string, status: number = 400): Response {
-  return jsonResponse(
-    {
-      error: message,
-      error_description: message,
-      ErrorModel: {
-        Message: message,
-        Object: 'error',
-      },
-    },
-    status
-  );
+  return jsonResponse({ message, validationErrors: null, object: 'error' }, status);
 }
 
 export function unsupportedResponse(message: string = 'This feature is not supported by this server.'): Response {

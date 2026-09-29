@@ -6,7 +6,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { createNodeHandler } from '../src/main/node';
-import { BACKEND_EXACT_PATHS, BACKEND_PATH_PREFIXES } from '../src/web-vault-visibility';
+import { BACKEND_EXACT_PATHS, BACKEND_PATH_PREFIXES } from '../src/main/backend-paths';
 
 const PORT = Number(process.env.PORT || 8787);
 const app = createNodeHandler();

@@ -213,7 +213,7 @@ test('attachments: inline download, presigned S3 redirect above 4 MB, oversize r
   // the item never shows a broken attachment.
   const { cipherId, response } = await createAttachment(6 * 1024 * 1024);
   assert.equal(response.status, 400);
-  assert.match((await response.json()).ErrorModel.Message, /too large/i);
+  assert.match((await response.json()).message, /too large/i);
   const cipher = await alice.json(`/api/ciphers/${cipherId}`);
   assert.equal((cipher.attachments || []).length, 0);
 

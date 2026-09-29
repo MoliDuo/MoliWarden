@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { getRequestListener } from '@hono/node-server';
 import type { Hono } from 'hono';
-import { errorResponse } from '../utils/response';
+import { HttpError, misconfigured } from '../http/errors';
 import { createApp } from './app';
 import { readConfig, type Source } from './config';
 import { createDeps } from './deps';
@@ -59,9 +59,9 @@ export function createNodeHandler(source: Source = process.env): NodeHandler {
       runtime = { app: createApp(deps), dispose };
       return runtime.app;
     } catch (error) {
-      const message = `Server configuration error: ${error instanceof Error ? error.message : String(error)}`;
-      console.error(message);
-      return errorResponse(message, 500);
+      const failure = misconfigured(error instanceof Error ? error.message : String(error));
+      console.error(failure.message);
+      return Response.json(failure.body, { status: failure.status });
     }
   }
 
@@ -77,7 +77,7 @@ export function createNodeHandler(source: Source = process.env): NodeHandler {
       overrideGlobalObjects: false,
       errorHandler: (error) => {
         console.error('Unhandled request error:', error);
-        return errorResponse('Internal server error', 500);
+        return Response.json(new HttpError(500, 'Internal server error').body, { status: 500 });
       },
     }),
     async dispose() {

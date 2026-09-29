@@ -1,12 +1,14 @@
-import { Hono, type MiddlewareHandler } from 'hono';
+import { Hono, type ErrorHandler, type MiddlewareHandler } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { LIMITS } from '../config/limits';
 import { runScheduledBackupIfDue } from '../handlers/backup';
+import { HttpError, IdentityError, misconfigured, payloadTooLarge, unauthorized } from '../http/errors';
 import { preflight, responseHeaders } from '../http/headers';
+import { iconRoutes } from '../modules/icons/routes';
+import { metaRoutes } from '../modules/meta/routes';
 import { constantTimeEqual } from '../platform/crypto';
 import { handleRequest as handleLegacyRequest } from '../router';
 import { StorageService } from '../services/storage';
-import { errorResponse, jsonResponse } from '../utils/response';
 import type { Deps } from './deps';
 
 // Routes whose bodies are file contents streamed to storage; their handlers
@@ -22,7 +24,9 @@ function isFileUpload(path: string): boolean {
 function limitRequestBody(): MiddlewareHandler {
   const limit = bodyLimit({
     maxSize: LIMITS.request.maxBodyBytes,
-    onError: () => errorResponse('Request body too large', 413),
+    onError: () => {
+      throw payloadTooLarge();
+    },
   });
   return (c, next) => (isFileUpload(c.req.path) ? next() : limit(c, next));
 }
@@ -38,18 +42,28 @@ function ensureDatabase(deps: Deps): MiddlewareHandler {
     } catch (error) {
       if (ready === pending) ready = null;
       console.error('Database initialization failed:', error);
-      return jsonResponse(
-        {
-          error: 'Database not initialized',
-          error_description: 'Database initialization failed. Check server logs for details.',
-          ErrorModel: { Message: 'Database unavailable. Check DATABASE_URL and the function logs.', Object: 'error' },
-        },
-        500,
-      );
+      throw new HttpError(500, 'Database unavailable. Check DATABASE_URL and the function logs.');
     }
     await next();
   };
 }
+
+// Everything past this point signs or verifies tokens.
+function requireJwtSecret(deps: Deps): MiddlewareHandler {
+  return async (_c, next) => {
+    if (deps.config.jwtSecretProblem) throw misconfigured('JWT_SECRET is not set or too weak');
+    await next();
+  };
+}
+
+export const handleError: ErrorHandler = (error, c) => {
+  if (error instanceof HttpError) return c.json(error.body, error.status, error.headers);
+  if (error instanceof IdentityError) {
+    return c.json(error.body, error.status, { 'Cache-Control': 'no-store', Pragma: 'no-cache' });
+  }
+  console.error('Request error:', error);
+  return c.json(new HttpError(500, 'Internal server error').body, 500);
+};
 
 export function createApp(deps: Deps): Hono {
   const app = new Hono({ strict: false });
@@ -60,21 +74,24 @@ export function createApp(deps: Deps): Hono {
   app.use(limitRequestBody());
   app.use(ensureDatabase(deps));
 
+  app.route('/', metaRoutes(deps));
+  app.route('/', iconRoutes(deps));
+
   // Vercel Cron sends "Authorization: Bearer <CRON_SECRET>".
   app.get('/api/internal/cron', async (c) => {
     const secret = deps.config.cronSecret;
     const provided = (c.req.header('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
-    if (!secret || !provided || !constantTimeEqual(secret, provided)) return errorResponse('Unauthorized', 401);
+    if (!secret || !provided || !constantTimeEqual(secret, provided)) throw unauthorized();
     await runScheduledBackupIfDue(deps.legacyEnv);
     return c.json({ ok: true });
   });
 
+  // Routes registered before this line answer on any configuration.
+  app.use(requireJwtSecret(deps));
+
   // Routes not yet ported to src/modules.
   app.all('*', (c) => handleLegacyRequest(c.req.raw, deps.legacyEnv));
 
-  app.onError((error) => {
-    console.error('Request error:', error);
-    return errorResponse('Internal server error', 500);
-  });
+  app.onError(handleError);
   return app;
 }

@@ -169,19 +169,20 @@ test('imported ciphers keep none of the server-owned fields a client sends', asy
   assert.deepEqual(synced, []);
 });
 
-test('the import header does not lift the request budget', { todo: 'rate-limit policies replace the header in 3.2' }, async () => {
+test('imports draw from a finite budget of their own; client headers change nothing', async () => {
   const carol = await client.registerAndLogin('carol@example.com');
   let status = 0;
   for (let i = 0; i < 250 && status !== 429; i++) {
     status = (await carol.request('/api/accounts/revision-date')).status;
   }
   assert.equal(status, 429);
-  const imported = await carol.request('/api/ciphers/import', {
-    method: 'POST',
-    headers: { 'X-MoliWarden-Import': '1' },
-    json: { folders: [], folderRelationships: [], ciphers: [cipherPayload('bypass')] },
-  });
-  assert.equal(imported.status, 429);
+
+  const emptyImport = { folders: [], folderRelationships: [], ciphers: [] };
+  const importOnce = () =>
+    carol.request('/api/ciphers/import', { method: 'POST', headers: { 'X-MoliWarden-Import': '1' }, json: emptyImport });
+  assert.equal((await importOnce()).status, 200);
+  for (let i = 0; i < 1100 && status !== 429; i++) status = (await importOnce()).status;
+  assert.equal(status, 429);
 });
 
 test('a password change ends existing sessions', async () => {
