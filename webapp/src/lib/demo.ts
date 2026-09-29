@@ -20,7 +20,6 @@ import type {
   VaultDraft,
 } from '@/lib/types';
 import { t } from '@/lib/i18n';
-import { dispatchBackupProgress } from '@/lib/backup-restore-progress';
 
 type Notify = (type: 'success' | 'error' | 'warning', text: string) => void;
 type StateSetter<T> = (next: T[] | ((prev: T[]) => T[])) => void;
@@ -1116,41 +1115,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-async function runDemoRemoteRestoreProgress(fileName: string): Promise<void> {
-  const stages = [
-    ['txt_backup_restore_progress_remote_fetch_title', 'txt_backup_restore_progress_remote_fetch_detail'],
-    ['txt_backup_restore_progress_remote_shadow_title', 'txt_backup_restore_progress_remote_shadow_detail'],
-    ['txt_backup_restore_progress_remote_data_title', 'txt_backup_restore_progress_remote_data_detail'],
-    ['txt_backup_restore_progress_remote_files_title', 'txt_backup_restore_progress_remote_files_detail'],
-    ['txt_backup_restore_progress_remote_finalize_title', 'txt_backup_restore_progress_remote_finalize_detail'],
-  ] as const;
-
-  for (let index = 0; index < stages.length; index += 1) {
-    const [stageTitle, stageDetail] = stages[index];
-    dispatchBackupProgress({
-      operation: 'backup-restore',
-      source: 'remote',
-      step: String(index + 1),
-      fileName,
-      stageTitle,
-      stageDetail,
-      done: false,
-    });
-    await sleep(2000);
-  }
-
-  dispatchBackupProgress({
-    operation: 'backup-restore',
-    source: 'remote',
-    step: 'complete',
-    fileName,
-    stageTitle: 'txt_backup_restore_progress_remote_finalize_title',
-    stageDetail: 'txt_backup_restore_progress_remote_finalize_detail',
-    done: true,
-    ok: true,
-  });
-}
-
 export function createDemoInitialBootstrapState(): InitialAppBootstrapState {
   return {
     defaultKdfIterations: 600000,
@@ -1616,13 +1580,13 @@ export function createDemoMainRoutesProps(base: AppMainRoutesProps, notify: Noti
       notify('success', t('txt_backup_remote_delete_success'));
     },
     onRestoreRemoteBackup: async (_masterPassword: string, _destinationId, path) => {
-      await runDemoRemoteRestoreProgress(path.split('/').pop() || path || 'moliwarden_backup_demo.zip');
+      await sleep(3000);
       resetDemoVaultState(state);
       notify('success', t('txt_backup_remote_restore_completed_verified'));
       return createDemoImportBackupResult();
     },
     onRestoreRemoteBackupAllowingChecksumMismatch: async (_masterPassword: string, _destinationId, path) => {
-      await runDemoRemoteRestoreProgress(path.split('/').pop() || path || 'moliwarden_backup_demo.zip');
+      await sleep(3000);
       resetDemoVaultState(state);
       notify('success', t('txt_backup_remote_restore_completed_verified'));
       return createDemoImportBackupResult();

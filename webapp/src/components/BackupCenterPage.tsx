@@ -82,22 +82,6 @@ interface BackupProgressState {
   currentDetailKey: string;
 }
 
-const LOCAL_RESTORE_PHASES: BackupProgressPhase[] = [
-  { titleKey: 'txt_backup_restore_progress_local_upload_title', detailKey: 'txt_backup_restore_progress_local_upload_detail' },
-  { titleKey: 'txt_backup_restore_progress_local_shadow_title', detailKey: 'txt_backup_restore_progress_local_shadow_detail' },
-  { titleKey: 'txt_backup_restore_progress_local_data_title', detailKey: 'txt_backup_restore_progress_local_data_detail' },
-  { titleKey: 'txt_backup_restore_progress_local_files_title', detailKey: 'txt_backup_restore_progress_local_files_detail' },
-  { titleKey: 'txt_backup_restore_progress_local_finalize_title', detailKey: 'txt_backup_restore_progress_local_finalize_detail' },
-];
-
-const REMOTE_RESTORE_PHASES: BackupProgressPhase[] = [
-  { titleKey: 'txt_backup_restore_progress_remote_fetch_title', detailKey: 'txt_backup_restore_progress_remote_fetch_detail' },
-  { titleKey: 'txt_backup_restore_progress_remote_shadow_title', detailKey: 'txt_backup_restore_progress_remote_shadow_detail' },
-  { titleKey: 'txt_backup_restore_progress_remote_data_title', detailKey: 'txt_backup_restore_progress_remote_data_detail' },
-  { titleKey: 'txt_backup_restore_progress_remote_files_title', detailKey: 'txt_backup_restore_progress_remote_files_detail' },
-  { titleKey: 'txt_backup_restore_progress_remote_finalize_title', detailKey: 'txt_backup_restore_progress_remote_finalize_detail' },
-];
-
 const EXPORT_PROGRESS_PHASES: BackupProgressPhase[] = [
   { titleKey: 'txt_backup_archive_progress_collect_title', detailKey: 'txt_backup_archive_progress_collect_detail' },
   { titleKey: 'txt_backup_archive_progress_package_title', detailKey: 'txt_backup_archive_progress_package_detail' },
@@ -112,16 +96,6 @@ const EXPORT_WITH_ATTACHMENTS_PROGRESS_PHASES: BackupProgressPhase[] = [
   { titleKey: 'txt_backup_export_progress_fetch_attachments_title', detailKey: 'txt_backup_export_progress_fetch_attachments_detail' },
   { titleKey: 'txt_backup_export_progress_rebuild_title', detailKey: 'txt_backup_export_progress_rebuild_detail' },
   { titleKey: 'txt_backup_export_progress_save_title', detailKey: 'txt_backup_export_progress_save_detail' },
-];
-
-const REMOTE_RUN_PROGRESS_PHASES: BackupProgressPhase[] = [
-  { titleKey: 'txt_backup_remote_run_progress_prepare_title', detailKey: 'txt_backup_remote_run_progress_prepare_detail' },
-  { titleKey: 'txt_backup_archive_progress_collect_title', detailKey: 'txt_backup_archive_progress_collect_with_attachments_detail' },
-  { titleKey: 'txt_backup_archive_progress_package_title', detailKey: 'txt_backup_archive_progress_package_with_attachments_detail' },
-  { titleKey: 'txt_backup_remote_run_progress_sync_attachments_title', detailKey: 'txt_backup_remote_run_progress_sync_attachments_detail' },
-  { titleKey: 'txt_backup_remote_run_progress_upload_title', detailKey: 'txt_backup_remote_run_progress_upload_detail' },
-  { titleKey: 'txt_backup_remote_run_progress_verify_title', detailKey: 'txt_backup_remote_run_progress_verify_detail' },
-  { titleKey: 'txt_backup_remote_run_progress_cleanup_title', detailKey: 'txt_backup_remote_run_progress_cleanup_detail' },
 ];
 
 function buildSkippedImportMessage(result: AdminBackupImportResponse): string | null {
@@ -155,18 +129,12 @@ function buildIntegrityWarningMessage(entry: PendingRestoreIntegrity): string {
   });
 }
 
-function getBackupProgressPhases(
-  operation: BackupProgressOperation,
-  source: 'local' | 'remote' | null,
-  includeAttachments: boolean
-): BackupProgressPhase[] {
-  if (operation === 'backup-restore') {
-    return source === 'remote' ? REMOTE_RESTORE_PHASES : LOCAL_RESTORE_PHASES;
-  }
-  if (operation === 'backup-export') {
-    return includeAttachments ? EXPORT_WITH_ATTACHMENTS_PROGRESS_PHASES : EXPORT_PROGRESS_PHASES;
-  }
-  return REMOTE_RUN_PROGRESS_PHASES;
+// Only an export runs in the browser, so only it can show its steps. Runs
+// and restores happen in one request to the server; while it lasts, there
+// is nothing to report but the time.
+function getBackupProgressPhases(operation: BackupProgressOperation, includeAttachments: boolean): BackupProgressPhase[] {
+  if (operation !== 'backup-export') return [];
+  return includeAttachments ? EXPORT_WITH_ATTACHMENTS_PROGRESS_PHASES : EXPORT_PROGRESS_PHASES;
 }
 
 function getBackupProgressTitleKey(state: BackupProgressState): string {
@@ -348,7 +316,7 @@ export default function BackupCenterPage(props: BackupCenterPageProps) {
       const operation = detail.operation || pending?.operation || 'backup-restore';
       const source = (detail.source || pending?.source || null) as 'local' | 'remote' | null;
       const includeAttachments = pending?.includeAttachments || false;
-      const phases = getBackupProgressPhases(operation, source, includeAttachments);
+      const phases = getBackupProgressPhases(operation, includeAttachments);
       const matchedPhaseIndex = phases.findIndex((phase) => phase.titleKey === detail.stageTitle);
       const phaseIndex = matchedPhaseIndex >= 0 ? matchedPhaseIndex : 0;
       const nextState: BackupProgressState = {
@@ -361,8 +329,8 @@ export default function BackupCenterPage(props: BackupCenterPageProps) {
           : Date.now(),
         phaseIndex,
         phases,
-        currentTitleKey: detail.stageTitle || phases[Math.max(0, phaseIndex)].titleKey,
-        currentDetailKey: detail.stageDetail || phases[Math.max(0, phaseIndex)].detailKey,
+        currentTitleKey: detail.stageTitle || phases[phaseIndex]?.titleKey || '',
+        currentDetailKey: detail.stageDetail || phases[phaseIndex]?.detailKey || '',
       };
       restoreProgressPendingRef.current = nextState;
       if (restoreProgressTimerRef.current === null) {
@@ -476,7 +444,7 @@ export default function BackupCenterPage(props: BackupCenterPageProps) {
     setRestoreElapsedSeconds(0);
     const source = options?.source || null;
     const includeAttachments = !!options?.includeAttachments;
-    const phases = getBackupProgressPhases(operation, source, includeAttachments);
+    const phases = getBackupProgressPhases(operation, includeAttachments);
     restoreProgressPendingRef.current = {
       operation,
       source,
@@ -485,8 +453,8 @@ export default function BackupCenterPage(props: BackupCenterPageProps) {
       startedAt: Date.now(),
       phaseIndex: 0,
       phases,
-      currentTitleKey: phases[0].titleKey,
-      currentDetailKey: phases[0].detailKey,
+      currentTitleKey: phases[0]?.titleKey || '',
+      currentDetailKey: phases[0]?.detailKey || '',
     };
     restoreProgressTimerRef.current = window.setTimeout(() => {
       restoreProgressTimerRef.current = null;
@@ -644,6 +612,7 @@ export default function BackupCenterPage(props: BackupCenterPageProps) {
       const result = allowChecksumMismatch
         ? await props.onImportAllowingChecksumMismatch(masterPassword, selectedFile, replaceExisting)
         : await props.onImport(masterPassword, selectedFile, replaceExisting);
+      clearRestoreProgress();
       props.onNotify('success', `${buildIntegrityStatusMessage(integrity)} ${t('txt_backup_restore_success_relogin')}`);
       const skippedMessage = buildSkippedImportMessage(result);
       if (skippedMessage) props.onNotify('warning', skippedMessage);
@@ -732,6 +701,7 @@ export default function BackupCenterPage(props: BackupCenterPageProps) {
       setSettings(result.settings);
       setSelectedDestinationId(selectedDestination.id);
       await loadRemoteBrowser(selectedDestination.id, currentRemoteBrowserPath, { force: true });
+      clearRestoreProgress();
       props.onNotify('success', t('txt_backup_remote_run_success_verified', { name: result.result.fileName }));
       return true;
     } catch (error) {
@@ -880,6 +850,7 @@ export default function BackupCenterPage(props: BackupCenterPageProps) {
         : await props.onRestoreRemoteBackup(masterPassword, savedSelectedDestination.id, path, replaceExisting);
       setConfirmRemoteReplaceOpen(false);
       setPendingRemoteRestorePath('');
+      clearRestoreProgress();
       props.onNotify('success', `${buildIntegrityStatusMessage(integrity.result, { remote: true })} ${t('txt_backup_restore_success_relogin')}`);
       const skippedMessage = buildSkippedImportMessage(result);
       if (skippedMessage) props.onNotify('warning', skippedMessage);
@@ -1042,29 +1013,42 @@ export default function BackupCenterPage(props: BackupCenterPageProps) {
               {t('txt_backup_restore_progress_elapsed', { seconds: String(restoreElapsedSeconds) })}
             </div>
           </div>
-          <div className="restore-progress-meter">
-            <span
-              className="restore-progress-meter-bar"
-              style={{
-                width: `${((restoreProgress.phaseIndex + 1) / restoreProgress.phases.length) * 100}%`,
-              }}
-            />
-          </div>
-          <div className="restore-progress-current">
-            <strong>{t(restoreProgress.currentTitleKey)}</strong>
-            <p>{t(restoreProgress.currentDetailKey)}</p>
-          </div>
-          <ol className="restore-progress-list">
-            {restoreProgress.phases.map((phase, index) => {
-              const status = index < restoreProgress.phaseIndex ? 'done' : index === restoreProgress.phaseIndex ? 'active' : 'pending';
-              return (
-                <li key={phase.titleKey} className={`restore-progress-item ${status}`}>
-                  <span className="restore-progress-dot" />
-                  <span className="restore-progress-item-text">{t(phase.titleKey)}</span>
-                </li>
-              );
-            })}
-          </ol>
+          {restoreProgress.phases.length ? (
+            <>
+              <div className="restore-progress-meter">
+                <span
+                  className="restore-progress-meter-bar"
+                  style={{
+                    width: `${((restoreProgress.phaseIndex + 1) / restoreProgress.phases.length) * 100}%`,
+                  }}
+                />
+              </div>
+              <div className="restore-progress-current">
+                <strong>{t(restoreProgress.currentTitleKey)}</strong>
+                <p>{t(restoreProgress.currentDetailKey)}</p>
+              </div>
+              <ol className="restore-progress-list">
+                {restoreProgress.phases.map((phase, index) => {
+                  const status = index < restoreProgress.phaseIndex ? 'done' : index === restoreProgress.phaseIndex ? 'active' : 'pending';
+                  return (
+                    <li key={phase.titleKey} className={`restore-progress-item ${status}`}>
+                      <span className="restore-progress-dot" />
+                      <span className="restore-progress-item-text">{t(phase.titleKey)}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </>
+          ) : (
+            <>
+              <div className="restore-progress-meter indeterminate">
+                <span className="restore-progress-meter-bar" />
+              </div>
+              <div className="restore-progress-current">
+                <p>{t('txt_backup_progress_server_detail')}</p>
+              </div>
+            </>
+          )}
           </section>
         </div>
       ), document.body) : null}

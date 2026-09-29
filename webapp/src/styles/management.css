@@ -1873,6 +1873,25 @@
   transition: width 280ms ease;
 }
 
+/* Server work reports no steps: a bar sweeps across while it lasts. */
+.restore-progress-meter.indeterminate .restore-progress-meter-bar {
+  width: 30%;
+  animation: restore-progress-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes restore-progress-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(340%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .restore-progress-meter.indeterminate .restore-progress-meter-bar {
+    width: 100%;
+    animation: none;
+    opacity: 0.4;
+  }
+}
+
 .restore-progress-current {
   @apply mt-3 px-3 py-2.5;
   border-radius: var(--radius-md);
