@@ -5,7 +5,10 @@ import { runScheduledBackupIfDue } from '../handlers/backup';
 import { HttpError, IdentityError, misconfigured, payloadTooLarge, unauthorized } from '../http/errors';
 import { preflight, responseHeaders } from '../http/headers';
 import { accountRoutes } from '../modules/accounts/routes';
+import { adminRoutes } from '../modules/admin/routes';
 import { attachmentRoutes } from '../modules/attachments/routes';
+import { auditRoutes } from '../modules/audit/routes';
+import { pruneAuditLog } from '../modules/audit/service';
 import { deleteExpiredAuthRequests } from '../modules/auth-requests/repo';
 import { authRequestRoutes } from '../modules/auth-requests/routes';
 import { cipherRoutes } from '../modules/ciphers/routes';
@@ -101,7 +104,7 @@ export function createApp(deps: Deps): Hono {
     const secret = deps.config.cronSecret;
     const provided = (c.req.header('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
     if (!secret || !provided || !constantTimeEqual(secret, provided)) throw unauthorized();
-    await Promise.all([runScheduledBackupIfDue(deps.legacyEnv), deleteExpiredAuthRequests(deps.db)]);
+    await Promise.all([runScheduledBackupIfDue(deps.legacyEnv), deleteExpiredAuthRequests(deps.db), pruneAuditLog(deps)]);
     return c.json({ ok: true });
   });
 
@@ -120,6 +123,8 @@ export function createApp(deps: Deps): Hono {
   app.route('/', domainRoutes(deps));
   app.route('/', organizationRoutes(deps));
   app.route('/', sendRoutes(deps));
+  app.route('/', adminRoutes(deps));
+  app.route('/', auditRoutes(deps));
 
   // Routes not yet ported to src/modules.
   app.all('*', (c) => handleLegacyRequest(c.req.raw, deps.legacyEnv));

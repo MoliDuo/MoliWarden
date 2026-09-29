@@ -99,7 +99,7 @@ async function requireBackupRepairVerification(
 }
 
 async function writeAuditLog(
-  storage: StorageService,
+  env: Env,
   actorUserId: string | null,
   action: string,
   targetType: string | null,
@@ -107,7 +107,7 @@ async function writeAuditLog(
   metadata: Record<string, unknown> | null,
   request?: Request
 ): Promise<void> {
-  await writeAuditEvent(storage, {
+  await writeAuditEvent(env, {
     actorUserId,
     action,
     targetType,
@@ -470,7 +470,7 @@ export async function executeConfiguredBackup(
     }));
 
     await touchLease();
-    await writeAuditLog(storage, actorUserId, `admin.backup.remote.${trigger}`, 'backup', null, {
+    await writeAuditLog(env, actorUserId, `admin.backup.remote.${trigger}`, 'backup', null, {
       ...getBackupDestinationSummary(destination),
       provider: upload.provider,
       remotePath: upload.remotePath,
@@ -509,7 +509,7 @@ export async function executeConfiguredBackup(
     }));
 
     await touchLease();
-    await writeAuditLog(storage, actorUserId, `admin.backup.remote.${trigger}.failed`, 'backup', null, {
+    await writeAuditLog(env, actorUserId, `admin.backup.remote.${trigger}.failed`, 'backup', null, {
       ...getBackupDestinationSummary(destination),
       error: errorMessage,
       ...(auditMetadata || {}),
@@ -771,7 +771,7 @@ export async function importAndAuditRemoteBackupFile(
     progress,
     restoreFileName
   );
-  await writeAuditLog(storage, result.auditActorUserId, 'admin.backup.import', 'backup', null, {
+  await writeAuditLog(env, result.auditActorUserId, 'admin.backup.import', 'backup', null, {
     users: result.result.imported.users,
     ciphers: result.result.imported.ciphers,
     attachments: result.result.imported.attachmentFiles,
@@ -834,7 +834,6 @@ async function runImportAndAudit(
   replaceExisting: boolean,
   metadata: Record<string, unknown>
 ): Promise<BackupImportExecutionResult> {
-  const storage = new StorageService(env.DB);
   const targetDeviceIdentifier = String(request.headers.get('X-MoliWarden-Acting-Device-Id') || '').trim() || null;
   const progress: BackupRestoreProgressReporter = async (event) => {
     await notifyUserBackupRestoreProgress(
@@ -856,7 +855,7 @@ async function runImportAndAudit(
     replaceExisting,
   });
   const imported = await importBackupArchiveBytes(archiveBytes, env, actorUser.id, replaceExisting, progress, fileName);
-  await writeAuditLog(storage, imported.auditActorUserId, 'admin.backup.import', 'backup', null, {
+  await writeAuditLog(env, imported.auditActorUserId, 'admin.backup.import', 'backup', null, {
     users: imported.result.imported.users,
     ciphers: imported.result.imported.ciphers,
     attachments: imported.result.imported.attachmentFiles,
@@ -914,7 +913,7 @@ export async function handleUpdateAdminBackupSettings(request: Request, env: Env
   }
 
   await saveBackupSettings(storage, env, next);
-  await writeAuditLog(storage, actorUser.id, 'admin.backup.settings.update', 'backup', null, {
+  await writeAuditLog(env, actorUser.id, 'admin.backup.settings.update', 'backup', null, {
     destinationCount: next.destinations.length,
     scheduledDestinationCount: next.destinations.filter((destination) => destination.schedule.enabled).length,
   }, request);
@@ -967,7 +966,7 @@ export async function handleRepairAdminBackupSettings(request: Request, env: Env
   }
 
   await repairBackupSettings(storage, env, next);
-  await writeAuditLog(storage, actorUser.id, 'admin.backup.settings.repair', 'backup', null, {
+  await writeAuditLog(env, actorUser.id, 'admin.backup.settings.repair', 'backup', null, {
     destinationCount: next.destinations.length,
     scheduledDestinationCount: next.destinations.filter((destination) => destination.schedule.enabled).length,
   }, request);
@@ -1119,7 +1118,7 @@ export async function handleDeleteAdminRemoteBackup(request: Request, env: Env, 
     const path = ensureRemoteRestoreCandidate(String(body.path || ''));
     const destination = requireBackupDestination(settings, body.destinationId || null);
     await deleteRemoteBackupFile(destination, path);
-    await writeAuditLog(storage, actorUser.id, 'admin.backup.remote.delete', 'backup', null, {
+    await writeAuditLog(env, actorUser.id, 'admin.backup.remote.delete', 'backup', null, {
       ...getBackupDestinationSummary(destination),
       remotePath: path,
     }, request);
@@ -1173,7 +1172,6 @@ export async function handleRestoreAdminRemoteBackup(request: Request, env: Env,
 export async function handleAdminExportBackup(request: Request, env: Env, actorUser: User): Promise<Response> {
   if (!isAdmin(actorUser)) return errorResponse('Forbidden', 403);
 
-  const storage = new StorageService(env.DB);
   const targetDeviceIdentifier = String(request.headers.get('X-MoliWarden-Acting-Device-Id') || '').trim() || null;
   let body: { includeAttachments?: boolean; masterPasswordHash?: string } | null = null;
   try {
@@ -1233,7 +1231,7 @@ export async function handleAdminExportBackup(request: Request, env: Env, actorU
     return errorResponse(message, message.includes('blob missing') ? 409 : 500);
   }
 
-  await writeAuditLog(storage, actorUser.id, 'admin.backup.export', 'backup', null, {
+  await writeAuditLog(env, actorUser.id, 'admin.backup.export', 'backup', null, {
     users: archive.manifest.tableCounts.users,
     ciphers: archive.manifest.tableCounts.ciphers,
     attachments: archive.manifest.tableCounts.attachments,

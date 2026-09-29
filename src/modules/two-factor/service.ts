@@ -16,7 +16,7 @@ import {
   listSecurityKeys,
   securityKeyCreationOptions,
 } from '../passkeys/service';
-import type { Passkey } from '../passkeys/repo';
+import { usersWithPasskeys, type Passkey } from '../passkeys/repo';
 import { createRecoveryCode, recoveryCodeMatches } from './recovery-code';
 import {
   claimYubicoBootstrap,
@@ -72,6 +72,17 @@ export async function factorsOf(db: Executor, user: User): Promise<Factors> {
 
 export const hasSecondFactor = (factors: Factors) =>
   !!factors.totpSecret || factors.yubiKeys.length > 0 || factors.securityKeys.length > 0;
+
+// Which of the users have a second factor, in one query.
+export async function usersWithSecondFactor(db: Executor, users: User[]): Promise<Set<string>> {
+  const keyHolders = await usersWithPasskeys(
+    db,
+    users.map((user) => user.id),
+    'twoFactor',
+  );
+  const enabled = (user: User) => isTotpSecret(user.totpSecret) || yubiKeysOf(user).length > 0 || keyHolders.has(user.id);
+  return new Set(users.filter(enabled).map((user) => user.id));
+}
 
 async function requirePassword(user: User, secret: string | null | undefined): Promise<void> {
   if (!(await verifyMasterPassword(user, secret))) throw badRequest('User verification failed.');

@@ -99,31 +99,6 @@ export interface DomainRulesResponse {
   object: 'domains';
 }
 
-export interface Invite {
-  code: string;
-  createdBy: string;
-  usedBy: string | null;
-  expiresAt: string;
-  status: 'active' | 'used' | 'revoked' | 'expired';
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AuditLog {
-  id: string;
-  actorUserId: string | null;
-  actorEmail?: string | null;
-  action: string;
-  category: 'auth' | 'security' | 'device' | 'data' | 'system';
-  level: 'info' | 'warn' | 'error' | 'security';
-  targetType: string | null;
-  targetId: string | null;
-  targetUserEmail?: string | null;
-  metadata: string | null;
-  createdAt: string;
-}
-
-// Cipher types
 export enum CipherType {
   Login = 1,
   SecureNote = 2,

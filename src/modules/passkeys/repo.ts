@@ -54,6 +54,19 @@ export async function listPasskeys(db: Executor, userId: string, purpose: Purpos
   return rows.map(toPasskey);
 }
 
+// Which of the users have a passkey for `purpose`.
+export async function usersWithPasskeys(db: Executor, userIds: string[], purpose: Purpose): Promise<Set<string>> {
+  if (!userIds.length) return new Set();
+  const rows = await db
+    .selectFrom('webauthn_credentials')
+    .select('user_id')
+    .distinct()
+    .where('user_id', 'in', userIds)
+    .where('purpose', '=', purpose)
+    .execute();
+  return new Set(rows.map((row) => row.user_id));
+}
+
 export async function findPasskeyByCredentialId(db: Executor, credentialId: string): Promise<Passkey | null> {
   const row = await db.selectFrom('webauthn_credentials').selectAll().where('credential_id', '=', credentialId).executeTakeFirst();
   return row ? toPasskey(row) : null;

@@ -164,7 +164,7 @@ export async function removeSendPassword(deps: Deps, caller: Caller, id: string,
 
 // Removes the files of Sends whose rows are gone. A failure leaves an
 // unreferenced file behind and is only logged.
-async function removeFiles(blobs: BlobStore, sends: Send[]): Promise<void> {
+export async function removeSendFiles(blobs: BlobStore, sends: Send[]): Promise<void> {
   for (const send of sends) {
     if (!send.file?.id) continue;
     await blobs.delete(sendFileKey(send.id, send.file.id)).catch((error) => {
@@ -185,7 +185,7 @@ async function remove(deps: Deps, caller: Caller, sends: Send[]): Promise<void> 
       sends.map((send) => send.id),
     ),
   );
-  await removeFiles(deps.blobs, sends);
+  await removeSendFiles(deps.blobs, sends);
 }
 
 export async function deleteSend(deps: Deps, caller: Caller, id: string): Promise<void> {

@@ -1,4 +1,4 @@
-import { User, Cipher, Folder, Attachment, Device, Invite, AuditLog, Send, RefreshTokenRecord, CustomEquivalentDomain, AccountPasskeyChallenge, AccountPasskeyChallengeScope, AccountPasskeyCredential } from '../types';
+import { User, Cipher, Folder, Attachment, Device, Send, RefreshTokenRecord, CustomEquivalentDomain, AccountPasskeyChallenge, AccountPasskeyChallengeScope, AccountPasskeyCredential } from '../types';
 import { LIMITS } from '../config/limits';
 import { ensureStorageSchema, REQUIRED_SCHEMA_TABLE_NAMES } from './storage-schema';
 import {
@@ -19,23 +19,6 @@ import {
   setUserKeyIdIfUnset as setStoredUserKeyIdIfUnset,
   clearUserKeyId as clearStoredUserKeyId,
 } from './storage-user-repo';
-import {
-  type AuditLogListOptions,
-  createAuditLog as createStoredAuditLog,
-  clearAuditLogs as clearStoredAuditLogs,
-  assignInviteUsedBy as assignStoredInviteUsedBy,
-  createInvite as createStoredInvite,
-  deleteInvite as deleteStoredInvite,
-  deleteInvalidInvites as deleteStoredInvalidInvites,
-  deleteAllInvites as deleteStoredInvites,
-  getInvite as findStoredInvite,
-  listAuditLogs as listStoredAuditLogs,
-  listInvites as listStoredInvites,
-  markInviteUsed as markStoredInviteUsed,
-  pruneAuditLogs as pruneStoredAuditLogs,
-  pruneAuditLogsToMax as pruneStoredAuditLogsToMax,
-  revertInviteUsed as revertStoredInviteUsed,
-} from './storage-admin-repo';
 import {
   bulkDeleteFolders as deleteStoredFolders,
   clearFolderFromCiphers as clearStoredFolderFromCiphers,
@@ -291,62 +274,6 @@ export class StorageService {
 
   async deleteUserById(id: string): Promise<boolean> {
     return deleteStoredUserById(this.db, id);
-  }
-
-  async createInvite(invite: Invite): Promise<void> {
-    await createStoredInvite(this.db, invite);
-  }
-
-  async getInvite(code: string): Promise<Invite | null> {
-    return findStoredInvite(this.db, code);
-  }
-
-  async listInvites(includeInactive: boolean = false): Promise<Invite[]> {
-    return listStoredInvites(this.db, includeInactive);
-  }
-
-  async markInviteUsed(code: string, userId: string): Promise<boolean> {
-    return markStoredInviteUsed(this.db, code, userId);
-  }
-
-  async assignInviteUsedBy(code: string, userId: string): Promise<boolean> {
-    return assignStoredInviteUsedBy(this.db, code, userId);
-  }
-
-  async revertInviteUsed(code: string, userId: string): Promise<boolean> {
-    return revertStoredInviteUsed(this.db, code, userId);
-  }
-
-  async deleteInvite(code: string): Promise<boolean> {
-    return deleteStoredInvite(this.db, code);
-  }
-
-  async deleteInvalidInvites(): Promise<number> {
-    return deleteStoredInvalidInvites(this.db);
-  }
-
-  async deleteAllInvites(): Promise<number> {
-    return deleteStoredInvites(this.db);
-  }
-
-  async createAuditLog(log: AuditLog): Promise<void> {
-    await createStoredAuditLog(this.db, log);
-  }
-
-  async listAuditLogs(options: AuditLogListOptions): Promise<{ logs: AuditLog[]; total: number; hasMore: boolean }> {
-    return listStoredAuditLogs(this.db, options);
-  }
-
-  async pruneAuditLogs(beforeIso: string): Promise<number> {
-    return pruneStoredAuditLogs(this.db, beforeIso);
-  }
-
-  async pruneAuditLogsToMax(maxEntries: number): Promise<number> {
-    return pruneStoredAuditLogsToMax(this.db, maxEntries);
-  }
-
-  async clearAuditLogs(): Promise<number> {
-    return clearStoredAuditLogs(this.db);
   }
 
   // --- Domain rules ---

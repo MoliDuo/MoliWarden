@@ -3,7 +3,7 @@ import { AuthService } from './services/auth';
 import { RateLimitService } from './services/ratelimit';
 import { errorResponse } from './utils/response';
 import { LIMITS } from './config/limits';
-import { handleAdminRoute } from './router-admin';
+import { handleAdminBackupRoute } from './router-admin-backup';
 
 function jwtSecretUnsafeReason(env: Env): 'missing' | 'too_short' | null {
   const secret = (env.JWT_SECRET || '').trim();
@@ -50,8 +50,11 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
       return errorResponse(`Rate limit exceeded. Try again in ${rateLimitCheck.retryAfterSeconds} seconds.`, 429);
     }
 
-    const adminResponse = await handleAdminRoute(request, env, currentUser, path, method);
-    if (adminResponse) return adminResponse;
+    if (path.startsWith('/api/admin/backup')) {
+      if (currentUser.role !== 'admin') return errorResponse('Forbidden', 403);
+      const response = await handleAdminBackupRoute(request, env, currentUser, path, method);
+      if (response) return response;
+    }
 
     return errorResponse('Route not found', 404);
   } catch (error) {

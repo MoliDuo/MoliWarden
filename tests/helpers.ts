@@ -44,6 +44,17 @@ export async function ensureBucket(bucket: string): Promise<void> {
   }
 }
 
+// Whether the bucket of startTestServer() holds `key`.
+export async function blobExists(key: string): Promise<boolean> {
+  const aws = new AwsClient({ accessKeyId: S3_ACCESS_KEY_ID, secretAccessKey: S3_SECRET_ACCESS_KEY, region: 'us-east-1', service: 's3' });
+  const response = await aws.fetch(`${S3_ENDPOINT}/${testBucket()}/${key}`, { method: 'HEAD' });
+  if (response.status === 404) return false;
+  if (!response.ok) throw new Error(`HEAD ${key}: ${response.status}`);
+  return true;
+}
+
+const testBucket = () => `mw-test-${process.pid}`;
+
 // Environment for a server under test, as it would be set on Vercel.
 export function testServerEnv(bucket: string): Record<string, string> {
   return {
@@ -62,7 +73,7 @@ export function testServerEnv(bucket: string): Record<string, string> {
 export async function startTestServer(
   options: { tls?: { key: string | Buffer; cert: string | Buffer }; env?: Record<string, string> } = {},
 ): Promise<TestServer> {
-  const bucket = `mw-test-${process.pid}`;
+  const bucket = testBucket();
   await resetDatabase();
   await ensureBucket(bucket);
 
