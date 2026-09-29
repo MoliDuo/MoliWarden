@@ -58,6 +58,7 @@
 | `S3_FORCE_PATH_STYLE` | | 默认路径风格；设为 `0` 改用虚拟主机风格 |
 | `CRON_SECRET` | 推荐 | Vercel Cron 调用定时备份时的鉴权密钥（Vercel 会自动带上） |
 | `MOLIWARDEN_CRON_SCHEDULE` | | 构建时生效的定时任务表达式，默认每天一次（Hobby 套餐只允许每天一次） |
+| `BACKUP_ALLOW_PRIVATE_HOSTS` | | 设为 `1` 允许备份目的地使用内网或回环地址（自建 NAS、测试） |
 | `PUSH_RELAY_DISABLED` | | 设为 `1` 不向 Bitwarden 官方推送中继注册 |
 | `HIDE_WEB_VAULT` | | 构建时设为 `1`，则不发布 Web 密码库，只保留客户端 API |
 | `WEBAUTHN_RP_ID` / `WEBAUTHN_RP_NAME` | | Passkey 的 RP ID 和显示名称，默认取站点域名和 `MoliWarden` |

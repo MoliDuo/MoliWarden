@@ -79,8 +79,10 @@ export async function findSend(db: Executor, id: string): Promise<Send | null> {
   return row ? toSend(row) : null;
 }
 
-export async function listSends(db: Executor, userId: string, ids?: string[]): Promise<Send[]> {
-  let query = db.selectFrom('sends').selectAll().where('user_id', '=', userId);
+// Without a user: every Send on the server.
+export async function listSends(db: Executor, userId: string | null, ids?: string[]): Promise<Send[]> {
+  let query = db.selectFrom('sends').selectAll();
+  if (userId) query = query.where('user_id', '=', userId);
   if (ids) query = query.where((eb) => eb('id', '=', eb.fn.any(eb.val(ids))));
   const rows = await query.orderBy('updated_at', 'desc').execute();
   return rows.map(toSend);

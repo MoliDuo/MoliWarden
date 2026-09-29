@@ -36,6 +36,7 @@ A Bitwarden-compatible server for **Vercel**, with its own web vault.
 | `S3_FORCE_PATH_STYLE` | | `0` for virtual-hosted-style URLs |
 | `CRON_SECRET` | recommended | authenticates Vercel Cron calls to `/api/internal/cron` (scheduled backups) |
 | `MOLIWARDEN_CRON_SCHEDULE` | | build-time cron expression, daily by default (Hobby plans only allow daily jobs) |
+| `BACKUP_ALLOW_PRIVATE_HOSTS` | | `1` to let backup destinations use private or loopback addresses (self-hosted NAS, tests) |
 | `PUSH_RELAY_DISABLED` | | `1` to skip registering with the Bitwarden push relay |
 | `HIDE_WEB_VAULT` | | `1` at build time to publish only the client API |
 

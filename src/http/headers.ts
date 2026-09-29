@@ -56,7 +56,7 @@ function allowedOrigin(request: Request, options: CorsOptions): { origin: string
   if (origin === url.origin) return { origin, credentials: true };
   if (
     (isBrowserExtensionOrigin(origin) || isOfficialBitwardenDesktopOrigin(origin)) &&
-    isConfiguredWebAuthnAllowedOrigin({ WEBAUTHN_ALLOWED_ORIGINS: options.allowedOrigins }, origin)
+    isConfiguredWebAuthnAllowedOrigin(options.allowedOrigins, origin)
   ) {
     return { origin: origin!, credentials: true };
   }

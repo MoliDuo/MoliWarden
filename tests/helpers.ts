@@ -44,6 +44,19 @@ export async function ensureBucket(bucket: string): Promise<void> {
   }
 }
 
+// Empties and removes a bucket. SeaweedFS gives every bucket its own
+// volumes, so buckets left behind by earlier runs use them up.
+export async function removeBucket(bucket: string): Promise<void> {
+  const aws = new AwsClient({ accessKeyId: S3_ACCESS_KEY_ID, secretAccessKey: S3_SECRET_ACCESS_KEY, region: 'us-east-1', service: 's3' });
+  for (;;) {
+    const listing = await (await aws.fetch(`${S3_ENDPOINT}/${bucket}?list-type=2&max-keys=1000`)).text();
+    const keys = [...listing.matchAll(/<Key>([^<]+)<\/Key>/g)].map((match) => match[1].replace(/&amp;/g, '&'));
+    if (!keys.length) break;
+    await Promise.all(keys.map((key) => aws.fetch(`${S3_ENDPOINT}/${bucket}/${key.split('/').map(encodeURIComponent).join('/')}`, { method: 'DELETE' })));
+  }
+  await aws.fetch(`${S3_ENDPOINT}/${bucket}`, { method: 'DELETE' });
+}
+
 // Whether the bucket of startTestServer() holds `key`.
 export async function blobExists(key: string): Promise<boolean> {
   const aws = new AwsClient({ accessKeyId: S3_ACCESS_KEY_ID, secretAccessKey: S3_SECRET_ACCESS_KEY, region: 'us-east-1', service: 's3' });
@@ -103,6 +116,7 @@ export async function startTestServer(
         await new Promise<void>((resolve) => s.close(() => resolve()));
       }
       await app.dispose();
+      await removeBucket(bucket).catch(() => undefined);
     },
   };
 }

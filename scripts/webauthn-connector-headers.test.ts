@@ -24,7 +24,7 @@ test('only the iframe connector drops anti-framing headers', () => {
 });
 
 test('official Bitwarden desktop origin receives credentialed CORS', () => {
-  assert.ok(getConfiguredWebAuthnAllowedOrigins({}).includes('bw-desktop-file://bundle'));
+  assert.ok(getConfiguredWebAuthnAllowedOrigins().includes('bw-desktop-file://bundle'));
   const preflight = corsHeaders(new Request('https://vault.example.test/api/sync', {
     method: 'OPTIONS',
     headers: {

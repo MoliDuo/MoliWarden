@@ -23,7 +23,7 @@ export interface RelyingParty {
 // their own origins, which are allowed as well.
 export function relyingParty(config: Config, request: Request): RelyingParty {
   const url = new URL(request.url);
-  const origins = new Set([url.origin, ...getConfiguredWebAuthnAllowedOrigins({ WEBAUTHN_ALLOWED_ORIGINS: config.webauthn.allowedOrigins })]);
+  const origins = new Set([url.origin, ...getConfiguredWebAuthnAllowedOrigins(config.webauthn.allowedOrigins)]);
   return {
     rpId: config.webauthn.rpId || url.hostname,
     rpName: config.webauthn.rpName || 'MoliWarden',

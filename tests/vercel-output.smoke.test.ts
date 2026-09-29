@@ -12,6 +12,7 @@ import {
   Client,
   cipherPayload,
   ensureBucket,
+  removeBucket,
   fakeEncString,
   resetDatabase,
   testServerEnv,
@@ -28,6 +29,8 @@ let vercel: VercelEmulator;
 let client: Client;
 let alice: Session;
 
+const bucket = `mw-smoke-${process.pid}`;
+
 before(async () => {
   try {
     await stat(join(OUTPUT_DIR, 'config.json'));
@@ -37,7 +40,6 @@ before(async () => {
   workDir = await mkdtemp(join(tmpdir(), 'moliwarden-smoke-'));
   await cp(OUTPUT_DIR, workDir, { recursive: true });
 
-  const bucket = `mw-smoke-${process.pid}`;
   await resetDatabase();
   await ensureBucket(bucket);
   vercel = await startVercelEmulator(workDir, {
@@ -50,6 +52,7 @@ before(async () => {
 
 after(async () => {
   await vercel?.close();
+  await removeBucket(bucket).catch(() => undefined);
   if (workDir) await rm(workDir, { recursive: true, force: true });
   // The bundled function owns its own pg pool; nothing else keeps the loop alive.
   setTimeout(() => process.exit(process.exitCode ?? 0), 100).unref();

@@ -1,4 +1,3 @@
-import type { Env } from '../types';
 
 // Keep this list aligned with Bitwarden server's default FIDO2 origins.
 // These are the stable store IDs for the official Chromium-based extensions.
@@ -44,24 +43,20 @@ export function isOfficialBitwardenDesktopOrigin(origin: unknown): boolean {
   );
 }
 
-export function getConfiguredWebAuthnAllowedOrigins(
-  env: Pick<Env, 'WEBAUTHN_ALLOWED_ORIGINS'>
-): string[] {
+// The official clients' origins plus `configured`, a comma-separated list.
+export function getConfiguredWebAuthnAllowedOrigins(configured = ''): string[] {
   const seen = new Set<string>([
     ...OFFICIAL_BITWARDEN_BROWSER_EXTENSION_ORIGINS,
     ...OFFICIAL_BITWARDEN_DESKTOP_ORIGINS,
   ]);
-  for (const item of String(env.WEBAUTHN_ALLOWED_ORIGINS || '').split(',')) {
+  for (const item of configured.split(',')) {
     const origin = normalizeOrigin(item);
     if (origin) seen.add(origin);
   }
   return Array.from(seen);
 }
 
-export function isConfiguredWebAuthnAllowedOrigin(
-  env: Pick<Env, 'WEBAUTHN_ALLOWED_ORIGINS'>,
-  origin: unknown
-): boolean {
+export function isConfiguredWebAuthnAllowedOrigin(configured: string | undefined, origin: unknown): boolean {
   const normalized = normalizeOrigin(origin);
-  return !!normalized && getConfiguredWebAuthnAllowedOrigins(env).includes(normalized);
+  return !!normalized && getConfiguredWebAuthnAllowedOrigins(configured).includes(normalized);
 }

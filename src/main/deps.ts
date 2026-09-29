@@ -3,11 +3,9 @@ import type pg from 'pg';
 import { createPushService, type PushService } from '../modules/push/service';
 import { createBlobStore, type BlobStore } from '../platform/blob';
 import { createDb, type Db } from '../platform/db';
-import { createLegacyEnv } from '../platform/env';
 import { createPgPool } from '../platform/pg-d1';
 import { createRateLimiter, type RateLimiter } from '../platform/rate-limit';
 import { createTokenService, type TokenService } from '../platform/tokens';
-import type { Env } from '../types';
 import type { Config } from './config';
 
 // Everything a request handler may use, created once per process.
@@ -19,8 +17,6 @@ export interface Deps {
   limiter: RateLimiter;
   push: PushService;
   blobs: BlobStore;
-  // For the handlers that have not been ported to src/modules yet.
-  legacyEnv: Env;
 }
 
 export function createDeps(config: Config): { deps: Deps; dispose(): Promise<void> } {
@@ -41,7 +37,6 @@ export function createDeps(config: Config): { deps: Deps; dispose(): Promise<voi
     limiter: createRateLimiter(db),
     push,
     blobs: createBlobStore(config.s3),
-    legacyEnv: createLegacyEnv(config, pool, push),
   };
   return { deps, dispose: () => pool.end() };
 }

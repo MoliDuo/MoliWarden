@@ -38,7 +38,7 @@ export function metaRoutes(deps: Deps): Hono {
         jwtUnsafeReason: config.jwtSecretProblem,
         jwtSecretMinLength: LIMITS.auth.jwtSecretMinLength,
         registrationInviteRequired: (await countUsers(deps.db)) > 0,
-        webAuthnAllowedOrigins: getConfiguredWebAuthnAllowedOrigins({ WEBAUTHN_ALLOWED_ORIGINS: config.webauthn.allowedOrigins }),
+        webAuthnAllowedOrigins: getConfiguredWebAuthnAllowedOrigins(config.webauthn.allowedOrigins),
         websiteIconsEnabled: config.iconSource !== 'off',
         passwordHintEnabled: config.showPasswordHint,
       };

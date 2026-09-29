@@ -36,6 +36,9 @@ export interface Config {
   // Mobile apps are woken up through Bitwarden's push relay unless this is set.
   pushRelayDisabled: boolean;
   cronSecret?: string;
+  // Lets backup destinations point at private or loopback addresses. For
+  // tests and self-hosted setups whose storage sits on the same network.
+  backupAllowPrivateHosts: boolean;
   webauthn: { rpId?: string; rpName?: string; allowedOrigins?: string };
   yubicoValidationUrls?: string;
 }
@@ -65,6 +68,7 @@ const schema = z.object({
   ICON_SOURCE: z.enum(['favicon', 'bitwarden', 'off']).default('favicon'),
   PUSH_RELAY_DISABLED: flag,
   CRON_SECRET: text,
+  BACKUP_ALLOW_PRIVATE_HOSTS: flag,
   WEBAUTHN_RP_ID: text,
   WEBAUTHN_RP_NAME: text,
   WEBAUTHN_ALLOWED_ORIGINS: text,
@@ -101,6 +105,7 @@ export function readConfig(source: Source): Config {
     iconSource: env.ICON_SOURCE,
     pushRelayDisabled: env.PUSH_RELAY_DISABLED,
     cronSecret: env.CRON_SECRET,
+    backupAllowPrivateHosts: env.BACKUP_ALLOW_PRIVATE_HOSTS,
     webauthn: { rpId: env.WEBAUTHN_RP_ID, rpName: env.WEBAUTHN_RP_NAME, allowedOrigins: env.WEBAUTHN_ALLOWED_ORIGINS },
     yubicoValidationUrls: env.YUBICO_VALIDATION_URLS ?? env.globalSettings__yubico__validationUrls,
   };

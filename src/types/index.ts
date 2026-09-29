@@ -1,30 +1,3 @@
-// Runtime environment (built from process.env in src/platform/env.ts).
-export interface Env {
-  DB: D1Database;
-  PUSH: import('../modules/push/service').PushService;
-  BACKUP_TRANSFER_RUNNER: import('../platform/in-process-object').InProcessObjectNamespace;
-  JWT_SECRET: string;
-  // S3-compatible storage for attachments and Send files.
-  S3_ENDPOINT?: string;
-  S3_BUCKET?: string;
-  S3_ACCESS_KEY_ID?: string;
-  S3_SECRET_ACCESS_KEY?: string;
-  S3_REGION?: string;
-  // "0" switches to virtual-hosted-style bucket URLs; path-style is the default.
-  S3_FORCE_PATH_STYLE?: string;
-  // Override the per-request upload cap (bytes). Defaults to the Vercel body limit.
-  MAX_UPLOAD_BYTES?: string;
-  // Set to "1" to let anyone who knows an email address read its master
-  // password hint. Off by default.
-  SHOW_PASSWORD_HINT?: string;
-  // Shared secret Vercel Cron sends as "Authorization: Bearer <CRON_SECRET>".
-  CRON_SECRET?: string;
-  WEBAUTHN_RP_ID?: string;
-  WEBAUTHN_RP_NAME?: string;
-  WEBAUTHN_ALLOWED_ORIGINS?: string;
-  YUBICO_VALIDATION_URLS?: string;
-}
-
 export type UserRole = 'admin' | 'user';
 export type UserStatus = 'active' | 'banned';
 

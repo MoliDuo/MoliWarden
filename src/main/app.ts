@@ -1,13 +1,14 @@
 import { Hono, type ErrorHandler, type MiddlewareHandler } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { LIMITS } from '../config/limits';
-import { runScheduledBackupIfDue } from '../handlers/backup';
-import { HttpError, IdentityError, misconfigured, payloadTooLarge, unauthorized } from '../http/errors';
+import { HttpError, IdentityError, misconfigured, notFound, payloadTooLarge, unauthorized } from '../http/errors';
 import { preflight, responseHeaders } from '../http/headers';
 import { accountRoutes } from '../modules/accounts/routes';
 import { adminRoutes } from '../modules/admin/routes';
 import { attachmentRoutes } from '../modules/attachments/routes';
 import { auditRoutes } from '../modules/audit/routes';
+import { runScheduledBackups } from '../modules/backup/runs';
+import { backupRoutes } from '../modules/backup/routes';
 import { pruneAuditLog } from '../modules/audit/service';
 import { deleteExpiredAuthRequests } from '../modules/auth-requests/repo';
 import { authRequestRoutes } from '../modules/auth-requests/routes';
@@ -25,7 +26,7 @@ import { syncRoutes } from '../modules/sync/routes';
 import { twoFactorRoutes } from '../modules/two-factor/routes';
 import { constantTimeEqual } from '../platform/crypto';
 import { BlobStoreError } from '../platform/blob';
-import { handleRequest as handleLegacyRequest } from '../router';
+import { PgD1Database } from '../platform/pg-d1';
 import { StorageService } from '../services/storage';
 import type { Deps } from './deps';
 
@@ -54,7 +55,7 @@ function limitRequestBody(): MiddlewareHandler {
 function ensureDatabase(deps: Deps): MiddlewareHandler {
   let ready: Promise<void> | null = null;
   return async (_c, next) => {
-    const pending = (ready ??= new StorageService(deps.legacyEnv.DB).initializeDatabase());
+    const pending = (ready ??= new StorageService(new PgD1Database(deps.pool)).initializeDatabase());
     try {
       await pending;
     } catch (error) {
@@ -104,7 +105,7 @@ export function createApp(deps: Deps): Hono {
     const secret = deps.config.cronSecret;
     const provided = (c.req.header('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
     if (!secret || !provided || !constantTimeEqual(secret, provided)) throw unauthorized();
-    await Promise.all([runScheduledBackupIfDue(deps.legacyEnv), deleteExpiredAuthRequests(deps.db), pruneAuditLog(deps)]);
+    await Promise.all([runScheduledBackups(deps), deleteExpiredAuthRequests(deps.db), pruneAuditLog(deps)]);
     return c.json({ ok: true });
   });
 
@@ -125,9 +126,9 @@ export function createApp(deps: Deps): Hono {
   app.route('/', sendRoutes(deps));
   app.route('/', adminRoutes(deps));
   app.route('/', auditRoutes(deps));
+  app.route('/', backupRoutes(deps));
 
-  // Routes not yet ported to src/modules.
-  app.all('*', (c) => handleLegacyRequest(c.req.raw, deps.legacyEnv));
+  app.notFound((c) => c.json(notFound('Route not found').body, 404));
 
   app.onError(handleError);
   return app;
