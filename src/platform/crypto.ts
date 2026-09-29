@@ -37,6 +37,22 @@ export function randomToken(bytes = 32): string {
   return randomBytes(bytes).toString('base64url');
 }
 
+const ALPHANUMERIC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+// The largest multiple of 62 below 256; bytes above it would bias the result.
+const UNBIASED_LIMIT = 248;
+
+// Letters and digits only, for secrets people copy by hand.
+export function randomAlphanumeric(length: number): string {
+  let out = '';
+  while (out.length < length) {
+    for (const byte of randomBytes(length)) {
+      if (byte < UNBIASED_LIMIT) out += ALPHANUMERIC[byte % ALPHANUMERIC.length];
+      if (out.length === length) break;
+    }
+  }
+  return out;
+}
+
 // A key for one purpose, derived from a longer-lived secret.
 export function deriveKey(secret: Bytes, purpose: string, length = 32): Buffer {
   return Buffer.from(hkdfSync('sha256', toBuffer(secret), Buffer.alloc(0), `moliwarden.${purpose}`, length));

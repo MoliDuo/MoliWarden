@@ -4,6 +4,7 @@ import { LIMITS } from '../config/limits';
 import { runScheduledBackupIfDue } from '../handlers/backup';
 import { HttpError, IdentityError, misconfigured, payloadTooLarge, unauthorized } from '../http/errors';
 import { preflight, responseHeaders } from '../http/headers';
+import { accountRoutes } from '../modules/accounts/routes';
 import { iconRoutes } from '../modules/icons/routes';
 import { identityRoutes } from '../modules/identity/routes';
 import { metaRoutes } from '../modules/meta/routes';
@@ -94,6 +95,7 @@ export function createApp(deps: Deps): Hono {
   app.route('/', identityRoutes(deps));
   app.route('/', twoFactorRoutes(deps));
   app.route('/', passkeyRoutes(deps));
+  app.route('/', accountRoutes(deps));
 
   // Routes not yet ported to src/modules.
   app.all('*', (c) => handleLegacyRequest(c.req.raw, deps.legacyEnv));

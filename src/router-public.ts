@@ -8,10 +8,6 @@ import {
 } from './handlers/sends';
 import { handleKnownDevice } from './handlers/devices';
 import {
-  handleRegister,
-  handleGetPasswordHint,
-} from './handlers/accounts';
-import {
   handleCreateAuthRequest,
   handleGetAuthRequestResponse,
 } from './handlers/auth-requests';
@@ -23,28 +19,10 @@ import {
   handleNotificationsNegotiate,
 } from './handlers/notifications';
 import { handlePublicUploadSendFile } from './handlers/sends';
-import { jsonResponse, unsupportedResponse } from './utils/response';
+import { jsonResponse } from './utils/response';
 import type { Env } from './types';
 
 type PublicRateLimiter = (category?: string, maxRequests?: number) => Promise<Response | null>;
-function isSameOriginWriteRequest(request: Request): boolean {
-  const targetOrigin = new URL(request.url).origin;
-  const origin = request.headers.get('Origin');
-  if (origin) {
-    return origin === targetOrigin;
-  }
-
-  const referer = request.headers.get('Referer');
-  if (referer) {
-    try {
-      return new URL(referer).origin === targetOrigin;
-    } catch {
-      return false;
-    }
-  }
-
-  return false;
-}
 
 export async function handlePublicRoute(
   request: Request,
@@ -117,51 +95,6 @@ export async function handlePublicRoute(
     const blocked = await enforcePublicRateLimit();
     if (blocked) return jsonResponse(false);
     return handleKnownDevice(request, env);
-  }
-
-  const publicMailBackedPaths = new Set([
-    '/api/accounts/resend-new-device-otp',
-    '/accounts/resend-new-device-otp',
-    '/api/accounts/register/send-verification-email',
-    '/accounts/register/send-verification-email',
-    '/identity/accounts/register/send-verification-email',
-    '/api/accounts/register/verification-email-clicked',
-    '/accounts/register/verification-email-clicked',
-    '/identity/accounts/register/verification-email-clicked',
-    '/api/accounts/register/finish',
-    '/accounts/register/finish',
-    '/identity/accounts/register/finish',
-    '/api/accounts/verify-email-token',
-    '/accounts/verify-email-token',
-  ]);
-  if (publicMailBackedPaths.has(path) && method === 'POST') {
-    const blocked = await enforcePublicRateLimit('public-sensitive', LIMITS.rateLimit.sensitivePublicRequestsPerMinute);
-    if (blocked) return blocked;
-    return unsupportedResponse('Email delivery is not supported by this server.');
-  }
-
-  if (path === '/api/accounts/password-hint' && method === 'POST') {
-    const blocked = await enforcePublicRateLimit('public-sensitive', LIMITS.rateLimit.sensitivePublicRequestsPerMinute);
-    if (blocked) return blocked;
-    if (!isSameOriginWriteRequest(request)) {
-      return new Response(JSON.stringify({ error: 'Forbidden origin' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    return handleGetPasswordHint(request, env);
-  }
-
-  if (path === '/api/accounts/register' && method === 'POST') {
-    const blocked = await enforcePublicRateLimit('register', LIMITS.rateLimit.registerRequestsPerMinute);
-    if (blocked) return blocked;
-    if (!isSameOriginWriteRequest(request)) {
-      return new Response(JSON.stringify({ error: 'Forbidden origin' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    return handleRegister(request, env);
   }
 
   if (path === '/notifications/hub/negotiate' && method === 'POST') {

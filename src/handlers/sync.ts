@@ -10,7 +10,9 @@ import {
 } from '../modules/accounts/decryption';
 import { buildDomainsResponse } from '../services/domain-rules';
 import { prfDecryptionOption } from '../modules/passkeys/webauthn';
-import { buildProfileResponse, loadProfileOrganizations } from '../utils/profile-response';
+import { loadProfileOrganizations } from '../utils/profile-response';
+import { profileJson } from '../modules/accounts/profile';
+import { yubiKeysOf } from '../modules/two-factor/service';
 import { listVisibleCipherViews } from '../services/cipher-views';
 import { collectionDetailsJson } from '../services/org-json';
 import { loadVisibleCollections } from '../services/org-access';
@@ -94,7 +96,12 @@ export async function handleSync(request: Request, env: Env, userId: string): Pr
   const userDecryptionOptions = buildUserDecryptionOptions(user, webAuthnPrfOptions[0] || null);
   const validFolderIds = new Set(folders.map((folder) => folder.id));
 
-  const profile: ProfileResponse = buildProfileResponse(user, env, await loadProfileOrganizations(env.DB, userId, ctx.memberships));
+  const yubikeyEnabled = yubiKeysOf(user).length > 0;
+  const profile: ProfileResponse = profileJson(user, {
+    organizations: await loadProfileOrganizations(env.DB, userId, ctx.memberships),
+    twoFactorEnabled: !!user.totpSecret || yubikeyEnabled,
+    yubikeyEnabled,
+  });
   const collections = await loadVisibleCollections(env.DB, ctx);
 
   const cipherResponses: CipherResponse[] = [];

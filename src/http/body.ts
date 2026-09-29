@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import { z } from 'zod';
+import { isEncString } from '../platform/enc-string';
 import { badRequest, type ValidationErrors } from './errors';
 
 // Request bodies are read through a zod schema. Official clients do not
@@ -72,6 +73,6 @@ export function readBody<S extends z.ZodType>(c: Context, schema: S): Promise<z.
 // Shared field types.
 export const id = z.string().trim().toLowerCase().uuid('Must be an id.');
 export const optionalText = z.string().nullish().transform((value) => value ?? null);
-export const encString = z.string().min(1, 'Required.');
+export const encString = z.string().trim().refine(isEncString, 'Must be an encrypted string.');
 // Text a client may send as a string, a number or not at all; missing is ''.
 export const text = z.preprocess((value) => (value == null ? '' : String(value)), z.string());

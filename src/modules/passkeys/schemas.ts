@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { text } from '../../http/body';
+import { isEncString } from '../../platform/enc-string';
 import type { PrfKeySet } from './service';
 
 const secretFields = { masterPasswordHash: text, secret: text, password: text };
@@ -21,15 +22,6 @@ export const createBody = z.object({
 });
 
 export const updateKeysBody = z.object({ ...prfFields, token: text, deviceResponse: z.unknown().optional() });
-
-// A serialized EncString: "<type>.<parts>", with the part count its type needs.
-function isEncString(value: string): boolean {
-  const [type, body, ...rest] = value.split('.');
-  if (rest.length || !body) return false;
-  const parts = body.split('|');
-  const expected = { '2': 3, '3': 1, '4': 1, '5': 2, '6': 2 }[type];
-  return parts.length === expected && parts.every(Boolean);
-}
 
 // Null when the client sent no complete key set, which is not an error:
 // the passkey then signs in without unlocking the vault.

@@ -1,19 +1,6 @@
 import type { Env, User } from './types';
-import { errorResponse, jsonResponse, unsupportedResponse } from './utils/response';
+import { errorResponse, jsonResponse } from './utils/response';
 import { listJson } from './services/org-json';
-import {
-  handleGetProfile,
-  handleUpdateProfile,
-  handleGetKeys,
-  handleSetKeys,
-  handleGetRevisionDate,
-  handleVerifyPassword,
-  handleChangePassword,
-  handleSetVerifyDevices,
-  handleGetApiKey,
-  handleSetUserKeyId,
-  handleRotateApiKey,
-} from './handlers/accounts';
 import {
   handleGetCiphers,
   handleGetCipher,
@@ -234,78 +221,6 @@ export async function handleAuthenticatedRoute(
   path: string,
   method: string
 ): Promise<Response | null> {
-  if (method === 'POST' || method === 'PUT' || method === 'DELETE') {
-    const blockedAccountPaths = new Set([
-      '/api/accounts/set-password',
-      '/api/accounts/delete',
-      '/api/accounts/delete-account',
-      '/api/accounts/delete-vault',
-    ]);
-    if (blockedAccountPaths.has(path)) {
-      return errorResponse('Not implemented', 501);
-    }
-  }
-
-  if ((path === '/api/accounts/kdf' || path === '/accounts/kdf') && (method === 'POST' || method === 'PUT')) {
-    return unsupportedResponse('KDF changes are not supported by this server.');
-  }
-
-  const mailBackedAccountPaths = new Set([
-    '/api/accounts/email-token',
-    '/accounts/email-token',
-    '/api/accounts/verify-email',
-    '/accounts/verify-email',
-    '/api/accounts/verify-email-token',
-    '/accounts/verify-email-token',
-    '/api/accounts/request-otp',
-    '/accounts/request-otp',
-    '/api/accounts/verify-otp',
-    '/accounts/verify-otp',
-  ]);
-  if (mailBackedAccountPaths.has(path) && (method === 'POST' || method === 'PUT')) {
-    return unsupportedResponse('Email delivery is not supported by this server.');
-  }
-
-  if (path === '/api/accounts/profile') {
-    if (method === 'GET') return handleGetProfile(request, env, userId);
-    if (method === 'PUT' || method === 'POST') return handleUpdateProfile(request, env, userId);
-    return errorResponse('Method not allowed', 405);
-  }
-
-  if ((path === '/api/accounts/password' || path === '/api/accounts/change-password') && (method === 'POST' || method === 'PUT')) {
-    return handleChangePassword(request, env, userId);
-  }
-
-  if (path === '/api/accounts/keys') {
-    if (method === 'GET') return handleGetKeys(request, env, userId);
-    if (method === 'POST') return handleSetKeys(request, env, userId);
-    return errorResponse('Method not allowed', 405);
-  }
-
-  if (path === '/api/accounts/revision-date' && method === 'GET') {
-    return handleGetRevisionDate(request, env, userId);
-  }
-
-  if (path === '/api/accounts/verify-password' && method === 'POST') {
-    return handleVerifyPassword(request, env, userId);
-  }
-
-  if (path === '/api/accounts/verify-devices' && (method === 'PUT' || method === 'POST')) {
-    return handleSetVerifyDevices(request, env, userId);
-  }
-
-  if (path === '/api/accounts/key-management/user-key-id' && method === 'POST') {
-    return handleSetUserKeyId(request, env, userId);
-  }
-
-  if ((path === '/api/accounts/api-key' || path === '/api/accounts/api_key') && method === 'POST') {
-    return handleGetApiKey(request, env, userId);
-  }
-
-  if ((path === '/api/accounts/rotate-api-key' || path === '/api/accounts/rotate_api_key') && method === 'POST') {
-    return handleRotateApiKey(request, env, userId);
-  }
-
   if (path === '/api/sync' && method === 'GET') {
     return handleSync(request, env, userId);
   }
