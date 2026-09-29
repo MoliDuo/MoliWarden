@@ -462,11 +462,6 @@ test('after recovery, 2FA can be enabled again and is enforced', async () => {
 
 test(
   'remember-me tokens issued before a recovery-code reset no longer skip 2FA',
-  {
-    todo:
-      'Recovery rotates the security stamp and revokes refresh tokens, but trusted-device (remember-me) tokens ' +
-      'survive; once 2FA is enabled again the old token still bypasses it (src/handlers/identity.ts:480-492, 546-562).',
-  },
   async () => {
     const result = await passwordLogin(CAROL, { provider: 5, token: carolRememberToken, deviceIdentifier: carolRememberDevice });
     assertTwoFactorChallenge(result, ['0'], 'stale remember token');

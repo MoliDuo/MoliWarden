@@ -63,7 +63,15 @@ export async function readForm<S extends z.ZodType>(c: Context, schema: S): Prom
   return parseInput(schema, Object.fromEntries(new URLSearchParams(text)));
 }
 
+// For routes some clients post as a form and others as JSON.
+export function readBody<S extends z.ZodType>(c: Context, schema: S): Promise<z.output<S>> {
+  const form = (c.req.header('Content-Type') ?? '').includes('application/x-www-form-urlencoded');
+  return form ? readForm(c, schema) : readJson(c, schema);
+}
+
 // Shared field types.
 export const id = z.string().trim().toLowerCase().uuid('Must be an id.');
 export const optionalText = z.string().nullish().transform((value) => value ?? null);
 export const encString = z.string().min(1, 'Required.');
+// Text a client may send as a string, a number or not at all; missing is ''.
+export const text = z.preprocess((value) => (value == null ? '' : String(value)), z.string());

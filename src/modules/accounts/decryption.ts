@@ -1,4 +1,4 @@
-import { User, UserDecryptionOptions, WebAuthnPrfDecryptionOption } from '../types';
+import { User, UserDecryptionOptions, WebAuthnPrfDecryptionOption } from '../../types';
 
 function normalizeOptionalPublicKey(value: unknown): string {
   if (value == null) return '';

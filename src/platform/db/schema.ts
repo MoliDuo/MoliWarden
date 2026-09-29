@@ -178,6 +178,8 @@ export interface RefreshTokensTable {
   last_used_at: number | null;
   absolute_expires_at: number | null;
   client_type: string | null;
+  family_id: string | null;
+  rotated_at: number | null;
 }
 
 export interface InvitesTable {
@@ -246,6 +248,7 @@ export interface TrustedTwoFactorDeviceTokensTable {
   user_id: string;
   device_identifier: string;
   expires_at: number;
+  security_stamp: string | null;
 }
 
 export interface TotpLoginReplaysTable {
@@ -269,6 +272,7 @@ export interface WebauthnCredentialsTable {
   encrypted_public_key: string | null;
   encrypted_private_key: string | null;
   supports_prf: Flag;
+  slot: number | null;
   created_at: string;
   updated_at: string;
 }

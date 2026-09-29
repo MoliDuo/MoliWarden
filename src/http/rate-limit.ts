@@ -15,6 +15,9 @@ export const RATE_POLICIES = {
   'public-read': { limit: 120, windowSeconds: 60 },
   icons: { limit: 500, windowSeconds: 60 },
   sensitive: { limit: 30, windowSeconds: 60 },
+  // Token refreshes, per session and per client address.
+  'refresh-session': { limit: 30, windowSeconds: 60 },
+  refresh: { limit: 300, windowSeconds: 60 },
   register: { limit: 5, windowSeconds: 60 },
 } as const satisfies Record<string, { limit: number; windowSeconds: number }>;
 

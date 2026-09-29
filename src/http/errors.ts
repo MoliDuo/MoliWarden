@@ -55,6 +55,7 @@ export class IdentityError extends Error {
     readonly description: string,
     readonly status: ContentfulStatusCode = 400,
     readonly extra: Record<string, unknown> = {},
+    readonly headers: Record<string, string> = {},
   ) {
     super(description);
     this.name = 'IdentityError';

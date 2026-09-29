@@ -7,9 +7,9 @@ import { LIMITS } from '../config/limits';
 import {
   buildUserDecryptionCompat,
   buildUserDecryptionOptions,
-} from '../utils/user-decryption';
+} from '../modules/accounts/decryption';
 import { buildDomainsResponse } from '../services/domain-rules';
-import { buildWebAuthnPrfOption } from '../utils/account-passkeys';
+import { prfDecryptionOption } from '../modules/passkeys/webauthn';
 import { buildProfileResponse, loadProfileOrganizations } from '../utils/profile-response';
 import { listVisibleCipherViews } from '../services/cipher-views';
 import { collectionDetailsJson } from '../services/org-json';
@@ -89,7 +89,7 @@ export async function handleSync(request: Request, env: Env, userId: string): Pr
   const orgAttachments = orgCipherIds.length ? await storage.getAttachmentsByCipherIds(orgCipherIds) : new Map();
   const attachmentsByCipher = new Map([...personalAttachments, ...orgAttachments]);
   const webAuthnPrfOptions = accountPasskeys
-    .map(buildWebAuthnPrfOption)
+    .map(prfDecryptionOption)
     .filter((option): option is NonNullable<typeof option> => !!option);
   const userDecryptionOptions = buildUserDecryptionOptions(user, webAuthnPrfOptions[0] || null);
   const validFolderIds = new Set(folders.map((folder) => folder.id));

@@ -1,8 +1,8 @@
 import type { Env, ProfileResponse, User } from '../types';
 import { buildProfileOrganizations } from '../services/org-json';
 import { getOrganizationsByIds, listMembershipsByUser, type OrgMembership } from '../services/storage-org-repo';
-import { buildAccountKeys } from './user-decryption';
-import { isYubiKeyEnabled } from './yubico-otp';
+import { buildAccountKeys } from '../modules/accounts/decryption';
+import { yubiKeysOf } from '../modules/two-factor/service';
 
 export interface ProfileOrganizations {
   organizations: Record<string, unknown>[];
@@ -37,8 +37,8 @@ export function buildProfileResponse(
     usesKeyConnector: false,
     masterPasswordHint: user.masterPasswordHint,
     culture: 'en-US',
-    twoFactorEnabled: !!user.totpSecret || isYubiKeyEnabled(user),
-    yubikeyEnabled: isYubiKeyEnabled(user),
+    twoFactorEnabled: !!user.totpSecret || yubiKeysOf(user).length > 0,
+    yubikeyEnabled: yubiKeysOf(user).length > 0,
     key: user.key,
     privateKey: user.privateKey,
     accountKeys,

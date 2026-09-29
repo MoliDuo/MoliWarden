@@ -7,12 +7,9 @@ import {
   handleDownloadSendFile,
 } from './handlers/sends';
 import { handleKnownDevice } from './handlers/devices';
-import { handleToken, handlePrelogin, handleRevocation } from './handlers/identity';
-import { handleGetAccountPasskeyAssertionOptions } from './handlers/account-passkeys';
 import {
   handleRegister,
   handleGetPasswordHint,
-  handleRecoverTwoFactor,
 } from './handlers/accounts';
 import {
   handleCreateAuthRequest,
@@ -116,44 +113,10 @@ export async function handlePublicRoute(
     return handleGetAuthRequestResponse(request, env, authRequestResponseMatch[1]);
   }
 
-  if (path === '/identity/connect/token' && method === 'POST') {
-    return handleToken(request, env);
-  }
-
   if (path === '/api/devices/knowndevice' && method === 'GET') {
     const blocked = await enforcePublicRateLimit();
     if (blocked) return jsonResponse(false);
     return handleKnownDevice(request, env);
-  }
-
-  if ((path === '/identity/connect/revocation' || path === '/identity/connect/revoke') && method === 'POST') {
-    const blocked = await enforcePublicRateLimit('public-sensitive', LIMITS.rateLimit.sensitivePublicRequestsPerMinute);
-    if (blocked) return blocked;
-    return handleRevocation(request, env);
-  }
-
-  if ((path === '/identity/accounts/prelogin' || path === '/api/accounts/prelogin') && method === 'POST') {
-    const blocked = await enforcePublicRateLimit('public-sensitive', LIMITS.rateLimit.sensitivePublicRequestsPerMinute);
-    if (blocked) return blocked;
-    return handlePrelogin(request, env);
-  }
-
-  if (path === '/identity/accounts/prelogin/password' && method === 'POST') {
-    const blocked = await enforcePublicRateLimit('public-sensitive', LIMITS.rateLimit.sensitivePublicRequestsPerMinute);
-    if (blocked) return blocked;
-    return handlePrelogin(request, env);
-  }
-
-  if (path === '/identity/accounts/webauthn/assertion-options' && method === 'GET') {
-    const blocked = await enforcePublicRateLimit('public-sensitive', LIMITS.rateLimit.sensitivePublicRequestsPerMinute);
-    if (blocked) return blocked;
-    return handleGetAccountPasskeyAssertionOptions(request, env);
-  }
-
-  if ((path === '/identity/accounts/recover-2fa' || path === '/api/accounts/recover-2fa') && method === 'POST') {
-    const blocked = await enforcePublicRateLimit('public-sensitive', LIMITS.rateLimit.sensitivePublicRequestsPerMinute);
-    if (blocked) return blocked;
-    return handleRecoverTwoFactor(request, env);
   }
 
   const publicMailBackedPaths = new Set([
@@ -170,8 +133,6 @@ export async function handlePublicRoute(
     '/identity/accounts/register/finish',
     '/api/accounts/verify-email-token',
     '/accounts/verify-email-token',
-    '/api/two-factor/send-email-login',
-    '/two-factor/send-email-login',
   ]);
   if (publicMailBackedPaths.has(path) && method === 'POST') {
     const blocked = await enforcePublicRateLimit('public-sensitive', LIMITS.rateLimit.sensitivePublicRequestsPerMinute);

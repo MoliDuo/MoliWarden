@@ -978,7 +978,7 @@ describe('WebAuthn two-step login (provider 7)', () => {
     assert.equal(removed.body.error, 'invalid_grant');
   });
 
-  test('key ids are stable slots across deletions', { todo: 'ids are list positions (src/handlers/account-passkeys.ts:91 and :509), so deleting Key1 renumbers Key2 to 1; upstream Bitwarden keeps KeyN slots stable and a stale client could delete the wrong key' }, async () => {
+  test('key ids are stable slots across deletions', async () => {
     await relogin();
     const settings = await call(dave, '/api/two-factor/get-webauthn', { method: 'POST', json: { masterPasswordHash: passwordHash(email) } });
     const keys = settings.body.Keys ?? settings.body.keys;

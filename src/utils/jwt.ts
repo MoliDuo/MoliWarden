@@ -38,36 +38,6 @@ function getHmacKey(secret: string): Promise<CryptoKey> {
   return cached;
 }
 
-// Create JWT
-export async function createJWT(payload: Omit<JWTPayload, 'iat' | 'exp' | 'iss' | 'premium' | 'email_verified' | 'amr'>, secret: string, expiresIn: number = LIMITS.auth.accessTokenTtlSeconds): Promise<string> {
-  const header = { alg: 'HS256', typ: 'JWT' };
-  const now = Math.floor(Date.now() / 1000);
-  
-  const fullPayload: JWTPayload & { typ: 'access' } = {
-    ...payload,
-    typ: 'access',
-    email_verified: true,  // required by mobile client
-    amr: ['Application'],  // authentication methods reference - required by mobile client
-    iat: now,
-    exp: now + expiresIn,
-    iss: 'moliwarden',
-    premium: true,
-  };
-
-  const encoder = new TextEncoder();
-  const headerB64 = base64UrlEncode(encoder.encode(JSON.stringify(header)));
-  const payloadB64 = base64UrlEncode(encoder.encode(JSON.stringify(fullPayload)));
-  
-  const data = `${headerB64}.${payloadB64}`;
-  
-  const key = await getHmacKey(secret);
-  
-  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
-  const signatureB64 = base64UrlEncode(new Uint8Array(signature));
-  
-  return `${data}.${signatureB64}`;
-}
-
 // Verify JWT
 export async function verifyJWT(token: string, secret: string): Promise<JWTPayload | null> {
   try {
@@ -98,8 +68,7 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
   }
 }
 
-// Create refresh token (simple random string)
-export function createRefreshToken(): string {
+function randomJti(): string {
   const bytes = new Uint8Array(LIMITS.auth.refreshTokenRandomBytes);
   crypto.getRandomValues(bytes);
   return base64UrlEncode(bytes);
@@ -132,7 +101,7 @@ export async function createFileDownloadToken(
   const payload: FileDownloadClaims = {
     cipherId,
     attachmentId,
-    jti: createRefreshToken(),
+    jti: randomJti(),
     exp: now + LIMITS.auth.fileDownloadTokenTtlSeconds, // 5 minutes
   };
 
@@ -261,7 +230,7 @@ export async function createSendFileDownloadToken(
   const payload: SendFileDownloadClaims = {
     sendId,
     fileId,
-    jti: createRefreshToken(),
+    jti: randomJti(),
     exp: now + LIMITS.auth.fileDownloadTokenTtlSeconds,
   };
 

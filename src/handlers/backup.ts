@@ -49,7 +49,8 @@ import { auditRequestMetadata, writeAuditEvent } from '../services/audit-events'
 import { getBlobObject } from '../services/blob-store';
 import { notifyUserBackupProgress, notifyUserBackupRestoreProgress } from '../services/notifications';
 import { getMultipartRequestMaxBytes } from '../utils/direct-upload';
-import { verifyPasskeyUserVerificationToken } from '../utils/user-verification-token';
+import { verifyUserVerification } from '../modules/auth/user-verification';
+import { createTokenService } from '../platform/tokens';
 import { unzipSync } from 'fflate';
 
 function isAdmin(user: User): boolean {
@@ -91,7 +92,7 @@ async function requireBackupRepairVerification(
   if (!userVerificationToken) {
     return errorResponse('masterPasswordHash or userVerificationToken is required', 400);
   }
-  const valid = await verifyPasskeyUserVerificationToken(env, userVerificationToken, actorUser.id, 'backup.settings.repair');
+  const valid = verifyUserVerification(createTokenService(env.JWT_SECRET), userVerificationToken, actorUser, 'backup.settings.repair');
   if (!valid) {
     return errorResponse('Invalid user verification token', 400);
   }

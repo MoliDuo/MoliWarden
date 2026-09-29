@@ -165,7 +165,7 @@ const STORAGE_SCHEMA_VERSION_KEY = 'schema.version';
 // Bump this whenever src/services/storage-schema.ts changes. Existing installs
 // only rerun ensureStorageSchema() when this value differs from
 // config.schema.version.
-const STORAGE_SCHEMA_VERSION = '2026-09-27-user-key-id';
+const STORAGE_SCHEMA_VERSION = '2026-09-29-session-rotation';
 const REQUIRED_SCHEMA_TABLES = REQUIRED_SCHEMA_TABLE_NAMES;
 
 // PostgreSQL-backed storage (through the D1-compatible facade).

@@ -111,6 +111,11 @@ const SCHEMA_STATEMENTS: readonly string[] = [
   'token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at BIGINT NOT NULL, device_identifier TEXT, device_session_stamp TEXT, security_stamp TEXT, created_at BIGINT, last_used_at BIGINT, absolute_expires_at BIGINT, client_type TEXT)',
   'CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id)',
   'CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires ON refresh_tokens(expires_at)',
+  // Refresh tokens are single use: each refresh replaces the token with a new
+  // one of the same family, and replaying a replaced token ends the family.
+  'ALTER TABLE refresh_tokens ADD COLUMN IF NOT EXISTS family_id TEXT',
+  'ALTER TABLE refresh_tokens ADD COLUMN IF NOT EXISTS rotated_at BIGINT',
+  'CREATE INDEX IF NOT EXISTS idx_refresh_tokens_family ON refresh_tokens(family_id)',
 
   'CREATE TABLE IF NOT EXISTS invites (' +
   'code TEXT PRIMARY KEY, created_by TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, used_by TEXT REFERENCES users(id) ON DELETE SET NULL, expires_at TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)',
@@ -143,6 +148,8 @@ const SCHEMA_STATEMENTS: readonly string[] = [
   'CREATE TABLE IF NOT EXISTS trusted_two_factor_device_tokens (' +
   'token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, device_identifier TEXT NOT NULL, expires_at BIGINT NOT NULL)',
   'CREATE INDEX IF NOT EXISTS idx_trusted_two_factor_device_tokens_user_device ON trusted_two_factor_device_tokens(user_id, device_identifier)',
+  // A remembered device stops skipping 2FA once the security stamp changes.
+  'ALTER TABLE trusted_two_factor_device_tokens ADD COLUMN IF NOT EXISTS security_stamp TEXT',
 
   'CREATE TABLE IF NOT EXISTS totp_login_replays (' +
   'user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, time_counter BIGINT NOT NULL, consumed_at BIGINT NOT NULL, ' +
@@ -156,6 +163,8 @@ const SCHEMA_STATEMENTS: readonly string[] = [
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_webauthn_credentials_credential_id ON webauthn_credentials(credential_id)',
   'CREATE INDEX IF NOT EXISTS idx_webauthn_credentials_user ON webauthn_credentials(user_id)',
   'CREATE INDEX IF NOT EXISTS idx_webauthn_credentials_user_updated ON webauthn_credentials(user_id, updated_at)',
+  // Two-step keys keep their KeyN number (1-5) for as long as they exist.
+  'ALTER TABLE webauthn_credentials ADD COLUMN IF NOT EXISTS slot BIGINT',
 
   'CREATE TABLE IF NOT EXISTS webauthn_challenges (' +
   'challenge_hash TEXT PRIMARY KEY, scope TEXT NOT NULL, user_id TEXT, expires_at BIGINT NOT NULL, used_at BIGINT, created_at BIGINT NOT NULL)',

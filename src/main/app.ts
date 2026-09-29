@@ -5,7 +5,10 @@ import { runScheduledBackupIfDue } from '../handlers/backup';
 import { HttpError, IdentityError, misconfigured, payloadTooLarge, unauthorized } from '../http/errors';
 import { preflight, responseHeaders } from '../http/headers';
 import { iconRoutes } from '../modules/icons/routes';
+import { identityRoutes } from '../modules/identity/routes';
 import { metaRoutes } from '../modules/meta/routes';
+import { passkeyRoutes } from '../modules/passkeys/routes';
+import { twoFactorRoutes } from '../modules/two-factor/routes';
 import { constantTimeEqual } from '../platform/crypto';
 import { handleRequest as handleLegacyRequest } from '../router';
 import { StorageService } from '../services/storage';
@@ -59,7 +62,7 @@ function requireJwtSecret(deps: Deps): MiddlewareHandler {
 export const handleError: ErrorHandler = (error, c) => {
   if (error instanceof HttpError) return c.json(error.body, error.status, error.headers);
   if (error instanceof IdentityError) {
-    return c.json(error.body, error.status, { 'Cache-Control': 'no-store', Pragma: 'no-cache' });
+    return c.json(error.body, error.status, { ...error.headers, 'Cache-Control': 'no-store', Pragma: 'no-cache' });
   }
   console.error('Request error:', error);
   return c.json(new HttpError(500, 'Internal server error').body, 500);
@@ -88,6 +91,9 @@ export function createApp(deps: Deps): Hono {
 
   // Routes registered before this line answer on any configuration.
   app.use(requireJwtSecret(deps));
+  app.route('/', identityRoutes(deps));
+  app.route('/', twoFactorRoutes(deps));
+  app.route('/', passkeyRoutes(deps));
 
   // Routes not yet ported to src/modules.
   app.all('*', (c) => handleLegacyRequest(c.req.raw, deps.legacyEnv));
