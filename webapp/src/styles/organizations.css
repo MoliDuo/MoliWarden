@@ -25,7 +25,7 @@
 }
 
 .org-switch-btn small {
-  color: var(--text-muted);
+  color: var(--muted);
   font-weight: 400;
 }
 
@@ -35,8 +35,8 @@
 
 .org-switch-btn.active {
   border-color: var(--primary);
-  background: rgba(37, 99, 235, 0.09);
-  color: var(--primary-strong);
+  background: var(--panel-soft);
+  color: var(--text);
 }
 
 .org-tabs {
@@ -61,7 +61,7 @@
 
 .org-tab.active {
   border-bottom-color: var(--primary);
-  color: var(--primary-strong);
+  color: var(--text);
 }
 
 .org-access-matrix,

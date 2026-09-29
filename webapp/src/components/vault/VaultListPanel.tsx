@@ -117,11 +117,13 @@ interface MobileFilterOption {
 }
 
 const CipherListItem = memo(function CipherListItem(props: CipherListItemProps) {
-  const duplicateGroupHue = props.duplicateGroupIndex === null ? null : (props.duplicateGroupIndex * 137.508) % 360;
+  // Adjacent duplicate groups alternate shades so their boundaries stay visible.
+  const duplicateGroupClass = props.duplicateGroupIndex === null
+    ? ''
+    : `duplicate-group-item${props.duplicateGroupIndex % 2 ? ' duplicate-group-alt' : ''}`;
   return (
     <div
-      className={`list-item ${props.selected ? 'active' : ''} ${duplicateGroupHue === null ? '' : 'duplicate-group-item'}`}
-      style={duplicateGroupHue === null ? undefined : { '--duplicate-group-hue': `${duplicateGroupHue}deg` }}
+      className={`list-item ${props.selected ? 'active' : ''} ${duplicateGroupClass}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
         if (target.closest('.row-check')) return;

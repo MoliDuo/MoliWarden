@@ -1,4 +1,4 @@
-import { ArrowUpDown, Building2, ChevronDown, Clock3, Cloud, FileClock, Folder as FolderIcon, KeyRound, Lock, LogOut, MonitorSmartphone, Send as SendIcon, Settings as SettingsIcon, ShieldCheck, ShieldUser, Sparkles, Users } from 'lucide-preact';
+import { ArrowUpDown, Building2, ChevronDown, Clock3, Cloud, FileClock, Folder as FolderIcon, Vault as VaultIcon, Lock, LogOut, MonitorSmartphone, Send as SendIcon, Settings as SettingsIcon, ShieldCheck, ShieldUser, Sparkles, Users } from 'lucide-preact';
 import type { ComponentChildren } from 'preact';
 import { useState } from 'preact/hooks';
 import { Link } from 'wouter';
@@ -131,7 +131,7 @@ export default function AppAuthenticatedShell(props: AppAuthenticatedShellProps)
 
   const groupedNav = (
     <>
-      {renderSideLink('/vault', props.location === '/vault', <KeyRound size={16} />, t('nav_vault_items'))}
+      {renderSideLink('/vault', props.location === '/vault', <VaultIcon size={16} />, t('nav_vault_items'))}
       {renderSideLink('/sends', props.location === '/sends', <SendIcon size={16} />, t('nav_sends'))}
       {renderSideLink('/organizations', props.location === '/organizations', <Building2 size={16} />, t('nav_organizations'))}
       {renderNavGroup(
@@ -225,7 +225,7 @@ export default function AppAuthenticatedShell(props: AppAuthenticatedShellProps)
 
         <nav className="mobile-tabbar" aria-label={t('txt_menu')}>
           <Link href="/vault" className={`mobile-tab ${props.mobilePrimaryRoute === '/vault' ? 'active' : ''}`}>
-            <KeyRound size={18} />
+            <VaultIcon size={18} />
             <span>{t('nav_my_vault')}</span>
           </Link>
           <Link href="/vault/totp" className={`mobile-tab ${props.mobilePrimaryRoute === '/vault/totp' ? 'active' : ''}`}>
