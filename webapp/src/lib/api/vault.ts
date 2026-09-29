@@ -14,7 +14,6 @@ import {
   parseErrorMessage,
   parseJson,
   uploadDirectEncryptedPayload,
-  uploadWithProgress,
   type AuthedFetch,
 } from './shared';
 import { readResponseBytesWithProgress } from '../download';
@@ -420,7 +419,7 @@ async function decryptAttachmentFileName(
     const fileName = await decryptStr(rawFileName, itemKeys.enc, itemKeys.mac);
     if (fileName) return { fileName, source: 'item' };
   } catch {
-    // 继续尝试旧 user key 文件名。
+    // Fall back to a name encrypted with the user key.
   }
 
   if (!sameBytes(itemKeys.enc, userKeys.enc) || !sameBytes(itemKeys.mac, userKeys.mac)) {
@@ -428,7 +427,7 @@ async function decryptAttachmentFileName(
       const fileName = await decryptStr(rawFileName, userKeys.enc, userKeys.mac);
       if (fileName) return { fileName, source: 'user' };
     } catch {
-      // 保留原始文件名。
+      // Keep the name as stored.
     }
   }
 
@@ -442,25 +441,6 @@ interface AttachmentDecryptCandidate {
   enc: Uint8Array;
   mac: Uint8Array;
   rawAttachmentKey: Uint8Array | null;
-}
-
-async function uploadRepairedAttachmentBlob(
-  authedFetch: AuthedFetch,
-  session: SessionState,
-  cipherId: string,
-  attachmentId: string,
-  encryptedBytes: Uint8Array
-): Promise<void> {
-  if (!session.accessToken) throw new Error('Unauthorized');
-  const payload = new ArrayBuffer(encryptedBytes.byteLength);
-  new Uint8Array(payload).set(encryptedBytes);
-  const resp = await uploadWithProgress(`/api/ciphers/${encodeURIComponent(cipherId)}/attachment/${encodeURIComponent(attachmentId)}`, {
-    accessToken: session.accessToken,
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/octet-stream' },
-    body: payload,
-  });
-  if (!resp.ok) throw new Error(await parseErrorMessage(resp, 'Repair attachment upload failed'));
 }
 
 export async function downloadCipherAttachmentDecrypted(
@@ -523,7 +503,7 @@ export async function downloadCipherAttachmentDecrypted(
       usedCandidate = candidate;
       break;
     } catch {
-      // 继续尝试下一种旧附件格式。
+      // Try the next, older format.
     }
   }
   if (!plainBytes || !usedCandidate) throw new Error('Attachment decryption failed');
@@ -532,7 +512,16 @@ export async function downloadCipherAttachmentDecrypted(
   const nameResult = await decryptAttachmentFileName(fileNameRaw, itemKeys, userKeys);
   const fileName = nameResult.fileName || `attachment-${aid}`;
 
+  // Old attachments are brought up to the current format on the way. A
+  // stored file cannot be replaced, so one encrypted with the user key is
+  // uploaded again as a new attachment and the old one deleted.
   try {
+    if (usedCandidate.mode === 'legacy-user') {
+      await uploadCipherAttachment(authedFetch, session, cid, new File([new Uint8Array(plainBytes)], fileName), cipher);
+      await deleteCipherAttachment(authedFetch, cid, aid);
+      return { fileName, bytes: plainBytes };
+    }
+
     const metadata: { fileName?: string; key?: string | null } = {};
     if (nameResult.source === 'user') {
       metadata.fileName = await encryptTextValue(fileName, itemKeys.enc, itemKeys.mac) || undefined;
@@ -542,17 +531,13 @@ export async function downloadCipherAttachmentDecrypted(
       metadata.key = await encryptBw(usedCandidate.rawAttachmentKey, itemKeys.enc, itemKeys.mac);
     } else if (usedCandidate.mode === 'legacy-item') {
       metadata.key = null;
-    } else if (usedCandidate.mode === 'legacy-user') {
-      const repairedBytes = await encryptBwFileData(plainBytes, itemKeys.enc, itemKeys.mac);
-      await uploadRepairedAttachmentBlob(authedFetch, session, cid, aid, repairedBytes);
-      metadata.key = null;
     }
 
     if (Object.keys(metadata).length > 0) {
       await repairCipherAttachmentMetadata(authedFetch, cid, aid, metadata);
     }
   } catch {
-    // 修复失败不影响本次下载，旧附件内容已经成功解密。
+    // The download succeeded; the repair is tried again next time.
   }
 
   return { fileName, bytes: plainBytes };
