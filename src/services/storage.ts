@@ -133,7 +133,6 @@ import {
   updateAuthRequestResponse as updateStoredAuthRequestResponse,
 } from './storage-auth-request-repo';
 import {
-  ensureUsedAttachmentDownloadTokenTable as ensureStoredAttachmentTokenTable,
   consumeAttachmentDownloadToken as consumeStoredAttachmentDownloadToken,
 } from './storage-attachment-token-repo';
 import {
@@ -176,8 +175,6 @@ const REQUIRED_SCHEMA_TABLES = REQUIRED_SCHEMA_TABLE_NAMES;
 // - Revision date is maintained per user for Bitwarden sync.
 
 export class StorageService {
-  private static attachmentTokenTableReady = false;
-  private static schemaVerified = false;
   private static lastRefreshTokenCleanupAt = 0;
   private static lastAttachmentTokenCleanupAt = 0;
   private static lastTotpReplayCleanupAt = 0;
@@ -250,13 +247,8 @@ export class StorageService {
   }
 
   // --- Database initialization ---
-  // Strategy:
-  // - Run only once per isolate.
-  // - Execute idempotent schema SQL on first request in each isolate.
-  // - Keep statements idempotent so updates are safe.
+  // Idempotent; the caller (src/app.ts) runs it once per database.
   async initializeDatabase(): Promise<void> {
-    if (StorageService.schemaVerified) return;
-
     const configTable = await this.db
       .prepare("SELECT to_regclass('config') IS NOT NULL AS present")
       .first<{ present: boolean }>();
@@ -271,8 +263,6 @@ export class StorageService {
     // Registering with the Bitwarden push relay is a network call; do not
     // block the first request of a cold start on it.
     runInBackground(ensurePushInstallationCredentials(this.db));
-
-    StorageService.schemaVerified = true;
   }
 
   // --- Config / setup ---
@@ -950,17 +940,9 @@ export class StorageService {
 
   // --- One-time attachment download tokens ---
 
-  private async ensureUsedAttachmentDownloadTokenTable(): Promise<void> {
-    if (StorageService.attachmentTokenTableReady) return;
-    await ensureStoredAttachmentTokenTable(this.db);
-
-    StorageService.attachmentTokenTableReady = true;
-  }
-
   // Marks an attachment download token JTI as consumed.
   // Returns true only on first use. Reuse returns false.
   async consumeAttachmentDownloadToken(jti: string, expUnixSeconds: number): Promise<boolean> {
-    await this.ensureUsedAttachmentDownloadTokenTable();
     const result = await consumeStoredAttachmentDownloadToken(
       this.db,
       this.shouldRunPeriodicCleanup.bind(this),

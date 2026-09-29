@@ -1,0 +1,38 @@
+{
+  "status": 200,
+  "headers": {
+    "access-control-allow-headers": "Content-Type, Authorization, Accept, Device-Type, Device-Identifier, Device-Name, Bitwarden-Client-Name, Bitwarden-Client-Version, Bitwarden-Package-Type, Is-Prerelease, X-Request-Email, X-Device-Identifier, X-Device-Name, X-MoliWarden-Web-Session",
+    "access-control-allow-methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+    "access-control-expose-headers": "*",
+    "access-control-max-age": "86400",
+    "content-security-policy": "frame-ancestors 'none'; img-src 'self' data:",
+    "content-type": "application/json",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY"
+  },
+  "body": {
+    "id": "<send>",
+    "accessId": "<volatile>",
+    "type": 0,
+    "name": "2.aXYtc2VuZA==|Y3Qtc2VuZA==|bWFjLXNlbmQ=",
+    "notes": "2.aXYtc2VuZC1ub3Rlcw==|Y3Qtc2VuZC1ub3Rlcw==|bWFjLXNlbmQtbm90ZXM=",
+    "text": {
+      "text": "2.aXYtc2VuZC10ZXh0|Y3Qtc2VuZC10ZXh0|bWFjLXNlbmQtdGV4dA==",
+      "hidden": false
+    },
+    "file": null,
+    "key": "2.aXYtc2VuZC1rZXk=|Y3Qtc2VuZC1rZXk=|bWFjLXNlbmQta2V5",
+    "maxAccessCount": 5,
+    "accessCount": 0,
+    "password": null,
+    "emails": null,
+    "authType": 2,
+    "disabled": false,
+    "hideEmail": false,
+    "revisionDate": "<date>",
+    "expirationDate": null,
+    "deletionDate": "<date>",
+    "object": "send"
+  }
+}

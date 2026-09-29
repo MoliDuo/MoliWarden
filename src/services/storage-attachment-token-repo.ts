@@ -1,8 +1,5 @@
 type ShouldRunPeriodicCleanup = (lastRunAt: number, intervalMs: number) => boolean;
 
-// Table is created by ensureStorageSchema() (src/services/storage-schema.ts).
-export async function ensureUsedAttachmentDownloadTokenTable(_db: D1Database): Promise<void> {}
-
 export async function consumeAttachmentDownloadToken(
   db: D1Database,
   shouldRunPeriodicCleanup: ShouldRunPeriodicCleanup,

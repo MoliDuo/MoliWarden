@@ -577,6 +577,12 @@ export async function handleToken(request: Request, env: Env): Promise<Response>
       }
     }
 
+    // An approved auth request logs in once; concurrent logins race for the
+    // claim and only the winner gets a session.
+    if (validatedAuthRequestId && !(await storage.markAuthRequestAuthenticated(validatedAuthRequestId))) {
+      return identityErrorResponse('Username or password is incorrect. Try again', 'invalid_grant', 400);
+    }
+
     // Persist device only after successful password + (optional) 2FA verification.
     const deviceSession = await persistAndResolveDeviceSession(storage, user.id, deviceInfo);
     if (deviceSession) {
@@ -585,9 +591,6 @@ export async function handleToken(request: Request, env: Env): Promise<Response>
 
     // Successful login - clear failed attempts
     await rateLimit.clearLoginAttempts(loginIdentifier);
-    if (validatedAuthRequestId) {
-      await storage.markAuthRequestAuthenticated(validatedAuthRequestId);
-    }
 
     const accessToken = await auth.generateAccessToken(user, deviceSession);
     const refreshToken = await auth.generateRefreshToken(user, deviceSession, resolveRefreshClientType(request, body));

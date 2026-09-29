@@ -1,7 +1,7 @@
 // Organizations: lifecycle, sharing and the permission boundaries around them.
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Client, cipherPayload, fakeEncString, fakeRsaEncString, startTestServer, type Session, type TestServer } from './helpers';
+import { Client, cipherPayload, fakeEncString, fakeRsaEncString, startTestServer, TEST_DATABASE_URL, type Session, type TestServer } from './helpers';
 
 let server: TestServer;
 let client: Client;
@@ -506,10 +506,15 @@ test('security regressions: casing, cross-org links, orphaning, admin collection
     json: { name: 'Other', billingEmail: 'alice@example.com', key: fakeRsaEncString('k'), collectionName: fakeEncString('O1'), planType: 0 },
   });
   const o1 = (await alice.json(`/api/organizations/${other.id}/collections`)).data[0].id;
-  const { getEnv } = await import('../src/platform/env');
+  const { createEnv } = await import('../src/platform/env');
   const { addCipherCollectionStatement } = await import('../src/services/storage-org-repo');
-  const db = getEnv().DB;
-  await addCipherCollectionStatement(db, item.id, o1).run();
-  const links = await db.prepare('SELECT collection_id FROM cipher_collections WHERE cipher_id = ?').bind(item.id).all<{ collection_id: string }>();
-  assert.ok(!links.results.some((row) => row.collection_id === o1));
+  const direct = createEnv({ DATABASE_URL: TEST_DATABASE_URL });
+  try {
+    const db = direct.env.DB;
+    await addCipherCollectionStatement(db, item.id, o1).run();
+    const links = await db.prepare('SELECT collection_id FROM cipher_collections WHERE cipher_id = ?').bind(item.id).all<{ collection_id: string }>();
+    assert.ok(!links.results.some((row) => row.collection_id === o1));
+  } finally {
+    await direct.dispose();
+  }
 });

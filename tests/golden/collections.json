@@ -1,0 +1,15 @@
+{
+  "data": [
+    {
+      "externalId": null,
+      "id": "<collection>",
+      "organizationId": "<org>",
+      "name": "2.aXYtY29sbGVjdGlvbg==|Y3QtY29sbGVjdGlvbg==|bWFjLWNvbGxlY3Rpb24=",
+      "type": 0,
+      "defaultUserCollectionEmail": null,
+      "object": "collection"
+    }
+  ],
+  "object": "list",
+  "continuationToken": null
+}

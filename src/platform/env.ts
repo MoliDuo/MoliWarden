@@ -4,28 +4,22 @@ import { BackupTransferRunner } from '../durable/backup-transfer-runner';
 import { createInProcessNamespace } from './in-process-object';
 import { createPgPool, PgD1Database } from './pg-d1';
 
-// Builds the runtime Env from process.env once per function instance.
+// Builds the runtime Env from a set of environment variables.
 
-let cachedEnv: Env | null = null;
+type Source = Record<string, string | undefined>;
 
-function readDatabaseUrl(): string {
-  const url =
-    process.env.DATABASE_URL ||
-    process.env.POSTGRES_URL ||
-    process.env.NEON_DATABASE_URL ||
-    '';
+function readDatabaseUrl(source: Source): string {
+  const url = source.DATABASE_URL || source.POSTGRES_URL || source.NEON_DATABASE_URL || '';
   if (!url) {
     throw new Error('DATABASE_URL is not configured');
   }
   return url;
 }
 
-export function getEnv(): Env {
-  if (cachedEnv) return cachedEnv;
-
+export function createEnv(source: Source): { env: Env; dispose(): Promise<void> } {
   const pool = createPgPool({
-    connectionString: readDatabaseUrl(),
-    max: Number(process.env.DATABASE_POOL_MAX || 5) || 5,
+    connectionString: readDatabaseUrl(source),
+    max: Number(source.DATABASE_POOL_MAX || 5) || 5,
   });
   try {
     // Lets Vercel Fluid compute close idle connections before suspending.
@@ -40,22 +34,22 @@ export function getEnv(): Env {
       () => env,
       (state, currentEnv) => new BackupTransferRunner(state, currentEnv)
     ),
-    JWT_SECRET: process.env.JWT_SECRET || '',
-    S3_ENDPOINT: process.env.S3_ENDPOINT,
-    S3_BUCKET: process.env.S3_BUCKET,
-    S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
-    S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
-    S3_REGION: process.env.S3_REGION,
-    S3_FORCE_PATH_STYLE: process.env.S3_FORCE_PATH_STYLE,
-    MAX_UPLOAD_BYTES: process.env.MAX_UPLOAD_BYTES,
-    HIDE_WEB_VAULT: process.env.HIDE_WEB_VAULT,
-    CRON_SECRET: process.env.CRON_SECRET,
-    WEBAUTHN_RP_ID: process.env.WEBAUTHN_RP_ID,
-    WEBAUTHN_RP_NAME: process.env.WEBAUTHN_RP_NAME,
-    WEBAUTHN_ALLOWED_ORIGINS: process.env.WEBAUTHN_ALLOWED_ORIGINS,
-    YUBICO_VALIDATION_URLS: process.env.YUBICO_VALIDATION_URLS,
-    globalSettings__yubico__validationUrls: process.env.globalSettings__yubico__validationUrls,
+    JWT_SECRET: source.JWT_SECRET || '',
+    S3_ENDPOINT: source.S3_ENDPOINT,
+    S3_BUCKET: source.S3_BUCKET,
+    S3_ACCESS_KEY_ID: source.S3_ACCESS_KEY_ID,
+    S3_SECRET_ACCESS_KEY: source.S3_SECRET_ACCESS_KEY,
+    S3_REGION: source.S3_REGION,
+    S3_FORCE_PATH_STYLE: source.S3_FORCE_PATH_STYLE,
+    MAX_UPLOAD_BYTES: source.MAX_UPLOAD_BYTES,
+    HIDE_WEB_VAULT: source.HIDE_WEB_VAULT,
+    SHOW_PASSWORD_HINT: source.SHOW_PASSWORD_HINT,
+    CRON_SECRET: source.CRON_SECRET,
+    WEBAUTHN_RP_ID: source.WEBAUTHN_RP_ID,
+    WEBAUTHN_RP_NAME: source.WEBAUTHN_RP_NAME,
+    WEBAUTHN_ALLOWED_ORIGINS: source.WEBAUTHN_ALLOWED_ORIGINS,
+    YUBICO_VALIDATION_URLS: source.YUBICO_VALIDATION_URLS,
+    globalSettings__yubico__validationUrls: source.globalSettings__yubico__validationUrls,
   };
-  cachedEnv = env;
-  return env;
+  return { env, dispose: () => pool.end() };
 }

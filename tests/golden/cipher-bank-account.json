@@ -1,0 +1,55 @@
+{
+  "status": 200,
+  "headers": {
+    "access-control-allow-headers": "Content-Type, Authorization, Accept, Device-Type, Device-Identifier, Device-Name, Bitwarden-Client-Name, Bitwarden-Client-Version, Bitwarden-Package-Type, Is-Prerelease, X-Request-Email, X-Device-Identifier, X-Device-Name, X-MoliWarden-Web-Session",
+    "access-control-allow-methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+    "access-control-expose-headers": "*",
+    "access-control-max-age": "86400",
+    "content-security-policy": "frame-ancestors 'none'; img-src 'self' data:",
+    "content-type": "application/json",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY"
+  },
+  "body": {
+    "bankAccount": {
+      "bankName": "2.aXYtYmFuaw==|Y3QtYmFuaw==|bWFjLWJhbms=",
+      "accountNumber": "2.aXYtYWNjb3VudA==|Y3QtYWNjb3VudA==|bWFjLWFjY291bnQ=",
+      "iban": "2.aXYtaWJhbg==|Y3QtaWJhbg==|bWFjLWliYW4="
+    },
+    "login": null,
+    "card": null,
+    "identity": null,
+    "secureNote": null,
+    "sshKey": null,
+    "driversLicense": null,
+    "passport": null,
+    "passwordHistory": null,
+    "fields": null,
+    "id": "<cipher:bank-account>",
+    "organizationId": null,
+    "type": 6,
+    "folderId": null,
+    "name": "2.aXYtbmFtZS1iYW5rLWFjY291bnQ=|Y3QtbmFtZS1iYW5rLWFjY291bnQ=|bWFjLW5hbWUtYmFuay1hY2NvdW50",
+    "notes": "2.aXYtbm90ZXMtYmFuay1hY2NvdW50|Y3Qtbm90ZXMtYmFuay1hY2NvdW50|bWFjLW5vdGVzLWJhbmstYWNjb3VudA==",
+    "favorite": false,
+    "reprompt": 0,
+    "key": null,
+    "organizationUseTotp": true,
+    "creationDate": "<date>",
+    "revisionDate": "<date>",
+    "deletedDate": null,
+    "archivedDate": null,
+    "edit": true,
+    "viewPassword": true,
+    "permissions": {
+      "delete": true,
+      "restore": true
+    },
+    "object": "cipherDetails",
+    "collectionIds": [],
+    "attachments": null,
+    "data": null,
+    "encryptedFor": null
+  }
+}

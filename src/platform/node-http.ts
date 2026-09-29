@@ -1,13 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Readable } from 'node:stream';
-import { handleAppRequest } from '../app';
-import type { Env } from '../types';
-import { errorResponse } from '../utils/response';
-import { getEnv } from './env';
 
-// Node http adapter: converts IncomingMessage -> Web Request, runs the app,
-// and streams the Web Response back. Used by the Vercel function and by the
-// local dev server, so both exercise the same code path.
+// Node http adapter: converts IncomingMessage -> Web Request and streams a
+// Web Response back (see src/main/node.ts).
 
 function firstHeader(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -82,32 +77,4 @@ export async function writeWebResponse(res: ServerResponse, response: Response):
     res.on('finish', resolve);
     body.pipe(res);
   });
-}
-
-export async function handleNodeRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  try {
-    const request = toWebRequest(req);
-    let env: Env;
-    try {
-      env = getEnv();
-    } catch (error) {
-      // Missing deployment configuration: say which variable, so the web
-      // vault shows something actionable instead of a bare 500.
-      const message = `Server configuration error: ${error instanceof Error ? error.message : String(error)}`;
-      console.error(message);
-      await writeWebResponse(res, errorResponse(message, 500));
-      return;
-    }
-    const response = await handleAppRequest(request, env);
-    await writeWebResponse(res, response);
-  } catch (error) {
-    console.error('Unhandled request error:', error);
-    if (!res.headersSent) {
-      res.statusCode = 500;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ error: 'Internal server error' }));
-    } else {
-      res.destroy(error as Error);
-    }
-  }
 }

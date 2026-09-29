@@ -414,8 +414,15 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
   return jsonResponse({ success: true, role: user.role }, 200);
 }
 
+export function isPasswordHintEnabled(env: Env): boolean {
+  return String(env.SHOW_PASSWORD_HINT || '').trim() === '1';
+}
+
 // POST /api/accounts/password-hint
 export async function handleGetPasswordHint(request: Request, env: Env): Promise<Response> {
+  if (!isPasswordHintEnabled(env)) {
+    return errorResponse('Password hints are disabled on this server.', 400);
+  }
   const storage = new StorageService(env.DB);
   const clientIdentifier = getClientIdentifier(request);
   if (!clientIdentifier) {

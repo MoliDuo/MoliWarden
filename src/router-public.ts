@@ -37,6 +37,7 @@ import { StorageService } from './services/storage';
 import type { Env } from './types';
 import { getConfiguredWebAuthnAllowedOrigins } from './utils/origins';
 import { buildConfigResponse } from './config-response';
+import { isPasswordHintEnabled } from './handlers/accounts';
 
 type PublicRateLimiter = (category?: string, maxRequests?: number) => Promise<Response | null>;
 type JwtUnsafeReason = 'missing' | 'too_short' | null;
@@ -48,6 +49,7 @@ export interface WebBootstrapResponse {
   registrationInviteRequired: boolean;
   webAuthnAllowedOrigins: string[];
   websiteIconsEnabled: boolean;
+  passwordHintEnabled: boolean;
 }
 
 function isWebsiteIconProxyEnabled(env: Env): boolean {
@@ -282,6 +284,7 @@ export async function buildWebBootstrapResponse(env: Env): Promise<WebBootstrapR
     registrationInviteRequired: userCount > 0,
     webAuthnAllowedOrigins: getConfiguredWebAuthnAllowedOrigins(env),
     websiteIconsEnabled: isWebsiteIconProxyEnabled(env),
+    passwordHintEnabled: isPasswordHintEnabled(env),
   };
 }
 
@@ -403,11 +406,6 @@ export async function handlePublicRoute(
     const blocked = await enforcePublicRateLimit();
     if (blocked) return jsonResponse(false);
     return handleKnownDevice(request, env);
-  }
-
-  const clearDeviceTokenMatch = path.match(/^\/api\/devices\/identifier\/([^/]+)\/clear-token$/i);
-  if (clearDeviceTokenMatch && (method === 'PUT' || method === 'POST')) {
-    return new Response(null, { status: 200 });
   }
 
   if ((path === '/identity/connect/revocation' || path === '/identity/connect/revoke') && method === 'POST') {

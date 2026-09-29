@@ -217,6 +217,7 @@ export default function App() {
   const [decryptedCollections, setDecryptedCollections] = useState<VaultCollection[]>([]);
   const [defaultKdfIterations, setDefaultKdfIterations] = useState(initialBootstrap.defaultKdfIterations);
   const [registrationInviteRequired, setRegistrationInviteRequired] = useState(initialBootstrap.registrationInviteRequired);
+  const [passwordHintEnabled, setPasswordHintEnabled] = useState(initialBootstrap.passwordHintEnabled);
   const [jwtWarning, setJwtWarning] = useState<{ reason: JwtUnsafeReason; minLength: number } | null>(initialBootstrap.jwtWarning);
 
   const [loginValues, setLoginValues] = useState({ email: '', password: '' });
@@ -497,6 +498,7 @@ export default function App() {
       if (sessionRef.current?.symEncKey || sessionRef.current?.symMacKey) return;
       setDefaultKdfIterations(boot.defaultKdfIterations);
       setRegistrationInviteRequired(boot.registrationInviteRequired);
+      setPasswordHintEnabled(boot.passwordHintEnabled);
       setJwtWarning(boot.jwtWarning);
       setSession(boot.session);
       setProfile(boot.profile);
@@ -2344,6 +2346,7 @@ export default function App() {
           passkeyPassword={passkeyPassword}
           registerValues={registerValues}
           registrationInviteRequired={registrationInviteRequired}
+          passwordHintEnabled={passwordHintEnabled}
           unlockPassword={unlockPassword}
           emailForLock={profile?.email || session?.email || ''}
           loginHintLoading={loginHintState.loading}

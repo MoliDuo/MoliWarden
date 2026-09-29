@@ -210,7 +210,7 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
     const authenticatedResponse = await handleAuthenticatedRoute(request, env, userId, currentUser, path, method);
     if (authenticatedResponse) return authenticatedResponse;
 
-    return errorResponse('Not found', 404);
+    return errorResponse('Route not found', 404);
   } catch (error) {
     console.error('Request error:', error);
     return errorResponse('Internal server error', 500);

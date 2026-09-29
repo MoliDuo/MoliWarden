@@ -14,6 +14,8 @@ export const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://mw
 const S3_ENDPOINT = process.env.TEST_S3_ENDPOINT || 'http://localhost:58333';
 const S3_ACCESS_KEY_ID = process.env.TEST_S3_ACCESS_KEY_ID || 'mwaccess';
 const S3_SECRET_ACCESS_KEY = process.env.TEST_S3_SECRET_ACCESS_KEY || 'mwsecret123';
+// The push relay still reads this from the process environment.
+process.env.PUSH_RELAY_DISABLED = '1';
 
 export interface TestServer {
   baseUrl: string;
@@ -57,17 +59,16 @@ export function testServerEnv(bucket: string): Record<string, string> {
   };
 }
 
-export async function startTestServer(options: { tls?: { key: string | Buffer; cert: string | Buffer } } = {}): Promise<TestServer> {
+export async function startTestServer(
+  options: { tls?: { key: string | Buffer; cert: string | Buffer }; env?: Record<string, string> } = {},
+): Promise<TestServer> {
   const bucket = `mw-test-${process.pid}`;
   await resetDatabase();
   await ensureBucket(bucket);
 
-  Object.assign(process.env, testServerEnv(bucket));
-
-  const { handleNodeRequest } = await import('../src/platform/node-http');
-  const server: Server = createServer((req, res) => {
-    void handleNodeRequest(req, res);
-  });
+  const { createNodeHandler } = await import('../src/main/node');
+  const app = createNodeHandler({ ...testServerEnv(bucket), ...options.env });
+  const server: Server = createServer((req, res) => void app.handler(req, res));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address() as AddressInfo;
   const servers: Server[] = [server];
@@ -76,7 +77,7 @@ export async function startTestServer(options: { tls?: { key: string | Buffer; c
     // TLS terminates here like at Vercel's edge, which forwards the scheme.
     const secure = createHttpsServer(options.tls, (req, res) => {
       req.headers['x-forwarded-proto'] = 'https';
-      void handleNodeRequest(req, res);
+      void app.handler(req, res);
     });
     await new Promise<void>((resolve) => secure.listen(0, '127.0.0.1', resolve));
     servers.push(secure);
@@ -90,9 +91,7 @@ export async function startTestServer(options: { tls?: { key: string | Buffer; c
         s.closeAllConnections?.();
         await new Promise<void>((resolve) => s.close(() => resolve()));
       }
-      const { getEnv } = await import('../src/platform/env');
-      const db = getEnv().DB as unknown as { pool: pg.Pool };
-      await db.pool.end();
+      await app.dispose();
     },
   };
 }
@@ -105,6 +104,15 @@ export function fakeEncString(label = 'x'): string {
 
 export function fakeRsaEncString(label = 'x'): string {
   return `4.${Buffer.from(`rsa-${label}-${crypto.randomUUID()}`).toString('base64')}`;
+}
+
+let registrations = 0;
+
+// Registration is limited per client address; the server trusts
+// X-Forwarded-For in tests.
+function registrationAddress(): string {
+  registrations += 1;
+  return `10.99.${Math.floor(registrations / 250) % 250}.${(registrations % 250) + 1}`;
 }
 
 export interface Session {
@@ -153,7 +161,7 @@ export class Client {
     const publicKey = Buffer.from(`public-key-${email}`).toString('base64');
     const response = await this.fetch('/api/accounts/register', {
       method: 'POST',
-      headers: { Origin: this.origin },
+      headers: { Origin: this.origin, 'X-Forwarded-For': registrationAddress() },
       json: {
         email,
         name: email.split('@')[0],

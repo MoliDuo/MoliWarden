@@ -94,7 +94,7 @@ export const SERVER_OWNED_CIPHER_KEYS_LOWER = new Set([
   'object',
 ]);
 
-function buildCipherData(cipher: Cipher, folderId: string | null): string {
+export function buildCipherData(cipher: Cipher, folderId: string | null): string {
   const payload: Record<string, unknown> = {
     ...cipher,
     folderId,

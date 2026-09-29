@@ -405,10 +405,9 @@ section('auth', async () => {
     }));
     assert(alice.url().includes('/login'), 'left the login page after a wrong password');
   });
-  await step('password hint on the login page', async () => {
-    await alice.getByRole('button', { name: 'Show Password Hint' }).click();
-    await dialog(alice).waitFor();
-    await confirmDialog(alice);
+  await step('password hints are not offered unless the server enables them', async () => {
+    const hintButtons = await alice.getByRole('button', { name: 'Show Password Hint' }).count();
+    assert(hintButtons === 0, 'login page offers a password hint lookup');
   });
   await step('login', async () => {
     await login(alice, 'alice@example.com');

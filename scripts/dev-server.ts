@@ -5,10 +5,11 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
-import { handleNodeRequest } from '../src/platform/node-http';
+import { createNodeHandler } from '../src/main/node';
 import { BACKEND_EXACT_PATHS, BACKEND_PATH_PREFIXES } from '../src/web-vault-visibility';
 
 const PORT = Number(process.env.PORT || 8787);
+const app = createNodeHandler();
 const DIST = join(process.cwd(), 'dist');
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -52,7 +53,7 @@ createServer(async (req, res) => {
       return;
     }
   }
-  await handleNodeRequest(req, res);
+  await app.handler(req, res);
 }).listen(PORT, () => {
   console.log(`MoliWarden listening on http://localhost:${PORT}`);
 });

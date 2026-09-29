@@ -1,0 +1,58 @@
+{
+  "status": 200,
+  "headers": {
+    "access-control-allow-headers": "Content-Type, Authorization, Accept, Device-Type, Device-Identifier, Device-Name, Bitwarden-Client-Name, Bitwarden-Client-Version, Bitwarden-Package-Type, Is-Prerelease, X-Request-Email, X-Device-Identifier, X-Device-Name, X-MoliWarden-Web-Session",
+    "access-control-allow-methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+    "access-control-expose-headers": "*",
+    "access-control-max-age": "86400",
+    "content-security-policy": "frame-ancestors 'none'; img-src 'self' data:",
+    "content-type": "application/json",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY"
+  },
+  "body": {
+    "card": {
+      "cardholderName": "2.aXYtaG9sZGVy|Y3QtaG9sZGVy|bWFjLWhvbGRlcg==",
+      "brand": "2.aXYtYnJhbmQ=|Y3QtYnJhbmQ=|bWFjLWJyYW5k",
+      "number": "2.aXYtbnVtYmVy|Y3QtbnVtYmVy|bWFjLW51bWJlcg==",
+      "expMonth": "2.aXYtbW9udGg=|Y3QtbW9udGg=|bWFjLW1vbnRo",
+      "expYear": "2.aXYteWVhcg==|Y3QteWVhcg==|bWFjLXllYXI=",
+      "code": "2.aXYtY29kZQ==|Y3QtY29kZQ==|bWFjLWNvZGU="
+    },
+    "login": null,
+    "identity": null,
+    "secureNote": null,
+    "sshKey": null,
+    "bankAccount": null,
+    "driversLicense": null,
+    "passport": null,
+    "passwordHistory": null,
+    "fields": null,
+    "id": "<cipher:card>",
+    "organizationId": null,
+    "type": 3,
+    "folderId": null,
+    "name": "2.aXYtbmFtZS1jYXJk|Y3QtbmFtZS1jYXJk|bWFjLW5hbWUtY2FyZA==",
+    "notes": "2.aXYtbm90ZXMtY2FyZA==|Y3Qtbm90ZXMtY2FyZA==|bWFjLW5vdGVzLWNhcmQ=",
+    "favorite": false,
+    "reprompt": 0,
+    "key": null,
+    "organizationUseTotp": true,
+    "creationDate": "<date>",
+    "revisionDate": "<date>",
+    "deletedDate": null,
+    "archivedDate": null,
+    "edit": true,
+    "viewPassword": true,
+    "permissions": {
+      "delete": true,
+      "restore": true
+    },
+    "object": "cipherDetails",
+    "collectionIds": [],
+    "attachments": null,
+    "data": null,
+    "encryptedFor": null
+  }
+}

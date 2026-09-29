@@ -53,6 +53,7 @@ export interface BootstrapAppResult {
   defaultKdfIterations: number;
   registrationInviteRequired?: boolean;
   websiteIconsEnabled: boolean;
+  passwordHintEnabled: boolean;
   jwtWarning: { reason: JwtUnsafeReason; minLength: number } | null;
   session: SessionState | null;
   profile: Profile | null;
@@ -64,6 +65,7 @@ export interface InitialAppBootstrapState {
   defaultKdfIterations: number;
   registrationInviteRequired?: boolean;
   websiteIconsEnabled: boolean;
+  passwordHintEnabled: boolean;
   jwtWarning: { reason: JwtUnsafeReason; minLength: number } | null;
   session: SessionState | null;
   phase: AppPhase;
@@ -249,11 +251,12 @@ function readWindowBootstrap(): WebBootstrapResponse {
   return raw && typeof raw === 'object' ? raw : {};
 }
 
-function normalizeBootstrapResponse(boot: WebBootstrapResponse): Pick<InitialAppBootstrapState, 'defaultKdfIterations' | 'registrationInviteRequired' | 'websiteIconsEnabled' | 'jwtWarning'> {
+function normalizeBootstrapResponse(boot: WebBootstrapResponse): Pick<InitialAppBootstrapState, 'defaultKdfIterations' | 'registrationInviteRequired' | 'websiteIconsEnabled' | 'passwordHintEnabled' | 'jwtWarning'> {
   const defaultKdfIterations = Number(boot.defaultKdfIterations || 600000);
   const registrationInviteRequired =
     typeof boot.registrationInviteRequired === 'boolean' ? boot.registrationInviteRequired : undefined;
   const websiteIconsEnabled = boot.websiteIconsEnabled !== false;
+  const passwordHintEnabled = boot.passwordHintEnabled === true;
   const jwtUnsafeReason = boot.jwtUnsafeReason || null;
   const jwtWarning = jwtUnsafeReason
     ? {
@@ -266,6 +269,7 @@ function normalizeBootstrapResponse(boot: WebBootstrapResponse): Pick<InitialApp
     defaultKdfIterations,
     registrationInviteRequired,
     websiteIconsEnabled,
+    passwordHintEnabled,
     jwtWarning,
   };
 }
@@ -326,7 +330,7 @@ function resolveUnauthenticatedPhase(registrationInviteRequired: boolean | undef
 }
 
 export function readInitialAppBootstrapState(): InitialAppBootstrapState {
-  const { defaultKdfIterations, registrationInviteRequired, websiteIconsEnabled, jwtWarning } = normalizeBootstrapResponse(readWindowBootstrap());
+  const { defaultKdfIterations, registrationInviteRequired, websiteIconsEnabled, passwordHintEnabled, jwtWarning } = normalizeBootstrapResponse(readWindowBootstrap());
   setWebsiteIconsEnabled(websiteIconsEnabled);
   const session = loadSession();
   const hasInviteCode = !!readInviteCodeFromUrl();
@@ -336,6 +340,7 @@ export function readInitialAppBootstrapState(): InitialAppBootstrapState {
     defaultKdfIterations,
     registrationInviteRequired,
     websiteIconsEnabled,
+    passwordHintEnabled,
     jwtWarning,
     session,
     phase: jwtWarning ? 'login' : session ? 'locked' : resolveUnauthenticatedPhase(registrationInviteRequired, unauthenticatedPhase),
@@ -348,6 +353,7 @@ export async function bootstrapAppSession(initial: InitialAppBootstrapState = re
   const defaultKdfIterations = normalizedBoot.defaultKdfIterations || initial.defaultKdfIterations;
   const registrationInviteRequired = normalizedBoot.registrationInviteRequired ?? initial.registrationInviteRequired;
   const websiteIconsEnabled = normalizedBoot.websiteIconsEnabled !== false;
+  const { passwordHintEnabled } = normalizedBoot;
   setWebsiteIconsEnabled(websiteIconsEnabled);
   const jwtWarning = normalizedBoot.jwtWarning ?? initial.jwtWarning;
 
@@ -356,6 +362,7 @@ export async function bootstrapAppSession(initial: InitialAppBootstrapState = re
       defaultKdfIterations,
       registrationInviteRequired,
       websiteIconsEnabled,
+      passwordHintEnabled,
       jwtWarning,
       session: null,
       profile: null,
@@ -369,6 +376,7 @@ export async function bootstrapAppSession(initial: InitialAppBootstrapState = re
       defaultKdfIterations,
       registrationInviteRequired,
       websiteIconsEnabled,
+      passwordHintEnabled,
       jwtWarning: null,
       session: null,
       profile: null,
@@ -382,6 +390,7 @@ export async function bootstrapAppSession(initial: InitialAppBootstrapState = re
       defaultKdfIterations,
       registrationInviteRequired,
       websiteIconsEnabled,
+      passwordHintEnabled,
       jwtWarning: null,
       session: loaded,
       profile: cachedProfile,
@@ -394,6 +403,7 @@ export async function bootstrapAppSession(initial: InitialAppBootstrapState = re
     defaultKdfIterations,
     registrationInviteRequired,
     websiteIconsEnabled,
+    passwordHintEnabled,
     jwtWarning: null,
     session: loaded,
     profile: null,

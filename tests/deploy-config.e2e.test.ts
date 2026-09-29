@@ -4,19 +4,22 @@ import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { Client, cipherPayload, fakeEncString, resetDatabase, TEST_DATABASE_URL } from './helpers';
+import { createNodeHandler, type NodeHandler } from '../src/main/node';
+import { Client, cipherPayload, fakeEncString, resetDatabase, TEST_DATABASE_URL, testServerEnv } from './helpers';
 
 let server: Server;
 let baseUrl: string;
+let app: NodeHandler;
+
+// Each test deploys a different configuration behind the same URL.
+async function deploy(env: Record<string, string>): Promise<void> {
+  await app?.dispose();
+  app = createNodeHandler(env);
+}
 
 before(async () => {
-  for (const name of ['DATABASE_URL', 'POSTGRES_URL', 'NEON_DATABASE_URL', 'JWT_SECRET', 'S3_ENDPOINT', 'S3_BUCKET']) {
-    delete process.env[name];
-  }
-  process.env.PUSH_RELAY_DISABLED = '1';
   await resetDatabase();
-  const { handleNodeRequest } = await import('../src/platform/node-http');
-  server = createServer((req, res) => void handleNodeRequest(req, res));
+  server = createServer((req, res) => void app.handler(req, res));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
@@ -24,7 +27,7 @@ before(async () => {
 after(async () => {
   server.closeAllConnections?.();
   await new Promise<void>((resolve) => server.close(() => resolve()));
-  setTimeout(() => process.exit(process.exitCode ?? 0), 100).unref();
+  await app?.dispose();
 });
 
 async function errorMessage(response: Response): Promise<string> {
@@ -33,13 +36,14 @@ async function errorMessage(response: Response): Promise<string> {
 }
 
 test('missing DATABASE_URL is named in the error', async () => {
+  await deploy({});
   const response = await fetch(`${baseUrl}/api/config`);
   assert.equal(response.status, 500);
   assert.match(await errorMessage(response), /DATABASE_URL/);
 });
 
 test('unreachable database points at DATABASE_URL without leaking details', async () => {
-  process.env.DATABASE_URL = 'postgres://mw:secret-password@127.0.0.1:1/nothing';
+  await deploy({ DATABASE_URL: 'postgres://mw:secret-password@127.0.0.1:1/nothing' });
   const response = await fetch(`${baseUrl}/api/config`);
   assert.equal(response.status, 500);
   const message = await errorMessage(response);
@@ -48,10 +52,7 @@ test('unreachable database points at DATABASE_URL without leaking details', asyn
 });
 
 test('missing JWT_SECRET is reported to the web vault and on sign-up', async () => {
-  const { getEnv } = await import('../src/platform/env');
-  const { createPgPool, PgD1Database } = await import('../src/platform/pg-d1');
-  getEnv().DB = new PgD1Database(createPgPool({ connectionString: TEST_DATABASE_URL })) as never;
-
+  await deploy({ DATABASE_URL: TEST_DATABASE_URL });
   const boot = await (await fetch(`${baseUrl}/api/web-bootstrap`)).json();
   assert.equal(boot.jwtUnsafeReason, 'missing');
   const client = new Client(baseUrl);
@@ -59,8 +60,7 @@ test('missing JWT_SECRET is reported to the web vault and on sign-up', async () 
 });
 
 test('missing S3 settings are named before any upload starts', async () => {
-  const { getEnv } = await import('../src/platform/env');
-  getEnv().JWT_SECRET = 'deploy-config-test-secret-0123456789abcdef';
+  await deploy({ DATABASE_URL: TEST_DATABASE_URL, JWT_SECRET: 'deploy-config-test-secret-0123456789abcdef' });
   const client = new Client(baseUrl);
   const alice = await client.registerAndLogin('alice@example.com');
   const cipher = await alice.json('/api/ciphers', { method: 'POST', json: cipherPayload('no-s3') });
@@ -92,14 +92,10 @@ test('missing S3 settings are named before any upload starts', async () => {
 });
 
 test('wrong S3 credentials surface the S3 error code, not "not configured"', async () => {
-  const { getEnv } = await import('../src/platform/env');
-  const env = getEnv();
-  Object.assign(env, {
-    S3_ENDPOINT: process.env.TEST_S3_ENDPOINT || 'http://localhost:58333',
-    S3_BUCKET: 'mw-deploy-config',
-    S3_ACCESS_KEY_ID: process.env.TEST_S3_ACCESS_KEY_ID || 'mwaccess',
+  await deploy({
+    ...testServerEnv('mw-deploy-config'),
+    JWT_SECRET: 'deploy-config-test-secret-0123456789abcdef',
     S3_SECRET_ACCESS_KEY: 'definitely-wrong-secret',
-    S3_REGION: 'us-east-1',
   });
   const client = new Client(baseUrl);
   const alice = await client.login('alice@example.com');

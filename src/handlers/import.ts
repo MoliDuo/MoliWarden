@@ -5,6 +5,7 @@ import { errorResponse, jsonResponse } from '../utils/response';
 import { readActingDeviceIdentifier } from '../utils/device';
 import { generateUUID } from '../utils/uuid';
 import { LIMITS } from '../config/limits';
+import { buildCipherData } from '../services/storage-cipher-repo';
 import { normalizeCipherLoginForStorage, normalizeCipherSshKeyForCompatibility, validateCipherEncryptedFieldsForCompatibility } from './ciphers';
 
 // Bitwarden client import request format
@@ -272,6 +273,8 @@ export async function handleCiphersImport(request: Request, env: Env, userId: st
       deletedAt: null,
     };
     cipher.login = normalizeCipherLoginForStorage(cipher.login);
+    // Server-internal; never accepted from a client payload.
+    delete cipher.keyAddedFromRevision;
     const compatibilityError = validateCipherEncryptedFieldsForCompatibility(cipher);
     if (compatibilityError) {
       return errorResponse(`Cipher ${i + 1}: ${compatibilityError}`, 400);
@@ -283,7 +286,7 @@ export async function handleCiphersImport(request: Request, env: Env, userId: st
 
   if (cipherRows.length > 0) {
     const cipherStatements = cipherRows.map(cipher => {
-      const data = JSON.stringify(cipher);
+      const data = buildCipherData(cipher, cipher.folderId);
       return env.DB
         .prepare(
           'INSERT INTO ciphers(id, user_id, type, folder_id, name, notes, favorite, data, reprompt, key, created_at, updated_at, archived_at, deleted_at) ' +

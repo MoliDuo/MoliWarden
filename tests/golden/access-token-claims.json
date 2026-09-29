@@ -1,0 +1,22 @@
+{
+  "header": {
+    "alg": "HS256",
+    "typ": "JWT"
+  },
+  "claims": {
+    "sub": "<user>",
+    "email": "golden@example.com",
+    "name": "Golden",
+    "sstamp": "<volatile>",
+    "did": "<device>",
+    "dstamp": "<volatile>",
+    "email_verified": true,
+    "amr": [
+      "Application"
+    ],
+    "iat": "<iat>",
+    "exp": 7200,
+    "iss": "moliwarden",
+    "premium": true
+  }
+}

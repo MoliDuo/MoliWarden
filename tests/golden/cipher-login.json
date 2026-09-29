@@ -1,0 +1,76 @@
+{
+  "status": 200,
+  "headers": {
+    "access-control-allow-headers": "Content-Type, Authorization, Accept, Device-Type, Device-Identifier, Device-Name, Bitwarden-Client-Name, Bitwarden-Client-Version, Bitwarden-Package-Type, Is-Prerelease, X-Request-Email, X-Device-Identifier, X-Device-Name, X-MoliWarden-Web-Session",
+    "access-control-allow-methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+    "access-control-expose-headers": "*",
+    "access-control-max-age": "86400",
+    "content-security-policy": "frame-ancestors 'none'; img-src 'self' data:",
+    "content-type": "application/json",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY"
+  },
+  "body": {
+    "login": {
+      "username": "2.aXYtdXNlcm5hbWU=|Y3QtdXNlcm5hbWU=|bWFjLXVzZXJuYW1l",
+      "password": "2.aXYtcGFzc3dvcmQ=|Y3QtcGFzc3dvcmQ=|bWFjLXBhc3N3b3Jk",
+      "totp": "2.aXYtdG90cA==|Y3QtdG90cA==|bWFjLXRvdHA=",
+      "uris": [
+        {
+          "uri": "2.aXYtdXJp|Y3QtdXJp|bWFjLXVyaQ==",
+          "match": 0,
+          "uriChecksum": null
+        }
+      ],
+      "passwordRevisionDate": "<date>",
+      "fido2Credentials": null
+    },
+    "fields": [
+      {
+        "name": "2.aXYtZmllbGQtbmFtZQ==|Y3QtZmllbGQtbmFtZQ==|bWFjLWZpZWxkLW5hbWU=",
+        "value": "2.aXYtZmllbGQtdmFsdWU=|Y3QtZmllbGQtdmFsdWU=|bWFjLWZpZWxkLXZhbHVl",
+        "type": 0,
+        "linkedId": null
+      }
+    ],
+    "passwordHistory": [
+      {
+        "password": "2.aXYtb2xkLXBhc3N3b3Jk|Y3Qtb2xkLXBhc3N3b3Jk|bWFjLW9sZC1wYXNzd29yZA==",
+        "lastUsedDate": "<date>"
+      }
+    ],
+    "card": null,
+    "identity": null,
+    "secureNote": null,
+    "sshKey": null,
+    "bankAccount": null,
+    "driversLicense": null,
+    "passport": null,
+    "id": "<cipher:login>",
+    "organizationId": null,
+    "type": 1,
+    "folderId": "<folder>",
+    "name": "2.aXYtbmFtZS1sb2dpbg==|Y3QtbmFtZS1sb2dpbg==|bWFjLW5hbWUtbG9naW4=",
+    "notes": "2.aXYtbm90ZXMtbG9naW4=|Y3Qtbm90ZXMtbG9naW4=|bWFjLW5vdGVzLWxvZ2lu",
+    "favorite": true,
+    "reprompt": 0,
+    "key": null,
+    "organizationUseTotp": true,
+    "creationDate": "<date>",
+    "revisionDate": "<date>",
+    "deletedDate": null,
+    "archivedDate": null,
+    "edit": true,
+    "viewPassword": true,
+    "permissions": {
+      "delete": true,
+      "restore": true
+    },
+    "object": "cipherDetails",
+    "collectionIds": [],
+    "attachments": null,
+    "data": null,
+    "encryptedFor": null
+  }
+}

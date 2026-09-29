@@ -7,10 +7,6 @@ import { runScheduledBackupIfDue } from './handlers/backup';
 // Platform-neutral request handler. src/platform/node-http.ts adapts it to
 // Node's http module (Vercel Functions and the local dev server).
 
-let dbInitialized = false;
-let dbInitError: string | null = null;
-let dbInitPromise: Promise<void> | null = null;
-
 const CRON_PATH = '/api/internal/cron';
 
 function normalizeRequestUrl(request: Request): Request {
@@ -22,26 +18,24 @@ function normalizeRequestUrl(request: Request): Request {
   return new Request(url.toString(), request);
 }
 
-async function ensureDatabaseInitialized(env: Env): Promise<void> {
-  if (dbInitialized) return;
+// Schema bootstrap runs once per database; a failure is retried on the next
+// request.
+const dbInit = new WeakMap<Env['DB'], Promise<void>>();
 
-  if (!dbInitPromise) {
-    dbInitPromise = (async () => {
-      const storage = new StorageService(env.DB);
-      await storage.initializeDatabase();
-      dbInitialized = true;
-      dbInitError = null;
-    })()
-      .catch((error: unknown) => {
-        console.error('Failed to initialize database:', error);
-        dbInitError = error instanceof Error ? error.message : 'Unknown database initialization error';
-      })
-      .finally(() => {
-        dbInitPromise = null;
-      });
+async function ensureDatabaseInitialized(env: Env): Promise<string | null> {
+  let pending = dbInit.get(env.DB);
+  if (!pending) {
+    pending = new StorageService(env.DB).initializeDatabase();
+    dbInit.set(env.DB, pending);
   }
-
-  await dbInitPromise;
+  try {
+    await pending;
+    return null;
+  } catch (error) {
+    if (dbInit.get(env.DB) === pending) dbInit.delete(env.DB);
+    console.error('Failed to initialize database:', error);
+    return error instanceof Error ? error.message : 'Unknown database initialization error';
+  }
 }
 
 function constantTimeEqual(a: string, b: string): boolean {
@@ -66,7 +60,7 @@ async function handleCron(request: Request, env: Env): Promise<Response> {
 export async function handleAppRequest(request: Request, env: Env): Promise<Response> {
   const normalizedRequest = normalizeRequestUrl(request);
 
-  await ensureDatabaseInitialized(env);
+  const dbInitError = await ensureDatabaseInitialized(env);
   if (dbInitError) {
     // Log full error server-side, return generic message to client.
     console.error('DB init error (not forwarded to client):', dbInitError);
