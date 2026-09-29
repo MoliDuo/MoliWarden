@@ -1,5 +1,32 @@
 # Security Policy
 
+## How MoliWarden Protects Your Data
+
+- **The vault is encrypted on your devices.** The server stores ciphertext and
+  never sees the master password, only a hash of it, which it hashes again
+  (PBKDF2) before storing.
+- **Tokens are typed and short-lived.** Every token the server signs (access,
+  file upload and download, Send access, user verification, passkey
+  challenges) carries its type and an expiry and is signed with a key of its
+  own derived from `JWT_SECRET`, so it is refused anywhere else. Access tokens
+  last two hours.
+- **Sessions rotate.** Every refresh hands out a new refresh token. Presenting a
+  replaced one again after a minute's grace ends the whole session, so a stolen
+  token stops working once either copy is used. Changing the password, logging
+  a device out or banning a user ends sessions on every instance immediately;
+  nothing is cached.
+- **Server-side secrets are sealed.** 2FA seeds, recovery codes, API keys and
+  backup destination credentials are encrypted with `ENCRYPTION_KEY`
+  (AES-256-GCM); refresh tokens are stored only as hashes.
+- **Guessing is throttled.** Wrong passwords lock the address out after 10 tries,
+  and the account (for devices it has not signed in from) after 30 tries from any
+  number of addresses. 2FA codes, API keys and Send passwords are throttled the
+  same way, and every route has a request budget.
+- **Password hints are off** unless `SHOW_PASSWORD_HINT=1`, since a hint is shown
+  to anyone who knows the email address.
+- **Expired data is removed** by the cron job (`CRON_SECRET`): sessions,
+  challenges, used tokens, expired Sends and unfinished uploads.
+
 ## Reporting a Vulnerability
 
 Thank you for helping keep MoliWarden safe.

@@ -4,8 +4,8 @@ import { base64url, constantTimeEqual, deriveKey, fromBase64url } from './crypto
 // Every token the server signs is an HS256 JWT with a `typ` claim naming its
 // purpose. Each purpose has its own key derived from JWT_SECRET, so a token
 // issued for one purpose never verifies as another. Access tokens use
-// JWT_SECRET itself: clients read their claims, and the code that has not
-// moved to this module yet still verifies them.
+// JWT_SECRET itself, which no other purpose does, so tokens issued before
+// the key derivation existed stayed valid.
 
 export type TokenType =
   | 'access'

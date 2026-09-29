@@ -36,11 +36,17 @@ A Bitwarden-compatible server for **Vercel**, with its own web vault.
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | ✅ | |
 | `S3_REGION` | | default `auto` |
 | `S3_FORCE_PATH_STYLE` | | `0` for virtual-hosted-style URLs |
-| `CRON_SECRET` | recommended | authenticates Vercel Cron calls to `/api/internal/cron` (scheduled backups) |
+| `CRON_SECRET` | recommended | authenticates Vercel Cron calls to `/api/internal/cron`, which runs scheduled backups and removes expired sessions, tokens, Sends and abandoned uploads. Without it the job does not run |
 | `MOLIWARDEN_CRON_SCHEDULE` | | build-time cron expression, daily by default (Hobby plans only allow daily jobs) |
 | `BACKUP_ALLOW_PRIVATE_HOSTS` | | `1` to let backup destinations use private or loopback addresses (self-hosted NAS, tests) |
 | `PUSH_RELAY_DISABLED` | | `1` to skip registering with the Bitwarden push relay |
 | `HIDE_WEB_VAULT` | | `1` at build time to publish only the client API |
+| `ICON_SOURCE` | | where website icons come from: `favicon` (default; favicon.im, then Bitwarden's service), `bitwarden`, or `off` |
+| `WEBAUTHN_RP_ID` / `WEBAUTHN_RP_NAME` | | passkey relying party; default the site's host name and `MoliWarden` |
+| `WEBAUTHN_ALLOWED_ORIGINS` | | comma-separated extra origins allowed to use passkeys; the official extensions and desktop app are always allowed |
+| `MAX_UPLOAD_BYTES` | | largest attachment or Send file, default 4400000 (Vercel Functions accept bodies up to 4.5 MB) |
+| `DATABASE_POOL_MAX` | | connections per function instance, default 5 |
+| `YUBICO_VALIDATION_URLS` | | comma-separated YubiKey OTP validation servers, default Yubico's |
 
 4. Open the site and register. The first account becomes the instance admin; later sign-ups need an invite code from the admin panel. Tables are created on the first request.
 

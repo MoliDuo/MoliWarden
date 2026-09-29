@@ -58,12 +58,17 @@
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | ✅ | 访问密钥 |
 | `S3_REGION` | | 默认 `auto`（R2）；AWS 需填实际区域 |
 | `S3_FORCE_PATH_STYLE` | | 默认路径风格；设为 `0` 改用虚拟主机风格 |
-| `CRON_SECRET` | 推荐 | Vercel Cron 调用定时备份时的鉴权密钥（Vercel 会自动带上） |
+| `CRON_SECRET` | 推荐 | Vercel Cron 调用 `/api/internal/cron` 的鉴权密钥（Vercel 会自动带上）。该任务负责定时备份，并清理过期的会话、令牌、Send 和未完成的上传；不设置则不会运行 |
 | `MOLIWARDEN_CRON_SCHEDULE` | | 构建时生效的定时任务表达式，默认每天一次（Hobby 套餐只允许每天一次） |
 | `BACKUP_ALLOW_PRIVATE_HOSTS` | | 设为 `1` 允许备份目的地使用内网或回环地址（自建 NAS、测试） |
 | `PUSH_RELAY_DISABLED` | | 设为 `1` 不向 Bitwarden 官方推送中继注册 |
 | `HIDE_WEB_VAULT` | | 构建时设为 `1`，则不发布 Web 密码库，只保留客户端 API |
 | `WEBAUTHN_RP_ID` / `WEBAUTHN_RP_NAME` | | Passkey 的 RP ID 和显示名称，默认取站点域名和 `MoliWarden` |
+| `WEBAUTHN_ALLOWED_ORIGINS` | | 额外允许使用 Passkey 的来源，逗号分隔；官方扩展和桌面端始终允许 |
+| `ICON_SOURCE` | | 网站图标来源：`favicon`（默认，先 favicon.im 再 Bitwarden 图标服务）、`bitwarden` 或 `off` |
+| `MAX_UPLOAD_BYTES` | | 附件和 Send 文件的上限，默认 4400000（Vercel Functions 的请求体上限为 4.5 MB） |
+| `DATABASE_POOL_MAX` | | 每个函数实例的数据库连接数，默认 5 |
+| `YUBICO_VALIDATION_URLS` | | YubiKey OTP 验证服务器，逗号分隔，默认使用 Yubico 官方 |
 
 ### 4. 首次使用
 
