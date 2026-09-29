@@ -37,13 +37,13 @@ export function subscribeNetworkStatus(listener: (status: NetworkStatus) => void
   };
 }
 
-export function recordNodeWardenReachable(): void {
+export function recordServerReachable(): void {
   consecutiveProbeFailures = 0;
   lastProbeResult = true;
   setCurrentNetworkStatus('online');
 }
 
-export function recordNodeWardenUnreachable(): void {
+export function recordServerUnreachable(): void {
   lastProbeResult = false;
   consecutiveProbeFailures += 1;
   if (browserReportsOffline() || consecutiveProbeFailures >= PROBE_FAILURES_BEFORE_OFFLINE) {
@@ -51,7 +51,7 @@ export function recordNodeWardenUnreachable(): void {
   }
 }
 
-export async function probeNodeWardenService(): Promise<boolean> {
+export async function probeServer(): Promise<boolean> {
   if (browserReportsOffline()) {
     consecutiveProbeFailures = PROBE_FAILURES_BEFORE_OFFLINE;
     setCurrentNetworkStatus('offline');
@@ -86,9 +86,9 @@ export async function probeNodeWardenService(): Promise<boolean> {
     .then((result) => {
       lastProbeAt = Date.now();
       if (result) {
-        recordNodeWardenReachable();
+        recordServerReachable();
       } else {
-        recordNodeWardenUnreachable();
+        recordServerUnreachable();
       }
       return result;
     })

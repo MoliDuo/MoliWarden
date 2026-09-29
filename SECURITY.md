@@ -13,7 +13,7 @@ Use GitHub Private Vulnerability Reporting instead:
 3. Click **Report a vulnerability**.
 4. Submit the report privately.
 
-MoliWarden is independent from Bitwarden and from NodeWarden, which it is based on. Please do not report MoliWarden-specific issues to the Bitwarden or NodeWarden teams.
+MoliWarden is independent from Bitwarden. Please do not report MoliWarden-specific issues to the Bitwarden team.
 
 ## What to Include
 

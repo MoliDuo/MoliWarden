@@ -43,7 +43,7 @@ export function buildVercelConfig(options: VercelConfigOptions): Record<string, 
         headers: { 'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet' },
         continue: true,
       },
-      { src: backendRouteSource(), dest: `/${FUNCTION_NAME}?__nwpath=$1` },
+      { src: backendRouteSource(), dest: `/${FUNCTION_NAME}?__mwpath=$1` },
       // Official clients frame this exact page; everything else must not be framed.
       {
         src: '^/webauthn-connector\\.html$',

@@ -10,7 +10,7 @@ export const BACKUP_DEFAULT_TIMEZONE = 'UTC';
 export const BACKUP_DEFAULT_RETENTION_COUNT = 30;
 export const BACKUP_DEFAULT_S3_REGION = 'auto';
 export const BACKUP_DEFAULT_S3_ROOT_PATH = '';
-export const BACKUP_DEFAULT_WEBDAV_REMOTE_PATH = 'nodewarden';
+export const BACKUP_DEFAULT_WEBDAV_REMOTE_PATH = 'moliwarden';
 export const BACKUP_DEFAULT_INTERVAL_HOURS = 24;
 export const BACKUP_DEFAULT_START_TIME = '03:00';
 

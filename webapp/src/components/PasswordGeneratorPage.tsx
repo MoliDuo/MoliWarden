@@ -20,16 +20,12 @@ import {
 } from '@/lib/password-generator';
 import { generateSshKey, type GeneratedSshKey } from '@/lib/ssh-key-generator';
 
-const SETTINGS_KEY = 'nodewarden.passwordGenerator.settings.v2';
+const SETTINGS_KEY = 'moliwarden.passwordGenerator.settings.v2';
 
 function readSettings(): GeneratorSettings {
   try {
     const current = localStorage.getItem(SETTINGS_KEY);
-    if (current) return normalizeGeneratorSettings(JSON.parse(current));
-
-    // Preserve compatible options for users upgrading from the original generator.
-    const legacy = JSON.parse(localStorage.getItem('nodewarden.passwordGenerator.settings.v1') || '{}');
-    return normalizeGeneratorSettings(legacy);
+    return current ? normalizeGeneratorSettings(JSON.parse(current)) : defaultGeneratorSettings;
   } catch {
     return defaultGeneratorSettings;
   }
@@ -281,10 +277,14 @@ function SshKeyOutput(props: { value: GeneratedSshKey | null; loading: boolean; 
   return (
     <div className="generator-key-output">
       <div className="generator-key-summary"><strong>{props.value.type}{props.value.type === 'RSA' ? ` ${props.value.bits}` : ''}</strong><code>{props.value.fingerprint}</code></div>
-      <div className="generator-key-field"><span>{t('txt_generator_public_key')}</span><code>{publicKey}</code><div className="generator-key-field-actions"><button type="button" className="btn btn-secondary small" onClick={() => copyField(publicKey)}><Copy size={14} />{t('txt_copy')}</button><button type="button" className="btn btn-secondary small" onClick={() => downloadText('id_nodewarden.pub', `${publicKey}\n`)}><Download size={14} />{t('txt_download')}</button></div></div>
-      <details className="generator-private-key"><summary>{t('txt_generator_private_key')}</summary><code>{props.value.privateKey}</code><div className="generator-key-field-actions"><button type="button" className="btn btn-secondary small" onClick={() => copyField(props.value!.privateKey)}><Copy size={14} />{t('txt_copy')}</button><button type="button" className="btn btn-secondary small" onClick={() => downloadText('id_nodewarden', props.value!.privateKey)}><Download size={14} />{t('txt_download')}</button></div></details>
+      <div className="generator-key-field"><span>{t('txt_generator_public_key')}</span><code>{publicKey}</code><div className="generator-key-field-actions"><button type="button" className="btn btn-secondary small" onClick={() => copyField(publicKey)}><Copy size={14} />{t('txt_copy')}</button><button type="button" className="btn btn-secondary small" onClick={() => downloadText(`${sshKeyFileName(props.value!.type)}.pub`, `${publicKey}\n`)}><Download size={14} />{t('txt_download')}</button></div></div>
+      <details className="generator-private-key"><summary>{t('txt_generator_private_key')}</summary><code>{props.value.privateKey}</code><div className="generator-key-field-actions"><button type="button" className="btn btn-secondary small" onClick={() => copyField(props.value!.privateKey)}><Copy size={14} />{t('txt_copy')}</button><button type="button" className="btn btn-secondary small" onClick={() => downloadText(sshKeyFileName(props.value!.type), props.value!.privateKey)}><Download size={14} />{t('txt_download')}</button></div></details>
     </div>
   );
+}
+
+function sshKeyFileName(type: string): string {
+  return `id_${type.toLowerCase()}`;
 }
 
 function SshKeyOptionFields(props: { options: SshKeyOptions; onChange: <K extends keyof SshKeyOptions>(key: K, value: SshKeyOptions[K]) => void }) {

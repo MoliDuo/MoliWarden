@@ -1,7 +1,7 @@
 import { deriveLoginHashLocally, unlockVaultKey } from '@/lib/api/auth';
 import type { Profile, SessionState, TokenSuccess } from '@/lib/types';
 
-const OFFLINE_UNLOCK_KEY = 'nodewarden.web.offline-unlock.v1';
+const OFFLINE_UNLOCK_KEY = 'moliwarden.web.offline-unlock.v1';
 
 interface OfflineUnlockRecord {
   version: 1;

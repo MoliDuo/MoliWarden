@@ -9,8 +9,7 @@ interface JwtWarningPageProps {
   minLength: number;
 }
 
-const CLOUDFLARE_SETTINGS_URL =
-  'https://dash.cloudflare.com/?to=/:account/workers/services/view/nodewarden/production/settings';
+const VERCEL_DASHBOARD_URL = 'https://vercel.com/dashboard';
 
 export default function JwtWarningPage(props: JwtWarningPageProps) {
   const [seed, setSeed] = useState(0);
@@ -48,7 +47,7 @@ export default function JwtWarningPage(props: JwtWarningPageProps) {
             <li>
               {fixStep2Prefix}
               <a
-                href={CLOUDFLARE_SETTINGS_URL}
+                href={VERCEL_DASHBOARD_URL}
                 className="jwt-inline-link"
                 target="_blank"
                 rel="noreferrer"

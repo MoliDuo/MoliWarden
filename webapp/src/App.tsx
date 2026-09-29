@@ -143,7 +143,7 @@ function normalizeRoutePath(path: string): string {
   const normalized = pathOnly.startsWith('/') ? pathOnly : `/${pathOnly}`;
   return normalized.length > 1 ? normalized.replace(/\/+$/, '') : '/';
 }
-const THEME_STORAGE_KEY = 'nodewarden.theme.preference.v1';
+const THEME_STORAGE_KEY = 'moliwarden.theme.preference.v1';
 const SIGNALR_RECORD_SEPARATOR = String.fromCharCode(0x1e);
 const SIGNALR_UPDATE_TYPE_SYNC_CIPHER_UPDATE = 0;
 const SIGNALR_UPDATE_TYPE_SYNC_CIPHER_CREATE = 1;
@@ -168,8 +168,8 @@ type ThemePreference = 'system' | 'light' | 'dark';
 type LockTimeoutMinutes = 0 | 1 | 5 | 15 | 30;
 type SessionTimeoutAction = 'lock' | 'logout';
 
-const LOCK_TIMEOUT_STORAGE_KEY = 'nodewarden.lock.timeout-minutes.v1';
-const SESSION_TIMEOUT_ACTION_STORAGE_KEY = 'nodewarden.session.timeout-action.v1';
+const LOCK_TIMEOUT_STORAGE_KEY = 'moliwarden.lock.timeout-minutes.v1';
+const SESSION_TIMEOUT_ACTION_STORAGE_KEY = 'moliwarden.session.timeout-action.v1';
 const LOCK_TIMEOUT_VALUES = new Set<LockTimeoutMinutes>([0, 1, 5, 15, 30]);
 function readThemePreference(): ThemePreference {
   if (typeof window === 'undefined') return 'system';
@@ -452,7 +452,7 @@ export default function App() {
   const importAuthedFetch = useMemo(
     () => async (input: string, init?: RequestInit) => {
       const headers = new Headers(init?.headers || {});
-      headers.set('X-NodeWarden-Import', '1');
+      headers.set('X-MoliWarden-Import', '1');
       return authedFetch(input, { ...init, headers });
     },
     [authedFetch]
@@ -1977,18 +1977,18 @@ export default function App() {
   const sidebarToggleTitle = location === '/vault' ? t('txt_folders') : t('txt_type');
   const demoDomainRules = useMemo<DomainRules>(() => ({
     equivalentDomains: [
-      ['nodewarden.example', 'nw.example'],
-      ['staging.nodewarden.example', 'preview.nodewarden.example'],
+      ['moliwarden.example', 'mw.example'],
+      ['staging.moliwarden.example', 'preview.moliwarden.example'],
     ],
     customEquivalentDomains: [
-      { id: 'demo-custom-1', domains: ['nodewarden.example', 'nw.example'], excluded: false },
-      { id: 'demo-custom-2', domains: ['staging.nodewarden.example', 'preview.nodewarden.example'], excluded: false },
+      { id: 'demo-custom-1', domains: ['moliwarden.example', 'mw.example'], excluded: false },
+      { id: 'demo-custom-2', domains: ['staging.moliwarden.example', 'preview.moliwarden.example'], excluded: false },
     ],
     globalEquivalentDomains: [
       { type: 0, domains: ['youtube.com', 'google.com', 'gmail.com'], excluded: false },
       { type: 1, domains: ['apple.com', 'icloud.com'], excluded: false },
       { type: 10, domains: ['microsoft.com', 'office.com', 'xbox.com'], excluded: true },
-      { type: -10001, domains: ['nodewarden.example', 'nw.example'], excluded: false },
+      { type: -10001, domains: ['moliwarden.example', 'mw.example'], excluded: false },
     ],
     object: 'domains',
   }), []);

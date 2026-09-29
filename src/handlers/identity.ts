@@ -34,7 +34,7 @@ const TWO_FACTOR_PROVIDER_YUBIKEY = 3;
 const TWO_FACTOR_PROVIDER_REMEMBER = 5;
 const TWO_FACTOR_PROVIDER_WEBAUTHN = 7;
 const TWO_FACTOR_PROVIDER_RECOVERY_CODE = 8;
-const WEB_REFRESH_COOKIE = 'nodewarden_web_refresh';
+const WEB_REFRESH_COOKIE = 'moliwarden_web_refresh';
 // Some UI surfaces use -1 for the recovery-code settings dialog. Login itself follows
 // the official Identity provider enum (RecoveryCode = 8), while request parsing remains
 // compatible with older/local provider values.
@@ -129,7 +129,7 @@ async function persistIdentityDevicePushToken(
 }
 
 function shouldUseWebSession(request: Request): boolean {
-  return String(request.headers.get('X-NodeWarden-Web-Session') || '').trim() === '1';
+  return String(request.headers.get('X-MoliWarden-Web-Session') || '').trim() === '1';
 }
 
 function parseCookieValue(request: Request, name: string): string | null {
@@ -215,7 +215,7 @@ function buildPreloginResponse(
       parallelism: kdfParallelism,
     },
     salt: null,
-    // Preserve the historic NodeWarden aliases for older integrations.
+    // Historic aliases still sent by older integrations.
     KdfSettings: {
       KdfType: kdfType,
       Iterations: kdfIterations,

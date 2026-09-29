@@ -13,8 +13,8 @@ export const EXPORT_FORMATS = [
   { id: 'bitwarden_encrypted_json', label: 'Bitwarden (encrypted vault as json)' },
   { id: 'bitwarden_json_zip', label: 'Bitwarden (vault + attachments as zip)' },
   { id: 'bitwarden_encrypted_json_zip', label: 'Bitwarden (encrypted vault + attachments as zip)' },
-  { id: 'nodewarden_json', label: 'NodeWarden (vault + attachments as json)' },
-  { id: 'nodewarden_encrypted_json', label: 'NodeWarden (encrypted vault + attachments as json)' },
+  { id: 'moliwarden_json', label: 'MoliWarden (vault + attachments as json)' },
+  { id: 'moliwarden_encrypted_json', label: 'MoliWarden (encrypted vault + attachments as json)' },
 ] as const;
 
 export type ExportFormatId = (typeof EXPORT_FORMATS)[number]['id'];
@@ -40,7 +40,7 @@ export interface ZipAttachmentEntry {
   bytes: Uint8Array;
 }
 
-export interface NodeWardenAttachmentRecord {
+export interface MoliWardenAttachmentRecord {
   cipherId: string;
   cipherIndex: number | null;
   fileName: string;
@@ -525,7 +525,7 @@ function buildBitwardenCsvFields(item: Record<string, unknown>, type: number): s
   }
   if (type !== 1 && type !== 2) {
     const sourceLabel = sourceTypeLabel(type);
-    appendFieldLine(lines, 'nodewardenType', sourceLabel);
+    appendFieldLine(lines, 'moliwardenType', sourceLabel);
     appendKnownRecordFieldLines(lines, sourceLabel, item[sourceLabel]);
   }
   return lines.join('\n');
@@ -763,11 +763,11 @@ export function buildExportFileName(format: ExportFormatId, zipEncrypted = false
     format === 'bitwarden_csv' ||
     format === 'bitwarden_json' ||
     format === 'bitwarden_encrypted_json' ||
-    format === 'nodewarden_json' ||
-    format === 'nodewarden_encrypted_json'
+    format === 'moliwarden_json' ||
+    format === 'moliwarden_encrypted_json'
   ) {
     if (format === 'bitwarden_csv') return `bitwarden_export_${stamp}.csv`;
-    if (format.startsWith('nodewarden_')) return `nodewarden_export_${stamp}.json`;
+    if (format.startsWith('moliwarden_')) return `moliwarden_export_${stamp}.json`;
     return `bitwarden_export_${stamp}.json`;
   }
   if (format === 'bitwarden_json_zip' || format === 'bitwarden_encrypted_json_zip') {
@@ -777,11 +777,11 @@ export function buildExportFileName(format: ExportFormatId, zipEncrypted = false
   return `bitwarden_export_${stamp}.bin`;
 }
 
-export function buildNodeWardenAttachmentRecords(
+export function buildMoliWardenAttachmentRecords(
   attachments: ZipAttachmentEntry[],
   cipherIndexById?: Map<string, number>
-): NodeWardenAttachmentRecord[] {
-  const out: NodeWardenAttachmentRecord[] = [];
+): MoliWardenAttachmentRecord[] {
+  const out: MoliWardenAttachmentRecord[] = [];
   for (const attachment of attachments) {
     const cipherId = String(attachment.cipherId || '').trim();
     if (!cipherId) continue;
@@ -796,21 +796,21 @@ export function buildNodeWardenAttachmentRecords(
   return out;
 }
 
-export function buildNodeWardenPlainJsonDocument(
+export function buildMoliWardenPlainJsonDocument(
   bitwardenJsonDoc: Record<string, unknown>,
-  attachments: NodeWardenAttachmentRecord[]
+  attachments: MoliWardenAttachmentRecord[]
 ): Record<string, unknown> {
   return {
     ...bitwardenJsonDoc,
-    nodewardenFormat: 'nodewarden_json',
-    nodewardenVersion: 1,
-    nodewardenAttachments: attachments,
+    moliwardenFormat: 'moliwarden_json',
+    moliwardenVersion: 1,
+    moliwardenAttachments: attachments,
   };
 }
 
-export async function attachNodeWardenEncryptedAttachmentPayload(
+export async function attachMoliWardenEncryptedAttachmentPayload(
   encryptedBitwardenJson: string,
-  attachments: NodeWardenAttachmentRecord[],
+  attachments: MoliWardenAttachmentRecord[],
   userEncB64: string,
   userMacB64: string
 ): Promise<string> {
@@ -818,12 +818,12 @@ export async function attachNodeWardenEncryptedAttachmentPayload(
   const userEnc = base64ToBytes(userEncB64);
   const userMac = base64ToBytes(userMacB64);
   const payload = JSON.stringify({
-    nodewardenFormat: 'nodewarden_json',
-    nodewardenVersion: 1,
-    nodewardenAttachments: attachments,
+    moliwardenFormat: 'moliwarden_json',
+    moliwardenVersion: 1,
+    moliwardenAttachments: attachments,
   });
-  parsed.nodewardenFormat = 'nodewarden_json';
-  parsed.nodewardenVersion = 1;
-  parsed.nodewardenAttachmentsEnc = await encryptBw(new TextEncoder().encode(payload), userEnc, userMac);
+  parsed.moliwardenFormat = 'moliwarden_json';
+  parsed.moliwardenVersion = 1;
+  parsed.moliwardenAttachmentsEnc = await encryptBw(new TextEncoder().encode(payload), userEnc, userMac);
   return JSON.stringify(parsed, null, 2);
 }

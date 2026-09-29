@@ -54,8 +54,8 @@ const IMPORT_SOURCE_PARSERS: Record<ImportSourceId, (textRaw: string) => Ciphers
   bitwarden_zip: () => {
     throw new Error('bitwarden_zip is handled by dedicated zip flow');
   },
-  nodewarden_json: () => {
-    throw new Error('nodewarden_json is handled by dedicated JSON flow');
+  moliwarden_json: () => {
+    throw new Error('moliwarden_json is handled by dedicated JSON flow');
   },
   bitwarden_csv: parseBitwardenCsv,
   onepassword_1pux: parseOnePassword1PuxJson,

@@ -159,8 +159,8 @@ export function getCreateTypeOptions(): TypeOption[] {
   ];
 }
 
-export const VAULT_SORT_STORAGE_KEY = 'nodewarden.vault.sort.v1';
-export const FOLDER_SORT_STORAGE_KEY = 'nodewarden.folder-sort.v1';
+export const VAULT_SORT_STORAGE_KEY = 'moliwarden.vault.sort.v1';
+export const FOLDER_SORT_STORAGE_KEY = 'moliwarden.folder-sort.v1';
 export const MOBILE_LAYOUT_QUERY = '(max-width: 1180px)';
 export const VAULT_LIST_ROW_HEIGHT = 74;
 export const VAULT_LIST_OVERSCAN = 10;

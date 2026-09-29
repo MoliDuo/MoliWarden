@@ -16,7 +16,7 @@ export interface BackupProgressDetail {
 
 export type BackupRestoreProgressDetail = BackupProgressDetail;
 
-export const BACKUP_PROGRESS_EVENT = 'nodewarden:backup-progress';
+export const BACKUP_PROGRESS_EVENT = 'moliwarden:backup-progress';
 export const BACKUP_RESTORE_PROGRESS_EVENT = BACKUP_PROGRESS_EVENT;
 
 export function dispatchBackupProgress(detail: BackupProgressDetail): void {

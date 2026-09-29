@@ -537,7 +537,7 @@ export async function handleUpdateProfile(request: Request, env: Env, userId: st
 }
 
 // PUT/POST /api/accounts/verify-devices
-// New-device verification requires an email delivery channel which NodeWarden
+// New-device verification requires an email delivery channel which MoliWarden
 // does not provide. This endpoint always rejects the request so clients receive
 // clear feedback that the feature is unavailable rather than silently ignoring
 // the user's preference.
@@ -840,7 +840,7 @@ function yubiKeyResponse(user: User): Record<string, unknown> {
 }
 
 // New-device verification requires an email delivery channel to send OTP
-// challenges to unknown devices. NodeWarden does not integrate with an email
+// challenges to unknown devices. MoliWarden does not integrate with an email
 // provider, so this feature is intentionally unavailable. The settings
 // response always reports disabled regardless of any legacy DB value.
 function deviceVerificationSettingsResponse(_user: User): Record<string, unknown> {
@@ -1598,7 +1598,7 @@ async function apiKey(request: Request, env: Env, userId: string, rotate: boolea
 
   if (!rotate && isStoredApiKeyHash(user.apiKey)) {
     return errorResponse(
-      'This API key was created by an older NodeWarden version and cannot be displayed. Rotate it once to use the Bitwarden-compatible readable format.',
+      'This API key was created by an older server version and cannot be displayed. Rotate it once to use the Bitwarden-compatible readable format.',
       409
     );
   }

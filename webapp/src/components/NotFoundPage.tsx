@@ -1,5 +1,6 @@
 import { Home } from 'lucide-preact';
 import { t } from '@/lib/i18n';
+import { BrandLockup } from '@/components/BrandMark';
 
 interface NotFoundPageProps {
   title?: string;
@@ -12,8 +13,7 @@ export default function NotFoundPage(props: NotFoundPageProps) {
     <main className="not-found-page">
       <section className="not-found-shell" aria-labelledby="not-found-title">
         <div className="not-found-brand">
-          <img src="/nodewarden-logo.svg" alt="NodeWarden logo" className="not-found-logo" />
-          <span className="not-found-wordmark" aria-label="NodeWarden" role="img" />
+          <BrandLockup size={22} />
         </div>
         <div className="not-found-copy">
           <div className="not-found-code">404</div>

@@ -1,6 +1,6 @@
 // Minimal D1-compatible database interfaces.
 //
-// NodeWarden was written against Cloudflare D1. MoliWarden keeps the same
+// The storage layer was written against Cloudflare D1. It keeps the same
 // query surface (prepare/bind/first/all/run/batch) and implements it on top of
 // PostgreSQL in src/platform/pg-d1.ts, so the storage repositories stay close
 // to upstream.

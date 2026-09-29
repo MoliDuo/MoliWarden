@@ -73,6 +73,6 @@ export function readKnownDeviceProbe(request: Request): { email: string | null; 
 }
 
 export function readActingDeviceIdentifier(request: Request): string | null {
-  return normalizeDeviceIdentifier(request.headers.get('X-NodeWarden-Acting-Device-Id'));
+  return normalizeDeviceIdentifier(request.headers.get('X-MoliWarden-Acting-Device-Id'));
 }
 

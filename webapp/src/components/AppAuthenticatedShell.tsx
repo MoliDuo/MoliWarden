@@ -7,6 +7,7 @@ import NetworkStatusBadge from '@/components/NetworkStatusBadge';
 import ThemeSwitch from '@/components/ThemeSwitch';
 import type { AppMainRoutesProps } from '@/components/AppMainRoutes';
 import { t } from '@/lib/i18n';
+import { BrandLockup } from '@/components/BrandMark';
 import type { Profile } from '@/lib/types';
 
 interface AppAuthenticatedShellProps {
@@ -28,7 +29,7 @@ interface AppAuthenticatedShellProps {
   mainRoutesProps: AppMainRoutesProps;
 }
 
-const NAV_GROUPS_STORAGE_KEY = 'nodewarden.navGroups';
+const NAV_GROUPS_STORAGE_KEY = 'moliwarden.navGroups';
 
 const DEFAULT_EXPANDED_GROUPS = {
   tools: true,
@@ -173,8 +174,7 @@ export default function AppAuthenticatedShell(props: AppAuthenticatedShellProps)
       <div className="app-shell">
         <header className="topbar">
           <div className="brand">
-            <img src="/nodewarden-logo.svg" alt="NodeWarden logo" className="brand-logo" />
-            <span className="brand-wordmark" role="img" aria-label="NodeWarden" />
+            <BrandLockup className="brand-home" />
             <span className="mobile-page-title">{props.currentPageTitle}</span>
           </div>
           <div className="topbar-actions">

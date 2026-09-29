@@ -13,17 +13,17 @@ function firstHeader(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-// Removes ?__nwpath= from url and returns its value. Parsed by hand rather
+// Removes ?__mwpath= from url and returns its value. Parsed by hand rather
 // than with URLSearchParams, which would turn '+' in the path into a space
 // and re-encode the remaining query parameters.
 function takeOriginalPathParam(url: URL): string | null {
   const params = url.search.slice(1).split('&');
-  const index = params.findIndex((param) => param.startsWith('__nwpath='));
+  const index = params.findIndex((param) => param.startsWith('__mwpath='));
   if (index < 0) return null;
   const [param] = params.splice(index, 1);
   url.search = params.length ? `?${params.join('&')}` : '';
   try {
-    return decodeURIComponent(param.slice('__nwpath='.length));
+    return decodeURIComponent(param.slice('__mwpath='.length));
   } catch {
     return null;
   }
@@ -35,7 +35,7 @@ export function toWebRequest(req: IncomingMessage): Request {
   // should compare against; X-Forwarded-Host is only a fallback.
   const host = req.headers.host || firstHeader(req.headers['x-forwarded-host']) || 'localhost';
   const url = new URL(req.url || '/', `${proto}://${host}`);
-  // Vercel routes pass the original path as ?__nwpath= (see
+  // Vercel routes pass the original path as ?__mwpath= (see
   // scripts/build-vercel.ts) in case the function sees the rewritten URL.
   const originalPath = takeOriginalPathParam(url);
   if (originalPath !== null && originalPath.startsWith('/')) url.pathname = originalPath;

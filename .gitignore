@@ -43,13 +43,10 @@ tmp/
 .tmp/
 .tmp-bitwarden-clients/
 
-nodewarden-wiki/
-nodewarden.wiki/
 wiki/
 AGENTS.md
 settings.json
 .claude/
-NodeWarden-compat/
 .codex-upstream/
 .codex-upstream/bitwarden-server/
 .codex-upstream/bitwarden-clients/

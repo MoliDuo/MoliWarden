@@ -1,7 +1,7 @@
 import type { Env } from '../types';
 import { base64UrlToBytes, bytesToBase64Url } from './passkey';
 
-const USER_VERIFICATION_TOKEN_TYPE = 'nodewarden.user-verification.v1';
+const USER_VERIFICATION_TOKEN_TYPE = 'moliwarden.user-verification.v1';
 const USER_VERIFICATION_TOKEN_TTL_MS = 5 * 60 * 1000;
 
 export type UserVerificationPurpose = 'backup.settings.repair';

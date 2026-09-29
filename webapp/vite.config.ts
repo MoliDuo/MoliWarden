@@ -7,15 +7,15 @@ import { defineConfig, type Plugin } from 'vite';
 const rootDir = fileURLToPath(new URL('.', import.meta.url));
 
 function buildServiceWorkerSource(precacheUrls: string[], version: string): string {
-  return `const CACHE_VERSION = ${JSON.stringify(`nodewarden-pwa-${version}`)};
+  return `const CACHE_VERSION = ${JSON.stringify(`moliwarden-pwa-${version}`)};
 const APP_SHELL_CACHE = \`\${CACHE_VERSION}-shell\`;
-const RUNTIME_CACHE = 'nodewarden-pwa-runtime-v1';
+const RUNTIME_CACHE = 'moliwarden-pwa-runtime-v1';
 
 const PRECACHE_URLS = ${JSON.stringify(precacheUrls, null, 2)};
 const CRITICAL_SHELL_URLS = ['/', '/index.html'];
-const STATIC_PATH_RE = /^\\/(?:assets\\/|payment-logos\\/|icon-|logo-|favicon|apple-touch-icon|nodewarden-|manifest\\.webmanifest$)/;
+const STATIC_PATH_RE = /^\\/(?:assets\\/|payment-logos\\/|icon-|logo\\.svg$|favicon|apple-touch-icon|manifest\\.webmanifest$)/;
 const NEVER_CACHE_PATH_RE = /^\\/(?:api|identity|setup|config|notifications|icons|\\.well-known|cdn-cgi)(?:\\/|$)/;
-const OFFLINE_FALLBACK_HTML = '<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>NodeWarden</title><style>html,body{height:100%;margin:0;background:#eef4ff;color:#0f172a;font-family:ui-sans-serif,system-ui,sans-serif}.boot-screen{min-height:100%;display:grid;place-items:center;padding:24px;box-sizing:border-box}.boot-card{width:min(420px,100%);display:grid;gap:12px;justify-items:center;padding:28px;border:1px solid rgba(148,163,184,.35);border-radius:22px;background:rgba(255,255,255,.86);box-shadow:0 20px 45px rgba(15,23,42,.1)}.boot-logo{width:74px;height:58px;object-fit:contain}.boot-title{font-weight:700}.boot-sub{color:#475569;text-align:center;font-size:14px;line-height:1.5}</style></head><body><div class="boot-screen"><div class="boot-card"><img class="boot-logo" src="/nodewarden-logo.svg" alt=""><div class="boot-title">NodeWarden</div><div class="boot-sub">Offline cache is not ready on this device. Open NodeWarden once while online, then try offline again.</div></div></div></body></html>';
+const OFFLINE_FALLBACK_HTML = '<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>MoliWarden</title><style>html,body{height:100%;margin:0;background:#fafafa;color:#0a0a0a;font-family:ui-sans-serif,system-ui,sans-serif}@media (prefers-color-scheme:dark){html,body{background:#0a0a0a;color:#fafafa}.boot-card{background:#141414;border-color:#262626}.boot-sub{color:#a3a3a3}}.boot-screen{min-height:100%;display:grid;place-items:center;padding:24px;box-sizing:border-box}.boot-card{width:min(400px,100%);display:grid;gap:10px;justify-items:center;padding:28px;border:1px solid #e5e5e5;border-radius:12px;background:#fff}.boot-logo{width:32px;height:32px}.boot-title{font-weight:600}.boot-sub{color:#737373;text-align:center;font-size:14px;line-height:1.5}</style></head><body><div class="boot-screen"><div class="boot-card"><img class="boot-logo" src="/logo.svg" alt=""><div class="boot-title">MoliWarden</div><div class="boot-sub">Offline cache is not ready on this device. Open MoliWarden once while online, then try offline again.</div></div></div></body></html>';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -34,7 +34,7 @@ self.addEventListener('activate', (event) => {
     caches.keys()
       .then((keys) => Promise.all(
         keys
-          .filter((key) => key.startsWith('nodewarden-pwa-') && key.endsWith('-shell') && key !== APP_SHELL_CACHE)
+          .filter((key) => key.startsWith('moliwarden-pwa-') && key.endsWith('-shell') && key !== APP_SHELL_CACHE)
           .map((key) => caches.delete(key))
       ))
       .then(() => self.clients.claim())
@@ -152,7 +152,7 @@ async function cacheFirst(request) {
 async function matchLegacyRuntimeCache(request) {
   const keys = await caches.keys();
   for (const key of keys) {
-    if (key === RUNTIME_CACHE || !key.startsWith('nodewarden-pwa-') || !key.endsWith('-runtime')) continue;
+    if (key === RUNTIME_CACHE || !key.startsWith('moliwarden-pwa-') || !key.endsWith('-runtime')) continue;
     const cache = await caches.open(key);
     const cached = await cache.match(request);
     if (cached) return cached;
@@ -199,22 +199,20 @@ function buildCacheVersion(isDemo: boolean, urls: string[]): string {
 
 function pwaServiceWorkerPlugin(isDemo: boolean): Plugin {
   return {
-    name: 'nodewarden-pwa-service-worker',
+    name: 'moliwarden-pwa-service-worker',
     generateBundle(_, bundle) {
       const urls = new Set<string>([
         '/',
         '/index.html',
         '/vault',
         '/manifest.webmanifest',
-        '/nodewarden-logo.svg',
-        '/nodewarden-logo-bg.svg',
-        '/nodewarden-wordmark.svg',
+        '/logo.svg',
+        '/favicon.svg',
         '/favicon.ico',
         '/favicon-32.png',
         '/apple-touch-icon.png',
         '/icon-192.png',
         '/icon-512.png',
-        '/logo-64.png',
       ]);
       const buildUrls = new Set<string>(urls);
 
@@ -238,7 +236,7 @@ function pwaServiceWorkerPlugin(isDemo: boolean): Plugin {
 
 function searchIndexPolicyPlugin(isDemo: boolean): Plugin {
   return {
-    name: 'nodewarden-search-index-policy',
+    name: 'moliwarden-search-index-policy',
     transformIndexHtml(html: string) {
       if (isDemo) return html;
       return html.replace(
@@ -265,7 +263,7 @@ export default defineConfig(({ mode }) => {
     root: rootDir,
     plugins: [preact(), searchIndexPolicyPlugin(isDemo), pwaServiceWorkerPlugin(isDemo)],
     define: {
-      __NODEWARDEN_DEMO__: JSON.stringify(isDemo),
+      __DEMO__: JSON.stringify(isDemo),
     },
     resolve: {
       alias: {

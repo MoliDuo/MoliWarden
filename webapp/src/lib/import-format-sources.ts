@@ -4,7 +4,7 @@ export const IMPORT_SOURCES = [
   { id: 'bitwarden_json', label: 'Bitwarden (json)' },
   { id: 'bitwarden_csv', label: 'Bitwarden (csv)' },
   { id: 'bitwarden_zip', label: 'Bitwarden (zip)' },
-  { id: 'nodewarden_json', label: 'NodeWarden (json)' },
+  { id: 'moliwarden_json', label: 'MoliWarden (json)' },
   { id: 'onepassword_1pux', label: '1Password (1pux/json)' },
   { id: 'onepassword_1pif', label: '1Password (1pif)' },
   { id: 'onepassword_mac_csv', label: '1Password 6 and 7 Mac (csv)' },
@@ -57,7 +57,7 @@ export function getFileAcceptBySource(source: ImportSourceId): string {
   if (source === 'bitwarden_zip') return '.zip,application/zip,application/x-zip-compressed';
   if (
     source === 'bitwarden_json' ||
-    source === 'nodewarden_json' ||
+    source === 'moliwarden_json' ||
     source === 'onepassword_1pux' ||
     source === 'protonpass_json' ||
     source === 'avast_json' ||

@@ -81,7 +81,7 @@ function createDb(apiKey) {
 }
 
 function request() {
-  return new Request('https://nodewarden.example/api/accounts/api-key', {
+  return new Request('https://moliwarden.example/api/accounts/api-key', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ masterPasswordHash: 'master-proof' }),

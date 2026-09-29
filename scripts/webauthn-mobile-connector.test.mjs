@@ -104,7 +104,7 @@ test('serializes the exact assertion shape emitted by Bitwarden common-webauthn'
 
 test('encodes success and error callbacks safely', () => {
   assert.equal(buildCallbackUrl('bitwarden://webauthn-callback', 'data', '{"id":"a+b"}'), 'bitwarden://webauthn-callback?data=%7B%22id%22%3A%22a%2Bb%22%7D');
-  assert.equal(buildCallbackUrl('bitwarden://webauthn-callback?source=nodewarden', 'error', 'Not allowed'), 'bitwarden://webauthn-callback?source=nodewarden&error=Not%20allowed');
+  assert.equal(buildCallbackUrl('bitwarden://webauthn-callback?source=moliwarden', 'error', 'Not allowed'), 'bitwarden://webauthn-callback?source=moliwarden&error=Not%20allowed');
 });
 
 test('HTML matches the fallback connector visual structure', async () => {
@@ -115,7 +115,7 @@ test('HTML matches the fallback connector visual structure', async () => {
   assert.match(html, /class="brand"/);
   assert.match(html, /class="form"/);
   assert.match(html, /class="msg"/);
-  assert.match(html, /src="\/nodewarden-logo\.svg"/);
+  assert.match(html, /src="\/logo\.svg"/);
   assert.match(html, /src="\/webauthn-mobile-connector\.js"/);
   assert.match(html, /default-src 'none'/);
 });

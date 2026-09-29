@@ -1,26 +1,26 @@
 # MoliWarden
 
-运行在 **Vercel** 上的 Bitwarden 兼容服务端，基于 [NodeWarden](https://github.com/shuaiplus/NodeWarden) 1.8.0 改造：
+运行在 **Vercel** 上的 Bitwarden 兼容服务端，自带 Web 密码库：
 
-- 数据库：Cloudflare D1 → **PostgreSQL**（推荐 Neon，通过 Vercel Marketplace 一键接入）
-- 附件 / Send 文件：R2 / KV → **任意 S3 兼容存储**（AWS S3、Cloudflare R2 的 S3 接口、Backblaze B2、MinIO 等）
-- 新增 **组织（共享）**：组织、成员、集合、集合级权限，官方客户端和自带 Web 密码库都能使用
+- 数据库：**PostgreSQL**（推荐 Neon，通过 Vercel Marketplace 一键接入）
+- 附件 / Send 文件：**任意 S3 兼容存储**（AWS S3、Cloudflare R2 的 S3 接口、Backblaze B2、MinIO 等）
+- **组织（共享）**：组织、成员、集合、集合级权限，官方客户端和自带 Web 密码库都能使用
 
 > 本项目与 Bitwarden 官方无关，仅供学习交流。请定期备份。
 
 ---
 
-## 与 NodeWarden / Vaultwarden 的功能对比
+## 功能
 
-| 功能 | NodeWarden | MoliWarden | 说明 |
-|---|---|---|---|
-| 密码库、TOTP、Passkey 登录、两步验证、设备管理、登录请求 | ✅ | ✅ | 沿用 NodeWarden |
-| 附件 / Send | ✅ | ✅ | 经官方客户端上传的单个文件上限约 **4.4 MB**（Vercel 请求体限制，见下文） |
-| 实例备份（本地 / WebDAV / S3） | ✅ | ✅ | 备份已包含组织数据 |
-| **组织 / 集合 / 成员角色** | ❌ | ✅ | 所有者、管理员、经理、用户；只读 / 隐藏密码 / 可编辑 / 可管理 |
-| 实时推送（WebSocket） | ✅ | ⚠️ | Vercel 无法保持长连接。桌面端和浏览器扩展靠定期同步；移动端仍可走 Bitwarden 官方推送中继 |
-| 邮件（邮箱两步验证、邀请邮件等） | ❌ | ❌ | 邀请改为：被邀请人在 Web 密码库的“组织”页面接受 |
-| 群组、策略、SSO、紧急访问、事件日志 | ❌ | ❌ | 未实现 |
+| 功能 | 状态 | 说明 |
+|---|---|---|
+| 密码库、TOTP、Passkey 登录、两步验证、设备管理、登录请求 | ✅ | |
+| 附件 / Send | ✅ | 经官方客户端上传的单个文件上限约 **4.4 MB**（Vercel 请求体限制，见下文） |
+| 实例备份（本地 / WebDAV / S3） | ✅ | 包含组织数据 |
+| **组织 / 集合 / 成员角色** | ✅ | 所有者、管理员、经理、用户；只读 / 隐藏密码 / 可编辑 / 可管理 |
+| 实时推送（WebSocket） | ⚠️ | Vercel 无法保持长连接。桌面端和浏览器扩展靠定期同步；移动端仍可走 Bitwarden 官方推送中继 |
+| 邮件（邮箱两步验证、邀请邮件等） | ❌ | 邀请改为：被邀请人在 Web 密码库的“组织”页面接受 |
+| 群组、策略、SSO、紧急访问 | ❌ | 未实现 |
 
 ### 组织共享的使用流程
 
@@ -60,7 +60,7 @@
 | `MOLIWARDEN_CRON_SCHEDULE` | | 构建时生效的定时任务表达式，默认每天一次（Hobby 套餐只允许每天一次） |
 | `PUSH_RELAY_DISABLED` | | 设为 `1` 不向 Bitwarden 官方推送中继注册 |
 | `HIDE_WEB_VAULT` | | 构建时设为 `1`，则不发布 Web 密码库，只保留客户端 API |
-| `WEBAUTHN_RP_ID` 等 | | 同 NodeWarden |
+| `WEBAUTHN_RP_ID` / `WEBAUTHN_RP_NAME` | | Passkey 的 RP ID 和显示名称，默认取站点域名和 `MoliWarden` |
 
 ### 4. 首次使用
 
@@ -143,7 +143,6 @@ GitHub Actions（`.github/workflows/ci.yml`）在每次推送时运行以上全�
 
 ## 架构说明
 
-- `src/platform/pg-d1.ts`：D1 兼容的 Postgres 适配层（`?` 占位符转换、`batch()` 事务），存储代码基本保持 NodeWarden 原样。
 - `src/platform/node-http.ts`：Node HTTP 与 Web `Request`/`Response` 的转换，Vercel 函数和本地开发服务器共用。
 - `scripts/build-vercel.ts`：生成 Vercel Build Output（静态 Web 密码库 + 单个 Node 函数 + 路由 + Cron）。
 - `src/services/org-access.ts`：组织权限的唯一判定点。只有**已确认**的成员才能访问组织数据；被撤销、仅邀请或仅接受的成员没有任何访问权限。
@@ -151,4 +150,4 @@ GitHub Actions（`.github/workflows/ci.yml`）在每次推送时运行以上全�
 
 ## 许可
 
-LGPL-3.0，沿用 NodeWarden。致谢 [NodeWarden](https://github.com/shuaiplus/NodeWarden)、[Vaultwarden](https://github.com/dani-garcia/vaultwarden)、[Bitwarden](https://bitwarden.com/)。
+LGPL-3.0，见 [LICENSE](./LICENSE) 和 [NOTICE](./NOTICE)。

@@ -218,7 +218,7 @@ async function handleWebsiteIcon(env: Env, host: string, fallbackMode: 'default'
   if (!normalizedHost) return fallbackMode === 'not-found' ? handleMissingWebsiteIcon() : handleNwFavicon();
 
   const encodedHost = encodeURIComponent(normalizedHost);
-  const requestHeaders = { 'User-Agent': 'NodeWarden/1.0' };
+  const requestHeaders = { 'User-Agent': 'MoliWarden/1.0' };
   const upstreamSources: IconSource[] = [
     {
       url: `https://favicon.im/zh/${encodedHost}?larger=true&throw-error-on-404=true`,

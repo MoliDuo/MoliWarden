@@ -352,20 +352,6 @@
   @apply inline-flex max-w-full items-center justify-center gap-3.5;
 }
 
-.not-found-logo {
-  @apply h-14 w-14 flex-shrink-0 object-contain;
-  filter: drop-shadow(0 8px 18px rgba(43, 102, 217, 0.22));
-}
-
-.not-found-wordmark {
-  @apply block max-w-full;
-  width: clamp(200px, 38vw, 330px);
-  aspect-ratio: 862 / 102;
-  background: #116ff9;
-  mask: url('/nodewarden-wordmark.svg') center / contain no-repeat;
-  -webkit-mask: url('/nodewarden-wordmark.svg') center / contain no-repeat;
-}
-
 .not-found-code {
   @apply rounded-full px-3 py-1 text-sm font-extrabold;
   background: #eef4ff;
@@ -401,14 +387,6 @@
 
   .not-found-brand {
     @apply gap-2.5;
-  }
-
-  .not-found-logo {
-    @apply h-12 w-[60px];
-  }
-
-  .not-found-wordmark {
-    width: clamp(170px, 52vw, 230px);
   }
 
   .not-found-space {
@@ -458,24 +436,6 @@
 
 .standalone-brand {
   @apply mb-3 inline-flex items-center gap-3.5;
-}
-
-.standalone-brand-outside {
-  @apply mb-0.5 w-full justify-center;
-}
-
-.standalone-brand-logo {
-  @apply h-14 w-[70px] flex-shrink-0 object-contain;
-  filter: drop-shadow(0 8px 18px rgba(43, 102, 217, 0.22));
-}
-
-.standalone-brand-wordmark {
-  @apply block max-w-full;
-  width: clamp(200px, 30vw, 340px);
-  aspect-ratio: 862 / 102;
-  background: #116ff9;
-  mask: url('/nodewarden-wordmark.svg') center / contain no-repeat;
-  -webkit-mask: url('/nodewarden-wordmark.svg') center / contain no-repeat;
 }
 
 .standalone-title {

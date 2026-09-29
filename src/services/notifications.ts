@@ -3,7 +3,7 @@ import { runInBackground } from '../platform/background';
 import { notifyMobilePush } from './push-relay';
 
 // Vercel Functions cannot hold WebSocket connections, so the SignalR hub from
-// upstream NodeWarden is gone. Desktop / browser clients pick up changes on
+// the Workers version is gone. Desktop / browser clients pick up changes on
 // their regular sync; mobile clients still get pushes through the official
 // Bitwarden push relay (when the installation is registered).
 //

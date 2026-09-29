@@ -26,7 +26,7 @@ import {
   saveOfflineUnlockRecord,
   unlockOfflineVaultWithMasterKey,
 } from '@/lib/offline-auth';
-import { probeNodeWardenService } from '@/lib/network-status';
+import { probeServer } from '@/lib/network-status';
 import { setWebsiteIconsEnabled } from '@/lib/website-icon-settings';
 import type { AccountPasskeyPrfOption, AppPhase, Profile, SessionState, TokenSuccess, WebBootstrapResponse } from '@/lib/types';
 
@@ -245,7 +245,7 @@ function browserReportsOffline(): boolean {
 
 function readWindowBootstrap(): WebBootstrapResponse {
   if (typeof window === 'undefined') return {};
-  const raw = (window as Window & { __NW_BOOT__?: WebBootstrapResponse }).__NW_BOOT__;
+  const raw = (window as Window & { __APP_BOOT__?: WebBootstrapResponse }).__APP_BOOT__;
   return raw && typeof raw === 'object' ? raw : {};
 }
 
@@ -424,7 +424,7 @@ export async function hydrateLockedSession(
     return { kind: 'expired', session: null, profile: null };
   }
   if (refreshOutcome.kind === 'transient') {
-    if (hasOfflineUnlock && (browserReportsOffline() || !(await probeNodeWardenService()))) {
+    if (hasOfflineUnlock && (browserReportsOffline() || !(await probeServer()))) {
       return {
         kind: 'ready',
         session,
@@ -742,7 +742,7 @@ export async function performUnlock(
       useRememberToken: true,
     });
   } catch {
-    if (hasOfflineUnlock && (browserReportsOffline() || !(await probeNodeWardenService()))) {
+    if (hasOfflineUnlock && (browserReportsOffline() || !(await probeServer()))) {
       return unlockOffline();
     }
     return {

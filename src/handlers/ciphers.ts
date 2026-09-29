@@ -68,7 +68,7 @@ export interface CipherResponseOptions {
 }
 
 export function shouldPreserveRepairableCipherUris(request: Request): boolean {
-  return request.headers.get('X-NodeWarden-Web') === '1';
+  return request.headers.get('X-MoliWarden-Web') === '1';
 }
 
 export function cipherResponseOptionsForRequest(request: Request): CipherResponseOptions {

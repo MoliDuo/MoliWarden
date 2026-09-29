@@ -20,23 +20,28 @@
   @apply inline-flex items-center gap-2 text-[34px] font-extrabold text-ink;
 }
 
-.brand-wordmark {
-  @apply block max-w-full;
-  width: clamp(168px, 17vw, 224px);
-  aspect-ratio: 862 / 102;
-  background: #116ff9;
-  mask: url('/nodewarden-wordmark.svg') center / contain no-repeat;
-  -webkit-mask: url('/nodewarden-wordmark.svg') center / contain no-repeat;
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+}
+
+.brand-lockup-mark {
+  flex-shrink: 0;
+}
+
+.brand-lockup-name {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .mobile-page-title {
   @apply hidden min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[19px] font-extrabold leading-tight text-slate-900;
   max-width: min(58vw, 240px);
-}
-
-.brand-logo {
-  @apply h-[42px] w-[53px] object-contain;
-  filter: drop-shadow(0 10px 22px rgba(43, 102, 217, 0.22));
 }
 
 .topbar-actions {

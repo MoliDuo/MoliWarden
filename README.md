@@ -1,20 +1,20 @@
 # MoliWarden
 
-A Bitwarden-compatible server for **Vercel**, based on [NodeWarden](https://github.com/shuaiplus/NodeWarden) 1.8.0.
+A Bitwarden-compatible server for **Vercel**, with its own web vault.
 
 [中文说明](./README_ZH.md)
 
-- Storage: Cloudflare D1 → **PostgreSQL** (Neon via the Vercel Marketplace works out of the box)
-- Attachments and Send files: R2 / KV → **any S3-compatible bucket**
-- New: **Organizations** — members, collections and per-collection permissions, usable from the official clients and the bundled web vault
+- Storage: **PostgreSQL** (Neon via the Vercel Marketplace works out of the box)
+- Attachments and Send files: **any S3-compatible bucket**
+- **Organizations** — members, collections and per-collection permissions, usable from the official clients and the bundled web vault
 
 > Not affiliated with Bitwarden. For learning purposes; back up your vault regularly.
 
-## Differences from NodeWarden
+## Features
 
 | Feature | Status | Notes |
 |---|---|---|
-| Vault, TOTP, passkey login, 2FA, devices, login requests | ✅ | unchanged |
+| Vault, TOTP, passkey login, 2FA, devices, login requests | ✅ | |
 | Attachments / Send | ✅ | uploads through official clients are capped at ~4.4 MB per file (Vercel request body limit) |
 | Instance backups (local / WebDAV / S3) | ✅ | include organization data |
 | **Organizations / collections / roles** | ✅ | owner, admin, manager, user; view / view without passwords / edit / manage |
@@ -71,4 +71,4 @@ Limits worth knowing: web vault imports are split into several requests automati
 
 ## License
 
-LGPL-3.0, as NodeWarden. Thanks to [NodeWarden](https://github.com/shuaiplus/NodeWarden), [Vaultwarden](https://github.com/dani-garcia/vaultwarden) and [Bitwarden](https://bitwarden.com/).
+LGPL-3.0, see [LICENSE](./LICENSE) and [NOTICE](./NOTICE).

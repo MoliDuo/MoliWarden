@@ -26,7 +26,7 @@ function canServeWithUnsafeJwtSecret(path: string, method: string): boolean {
 }
 
 function isImportBypassRequest(request: Request, path: string, method: string): boolean {
-  if (request.headers.get('X-NodeWarden-Import') !== '1') return false;
+  if (request.headers.get('X-MoliWarden-Import') !== '1') return false;
 
   if (method === 'POST') {
     if (path === '/api/ciphers/import') return true;
@@ -177,7 +177,7 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
     const actingDeviceId = String(payload.did || '').trim();
     if (actingDeviceId) {
       const nextHeaders = new Headers(request.headers);
-      nextHeaders.set('X-NodeWarden-Acting-Device-Id', actingDeviceId);
+      nextHeaders.set('X-MoliWarden-Acting-Device-Id', actingDeviceId);
       request = new Request(request, { headers: nextHeaders });
     }
 

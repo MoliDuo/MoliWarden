@@ -31,7 +31,7 @@ function rawUrl(ref, filePath) {
 async function fetchText(url) {
   const response = await fetch(url, {
     headers: {
-      'User-Agent': 'NodeWarden global domains sync',
+      'User-Agent': 'MoliWarden global domains sync',
       Accept: 'text/plain',
     },
   });

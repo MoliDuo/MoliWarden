@@ -71,14 +71,6 @@
     @apply w-full max-w-[460px] gap-2.5;
   }
 
-  .standalone-brand-outside {
-    @apply justify-center;
-  }
-
-  .standalone-brand-logo {
-    @apply h-11 w-[55px];
-  }
-
   .auth-card {
     @apply rounded-[18px] px-4 py-5;
   }
@@ -113,11 +105,7 @@
     @apply min-w-0 gap-2.5 text-lg;
   }
 
-  .brand-logo {
-    @apply h-[34px] w-[43px];
-  }
-
-  .brand-wordmark {
+  .brand-home .brand-lockup-name {
     @apply hidden;
   }
 

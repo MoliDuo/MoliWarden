@@ -25,4 +25,4 @@ interface Window {
   BarcodeDetector?: BarcodeDetectorConstructor;
 }
 
-declare const __NODEWARDEN_DEMO__: boolean;
+declare const __DEMO__: boolean;

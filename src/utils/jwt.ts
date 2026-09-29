@@ -49,7 +49,7 @@ export async function createJWT(payload: Omit<JWTPayload, 'iat' | 'exp' | 'iss' 
     amr: ['Application'],  // authentication methods reference - required by mobile client
     iat: now,
     exp: now + expiresIn,
-    iss: 'nodewarden',
+    iss: 'moliwarden',
     premium: true,
   };
 

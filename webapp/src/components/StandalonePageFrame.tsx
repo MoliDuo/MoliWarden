@@ -1,5 +1,8 @@
 import type { ComponentChildren } from 'preact';
 import { APP_VERSION } from '@shared/app-version';
+import { BrandLockup } from '@/components/BrandMark';
+
+const REPOSITORY_URL = 'https://github.com/moliduo/MoliWarden';
 
 interface StandalonePageFrameProps {
   title: string;
@@ -11,11 +14,8 @@ interface StandalonePageFrameProps {
 export default function StandalonePageFrame(props: StandalonePageFrameProps) {
   return (
     <div className="standalone-shell">
-      <div className="standalone-brand standalone-brand-outside">
-        <img src="/nodewarden-logo.svg" alt="NodeWarden logo" className="standalone-brand-logo" />
-        <div>
-          <span className="standalone-brand-wordmark" role="img" aria-label="NodeWarden" />
-        </div>
+      <div className="standalone-brand">
+        <BrandLockup size={22} />
       </div>
 
       <div className="auth-card">
@@ -28,16 +28,11 @@ export default function StandalonePageFrame(props: StandalonePageFrameProps) {
       </div>
 
       <div className="standalone-footer">
-        <a href="https://github.com/shuaiplus/NodeWarden" target="_blank" rel="noreferrer">NodeWarden Repository</a>
-        <span> | </span>
-        <a href="https://github.com/shuaiplus" target="_blank" rel="noreferrer">Author: @shuaiplus</a>
-        <span> | </span>
-        <a
-          href="https://github.com/shuaiplus/NodeWarden/releases/latest"
-          target="_blank"
-          rel="noreferrer"
-          className="standalone-version"
-        >
+        <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">
+          MoliWarden
+        </a>
+        <span aria-hidden="true">·</span>
+        <a href={`${REPOSITORY_URL}/releases`} target="_blank" rel="noreferrer" className="standalone-version">
           v{APP_VERSION}
         </a>
       </div>

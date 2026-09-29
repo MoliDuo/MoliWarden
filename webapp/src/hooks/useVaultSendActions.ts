@@ -2,13 +2,13 @@ import { useMemo, useState } from 'preact/hooks';
 import type { ImportAttachmentFile, ImportResultSummary } from '@/components/ImportPage';
 import type { ExportRequest, ZipAttachmentEntry } from '@/lib/export-formats';
 import {
-  attachNodeWardenEncryptedAttachmentPayload,
+  attachMoliWardenEncryptedAttachmentPayload,
   buildAccountEncryptedBitwardenJsonString,
   buildBitwardenCsvString,
   buildBitwardenZipBytes,
   buildExportFileName,
-  buildNodeWardenAttachmentRecords,
-  buildNodeWardenPlainJsonDocument,
+  buildMoliWardenAttachmentRecords,
+  buildMoliWardenPlainJsonDocument,
   buildPasswordProtectedBitwardenJsonString,
   buildPlainBitwardenJsonString,
   encryptZipBytesWithPassword,
@@ -1182,7 +1182,7 @@ export default function useVaultSendActions(options: UseVaultSendActionsOptions)
         let plainJsonCache: string | null = null;
         let plainJsonDocCache: Record<string, unknown> | null = null;
         let encryptedJsonCache: string | null = null;
-        let nodeWardenAttachmentsCache: ReturnType<typeof buildNodeWardenAttachmentRecords> | null = null;
+        let moliWardenAttachmentsCache: ReturnType<typeof buildMoliWardenAttachmentRecords> | null = null;
 
         const getPlainJson = async () => {
           if (!plainJsonCache) {
@@ -1282,8 +1282,8 @@ export default function useVaultSendActions(options: UseVaultSendActionsOptions)
           return out;
         };
 
-        const getNodeWardenAttachmentRecords = async () => {
-          if (nodeWardenAttachmentsCache) return nodeWardenAttachmentsCache;
+        const getMoliWardenAttachmentRecords = async () => {
+          if (moliWardenAttachmentsCache) return moliWardenAttachmentsCache;
           const [doc, attachments] = await Promise.all([getPlainJsonDoc(), zipAttachments()]);
           const cipherIndexById = new Map<string, number>();
           const items = Array.isArray(doc.items) ? (doc.items as Array<Record<string, unknown>>) : [];
@@ -1291,8 +1291,8 @@ export default function useVaultSendActions(options: UseVaultSendActionsOptions)
             const id = String(items[i]?.id || '').trim();
             if (id) cipherIndexById.set(id, i);
           }
-          nodeWardenAttachmentsCache = buildNodeWardenAttachmentRecords(attachments, cipherIndexById);
-          return nodeWardenAttachmentsCache;
+          moliWardenAttachmentsCache = buildMoliWardenAttachmentRecords(attachments, cipherIndexById);
+          return moliWardenAttachmentsCache;
         };
 
         let result: { fileName: string; mimeType: string; bytes: Uint8Array } | null = null;
@@ -1331,21 +1331,21 @@ export default function useVaultSendActions(options: UseVaultSendActionsOptions)
               bytes: new TextEncoder().encode(await getEncryptedJson()),
             };
           }
-        } else if (format === 'nodewarden_json') {
-          const [plainDoc, attachments] = await Promise.all([getPlainJsonDoc(), getNodeWardenAttachmentRecords()]);
-          const nodeWardenDoc = buildNodeWardenPlainJsonDocument(plainDoc, attachments);
+        } else if (format === 'moliwarden_json') {
+          const [plainDoc, attachments] = await Promise.all([getPlainJsonDoc(), getMoliWardenAttachmentRecords()]);
+          const moliWardenDoc = buildMoliWardenPlainJsonDocument(plainDoc, attachments);
           result = {
             fileName: buildExportFileName(format),
             mimeType: 'application/json',
-            bytes: new TextEncoder().encode(JSON.stringify(nodeWardenDoc, null, 2)),
+            bytes: new TextEncoder().encode(JSON.stringify(moliWardenDoc, null, 2)),
           };
-        } else if (format === 'nodewarden_encrypted_json') {
+        } else if (format === 'moliwarden_encrypted_json') {
           if (request.encryptedJsonMode === 'password') {
-            const [plainDoc, attachments] = await Promise.all([getPlainJsonDoc(), getNodeWardenAttachmentRecords()]);
-            const nodeWardenDoc = buildNodeWardenPlainJsonDocument(plainDoc, attachments);
+            const [plainDoc, attachments] = await Promise.all([getPlainJsonDoc(), getMoliWardenAttachmentRecords()]);
+            const moliWardenDoc = buildMoliWardenPlainJsonDocument(plainDoc, attachments);
             const kdf = await getPreloginKdfConfig(profile?.email || session.email, defaultKdfIterations);
             const encrypted = await buildPasswordProtectedBitwardenJsonString({
-              plaintextJson: JSON.stringify(nodeWardenDoc, null, 2),
+              plaintextJson: JSON.stringify(moliWardenDoc, null, 2),
               password: String(request.filePassword || ''),
               kdf,
             });
@@ -1355,8 +1355,8 @@ export default function useVaultSendActions(options: UseVaultSendActionsOptions)
               bytes: new TextEncoder().encode(encrypted),
             };
           } else {
-            const [encryptedJson, attachments] = await Promise.all([getEncryptedJson(), getNodeWardenAttachmentRecords()]);
-            const withAttachments = await attachNodeWardenEncryptedAttachmentPayload(
+            const [encryptedJson, attachments] = await Promise.all([getEncryptedJson(), getMoliWardenAttachmentRecords()]);
+            const withAttachments = await attachMoliWardenEncryptedAttachmentPayload(
               encryptedJson,
               attachments,
               session.symEncKey!,

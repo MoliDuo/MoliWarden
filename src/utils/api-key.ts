@@ -31,7 +31,7 @@ export async function verifyApiKey(apiKey: string, storedApiKey: string | null |
   const stored = String(storedApiKey || '').trim();
   if (!stored) return false;
 
-  // Legacy NodeWarden rows stored a one-way hash. Keep them usable until the
+  // Legacy rows stored a one-way hash. Keep them usable until the
   // user explicitly rotates once into the Bitwarden-compatible readable form.
   if (!isStoredApiKeyHash(stored)) {
     return constantTimeEquals(apiKey, stored);
