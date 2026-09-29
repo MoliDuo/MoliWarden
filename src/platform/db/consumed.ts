@@ -12,3 +12,8 @@ export async function consumeOnce(db: Executor, key: string, expiresAt: Date): P
     .executeTakeFirst();
   return !!row;
 }
+
+export async function deleteExpiredConsumedTokens(db: Executor, now: Date): Promise<number> {
+  const result = await db.deleteFrom('consumed_tokens').where('expires_at', '<', now.toISOString()).executeTakeFirst();
+  return Number(result.numDeletedRows);
+}

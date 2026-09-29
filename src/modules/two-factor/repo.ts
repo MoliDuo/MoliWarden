@@ -143,6 +143,11 @@ export async function deleteRememberTokens(db: Executor, userId: string, deviceI
   return Number(result.numDeletedRows);
 }
 
+export async function deleteExpiredRememberTokens(db: Executor, now: Date): Promise<number> {
+  const result = await db.deleteFrom('two_factor_remember_tokens').where('expires_at', '<', now.toISOString()).executeTakeFirst();
+  return Number(result.numDeletedRows);
+}
+
 // --- Yubico ------------------------------------------------------------------
 
 // The server's credentials for Yubico's OTP validation API.

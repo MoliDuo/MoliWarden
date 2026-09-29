@@ -9,7 +9,7 @@ import { recordAudit, requestMetadata } from '../audit/service';
 import { PushType } from '../push/service';
 import { commit } from '../sync/changes';
 import { SendAuthType, SendType, hashSendPassword, type Send } from './model';
-import { deleteSends, findSend, listSends, saveSend } from './repo';
+import { deleteExpiredSends, deleteSends, findSend, listExpiredSends, listSends, saveSend } from './repo';
 import { sendJson } from './responses';
 import type { SendBody, SendUpdate } from './schemas';
 
@@ -192,6 +192,17 @@ export async function deleteSend(deps: Deps, caller: Caller, id: string): Promis
   const send = await requireSend(deps, caller, id);
   await remove(deps, caller, [send]);
   await audit(deps, caller, 'send.delete', send.id, { type: send.type });
+}
+
+// Run by the cron job: Sends past their deletion date go, with their files.
+export async function removeExpiredSends(deps: Deps, now: Date): Promise<number> {
+  const date = now.toISOString();
+  const expired = await listExpiredSends(deps.db, date);
+  if (!expired.length) return 0;
+  const change = { userIds: [...new Set(expired.map((send) => send.userId))], push: { type: PushType.SyncVault } };
+  const deleted = new Set(await commit(deps, null, date, change, (tx) => deleteExpiredSends(tx, expired.map((send) => send.id), date)));
+  await removeSendFiles(deps.blobs, expired.filter((send) => deleted.has(send.id)));
+  return deleted.size;
 }
 
 // Ids of other users' Sends are passed over.

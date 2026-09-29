@@ -89,3 +89,30 @@ export async function saveAttachment(db: Executor, attachment: Attachment): Prom
 export async function deleteAttachment(db: Executor, id: string): Promise<void> {
   await db.deleteFrom('attachments').where('id', '=', id).execute();
 }
+
+// Attachments created before `before` whose file never arrived, with the
+// owner of their cipher.
+export async function findAbandonedUploads(
+  db: Executor,
+  before: string,
+): Promise<Array<{ id: string; cipherId: string; userId: string | null; organizationId: string | null }>> {
+  return db
+    .selectFrom('attachments')
+    .innerJoin('ciphers', 'ciphers.id', 'attachments.cipher_id')
+    .select(['attachments.id', 'attachments.cipher_id as cipherId', 'ciphers.user_id as userId', 'ciphers.organization_id as organizationId'])
+    .where('attachments.uploaded_at', 'is', null)
+    .where('attachments.created_at', '<', before)
+    .execute();
+}
+
+// Deletes those of `ids` still waiting for their file.
+export async function deleteAbandonedUploads(db: Executor, ids: string[], before: string): Promise<Array<{ id: string; cipherId: string }>> {
+  if (!ids.length) return [];
+  return db
+    .deleteFrom('attachments')
+    .where((eb) => eb('id', '=', eb.fn.any(eb.val(ids))))
+    .where('uploaded_at', 'is', null)
+    .where('created_at', '<', before)
+    .returning(['id', 'cipher_id as cipherId'])
+    .execute();
+}

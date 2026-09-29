@@ -134,6 +134,6 @@ export async function clearAuditLog(deps: Deps, caller: Caller): Promise<number>
 }
 
 // Run by the cron job.
-export async function pruneAuditLog(deps: Deps): Promise<void> {
-  await pruneAuditLogs(deps.db, await auditRetention(deps));
+export async function pruneAuditLog(deps: Deps, now: Date): Promise<number> {
+  return pruneAuditLogs(deps.db, await auditRetention(deps), now.getTime());
 }

@@ -151,3 +151,8 @@ export async function consumeChallenge(
     .executeTakeFirst();
   return result.numUpdatedRows > 0n;
 }
+
+export async function deleteExpiredChallenges(db: Executor, now: Date): Promise<number> {
+  const result = await db.deleteFrom('webauthn_challenges').where('expires_at', '<', now.toISOString()).executeTakeFirst();
+  return Number(result.numDeletedRows);
+}

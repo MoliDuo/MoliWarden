@@ -12,7 +12,13 @@ export interface RateLimiter {
   lockedFor(key: string): Promise<number | null>;
   fail(key: string, maxFailures: number, lockoutSeconds: number): Promise<number | null>;
   clearFailures(key: string): Promise<void>;
+  // Forgets windows that have ended, and failures that neither lock anyone
+  // out nor were added to lately. Returns how many were forgotten.
+  prune(now: Date): Promise<number>;
 }
+
+// Failures are counted towards a lockout for this long after the last one.
+const FAILURE_MEMORY_MS = 86_400_000;
 
 export function createRateLimiter(db: Db, now: () => number = Date.now): RateLimiter {
   return {
@@ -60,6 +66,19 @@ export function createRateLimiter(db: Db, now: () => number = Date.now): RateLim
 
     async clearFailures(key) {
       await db.deleteFrom('login_failures').where('key', '=', key).execute();
+    },
+
+    async prune(at) {
+      const iso = at.toISOString();
+      const [windows, failures] = await Promise.all([
+        db.deleteFrom('rate_limits').where('expires_at', '<=', iso).executeTakeFirst(),
+        db
+          .deleteFrom('login_failures')
+          .where((eb) => eb.or([eb('locked_until', 'is', null), eb('locked_until', '<=', iso)]))
+          .where('updated_at', '<', new Date(at.getTime() - FAILURE_MEMORY_MS).toISOString())
+          .executeTakeFirst(),
+      ]);
+      return Number(windows.numDeletedRows) + Number(failures.numDeletedRows);
     },
   };
 }

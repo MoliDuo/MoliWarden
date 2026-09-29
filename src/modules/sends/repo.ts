@@ -111,3 +111,21 @@ export async function countAccess(db: Executor, id: string, now: string): Promis
     .executeTakeFirst();
   return row ? toSend(row) : null;
 }
+
+// Sends past their deletion date.
+export async function listExpiredSends(db: Executor, now: string): Promise<Send[]> {
+  const rows = await db.selectFrom('sends').selectAll().where('deletion_date', '<=', now).execute();
+  return rows.map(toSend);
+}
+
+// Deletes those of `ids` still past their deletion date; returns their ids.
+export async function deleteExpiredSends(db: Executor, ids: string[], now: string): Promise<string[]> {
+  if (!ids.length) return [];
+  const rows = await db
+    .deleteFrom('sends')
+    .where((eb) => eb('id', '=', eb.fn.any(eb.val(ids))))
+    .where('deletion_date', '<=', now)
+    .returning('id')
+    .execute();
+  return rows.map((row) => row.id);
+}

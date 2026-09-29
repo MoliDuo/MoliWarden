@@ -69,3 +69,14 @@ export async function deleteUserRefreshTokens(db: Executor, userId: string, devi
   const rows = await query.returning('family_id').execute();
   return new Set(rows.map((row) => row.family_id)).size;
 }
+
+// Tokens past either expiry. Replaced tokens are kept until then, so reuse
+// of one is still recognised.
+export async function deleteExpiredRefreshTokens(db: Executor, now: Date): Promise<number> {
+  const iso = now.toISOString();
+  const result = await db
+    .deleteFrom('refresh_tokens')
+    .where((eb) => eb.or([eb('expires_at', '<', iso), eb('absolute_expires_at', '<', iso)]))
+    .executeTakeFirst();
+  return Number(result.numDeletedRows);
+}

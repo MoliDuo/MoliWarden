@@ -15,14 +15,15 @@ export interface Change {
 }
 
 // Who makes the change: a signed-in user, or someone opening a Send on its
-// owner's behalf. The device making it needs no telling.
-export type Changer = { user: { id: string }; device: string | null };
+// owner's behalf. The device making it needs no telling. Null for the
+// server's own changes, such as the cron job's.
+export type Changer = { user: { id: string }; device: string | null } | null;
 
 // Runs `write` in one transaction that also moves the revision date of
 // everyone who sees the change, so their clients sync; then tells their
 // apps.
 export async function commit<T>(deps: Deps, caller: Changer, now: string, change: Change, write: (tx: Executor) => Promise<T>): Promise<T> {
-  const notified = new Set([caller.user.id, ...(change.userIds ?? [])]);
+  const notified = new Set([...(caller ? [caller.user.id] : []), ...(change.userIds ?? [])]);
   const result = await deps.db.transaction().execute(async (tx) => {
     const value = await write(tx);
     for (const userId of notified) await touchRevisionDate(tx, userId, now);
@@ -32,6 +33,6 @@ export async function commit<T>(deps: Deps, caller: Changer, now: string, change
     }
     return value;
   });
-  for (const userId of notified) deps.push.notify({ ...change.push, userId, deviceIdentifier: caller.device });
+  for (const userId of notified) deps.push.notify({ ...change.push, userId, deviceIdentifier: caller?.device ?? null });
   return result;
 }

@@ -1,18 +1,16 @@
 import { Hono, type ErrorHandler, type MiddlewareHandler } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { LIMITS } from '../config/limits';
-import { HttpError, IdentityError, misconfigured, notFound, payloadTooLarge, unauthorized } from '../http/errors';
+import { HttpError, IdentityError, misconfigured, notFound, payloadTooLarge } from '../http/errors';
 import { preflight, responseHeaders } from '../http/headers';
 import { accountRoutes } from '../modules/accounts/routes';
 import { adminRoutes } from '../modules/admin/routes';
 import { attachmentRoutes } from '../modules/attachments/routes';
 import { auditRoutes } from '../modules/audit/routes';
-import { runScheduledBackups } from '../modules/backup/runs';
 import { backupRoutes } from '../modules/backup/routes';
-import { pruneAuditLog } from '../modules/audit/service';
-import { deleteExpiredAuthRequests } from '../modules/auth-requests/repo';
 import { authRequestRoutes } from '../modules/auth-requests/routes';
 import { cipherRoutes } from '../modules/ciphers/routes';
+import { cronRoutes } from '../modules/cron/routes';
 import { deviceRoutes } from '../modules/devices/routes';
 import { domainRoutes } from '../modules/domains/routes';
 import { folderRoutes } from '../modules/folders/routes';
@@ -24,7 +22,7 @@ import { passkeyRoutes } from '../modules/passkeys/routes';
 import { sendRoutes } from '../modules/sends/routes';
 import { syncRoutes } from '../modules/sync/routes';
 import { twoFactorRoutes } from '../modules/two-factor/routes';
-import { constantTimeEqual, SecretBoxError } from '../platform/crypto';
+import { SecretBoxError } from '../platform/crypto';
 import { BlobStoreError } from '../platform/blob';
 import { migrateToLatest, schemaState } from '../platform/db/migrate';
 import { secretProblem } from './config';
@@ -126,15 +124,7 @@ export function createApp(deps: Deps): Hono {
   // Routes registered before this line answer on any configuration.
   app.use(requireSecrets(deps));
 
-  // Vercel Cron sends "Authorization: Bearer <CRON_SECRET>".
-  app.get('/api/internal/cron', async (c) => {
-    const secret = deps.config.cronSecret;
-    const provided = (c.req.header('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
-    if (!secret || !provided || !constantTimeEqual(secret, provided)) throw unauthorized();
-    await Promise.all([runScheduledBackups(deps), deleteExpiredAuthRequests(deps.db), pruneAuditLog(deps)]);
-    return c.json({ ok: true });
-  });
-
+  app.route('/', cronRoutes(deps));
   app.route('/', identityRoutes(deps));
   app.route('/', twoFactorRoutes(deps));
   app.route('/', passkeyRoutes(deps));

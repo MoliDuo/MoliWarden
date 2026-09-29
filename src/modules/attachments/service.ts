@@ -15,7 +15,7 @@ import { loadOrgContext } from '../organizations/access';
 import { PushType } from '../push/service';
 import { commit } from '../sync/changes';
 import { removeAttachmentFiles } from './files';
-import { deleteAttachment, findAttachment, saveAttachment, type Attachment } from './repo';
+import { deleteAbandonedUploads, deleteAttachment, findAbandonedUploads, findAttachment, saveAttachment, type Attachment } from './repo';
 import type { MetadataInput } from './schemas';
 
 // Files attached to ciphers. Whoever can edit a cipher can change its
@@ -50,6 +50,30 @@ async function changeCipher(deps: Deps, caller: Caller, view: CipherView, write:
     await touchCiphers(tx, [cipher.id], date);
   });
   return { ...view, cipher };
+}
+
+// Run by the cron job: attachments whose file has not arrived within this
+// long are given up on.
+const UPLOAD_GRACE_MS = 3_600_000;
+
+export async function removeAbandonedUploads(deps: Deps, now: Date): Promise<number> {
+  const date = now.toISOString();
+  const before = new Date(now.getTime() - UPLOAD_GRACE_MS).toISOString();
+  const abandoned = await findAbandonedUploads(deps.db, before);
+  if (!abandoned.length) return 0;
+  const change = {
+    userIds: [...new Set(abandoned.flatMap((a) => (a.userId ? [a.userId] : [])))],
+    orgIds: [...new Set(abandoned.map((a) => a.organizationId))],
+    push: { type: PushType.SyncVault },
+  };
+  const deleted = await commit(deps, null, date, change, async (tx) => {
+    const rows = await deleteAbandonedUploads(tx, abandoned.map((a) => a.id), before);
+    await touchCiphers(tx, [...new Set(rows.map((row) => row.cipherId))], date);
+    return rows;
+  });
+  // A file may have arrived without being recorded.
+  await removeAttachmentFiles(deps.blobs, deleted);
+  return deleted.length;
 }
 
 const tooLarge = (deps: Deps) => `File too large. Maximum size is ${maxSizeName(deps.config.maxUploadBytes)}`;
