@@ -32,6 +32,40 @@ Keep pull requests small enough to review. A good PR should explain:
 Avoid mixing unrelated refactors with feature or bug-fix work. If a cleanup is
 needed before the real fix, mention that clearly in the PR.
 
+## Backend Layout
+
+The server is a [Hono](https://hono.dev) app over PostgreSQL (through
+[Kysely](https://kysely.dev)) and S3-compatible blob storage:
+
+```
+src/main/       config (the only reader of process.env), dependencies, the app
+src/http/       authentication, rate limits, errors, body parsing, headers
+src/modules/*/  one directory per area: identity, accounts, ciphers, sends, ...
+src/platform/   database, migrations, blob storage, crypto, tokens
+src/config/     protocol constants and limits
+```
+
+A module is split the same way throughout:
+
+- `routes.ts` speaks HTTP: it reads the request, calls a service, shapes the
+  answer. It never touches the database.
+- `service.ts` (and its siblings) holds the rules, as plain functions of
+  `(deps, caller, input)`. Services know nothing of Hono.
+- `repo.ts` holds the queries. It takes an `Executor`, a database or a
+  transaction, so services can combine writes in one transaction.
+- `schemas.ts` holds the zod schemas of request bodies.
+
+A change clients must sync goes through `commit()` in
+`src/modules/sync/changes.ts`, which moves everyone's revision date in the same
+transaction and then notifies their apps.
+
+`src/` keeps no state of its own: no top-level `let` or `Map`. Everything a
+request needs comes in with `deps`. `tests/unit/architecture.test.ts` checks
+these rules on every file.
+
+Nothing on the request path cleans up. Expired rows are refused where they are
+read, and deleted by the cron job in `src/modules/cron/`.
+
 ## Areas That Need Extra Care
 
 Some parts of the codebase are deliberately connected. When changing one of
@@ -111,11 +145,12 @@ For new locales, update:
 
 ## Recommended Checks
 
-For most backend or shared changes:
+For most backend or shared changes, with PostgreSQL available as
+`TEST_DATABASE_URL`:
 
 ```sh
-npx tsc -p tsconfig.json --noEmit
-npm run build
+npm run typecheck
+npm test
 ```
 
 For webapp text or locale changes:

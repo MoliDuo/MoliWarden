@@ -1,11 +1,10 @@
 import { Hono, type Context } from 'hono';
-import { LIMITS } from '../../config/limits';
 import { readBody, readJson } from '../../http/body';
 import { clientAddress } from '../../http/client';
 import { badRequest, IdentityError } from '../../http/errors';
 import { rateLimit } from '../../http/rate-limit';
 import type { Deps } from '../../main/deps';
-import { findUserByEmail } from '../accounts/repo';
+import { prelogin } from '../accounts/service';
 import { recordAudit, requestMetadata } from '../audit/service';
 import { revokeSession } from '../auth/sessions';
 import { loginAssertionOptions } from '../passkeys/service';
@@ -85,31 +84,12 @@ export function identityRoutes(deps: Deps): Hono {
     });
   }
 
-  // How to derive the master key. Unknown accounts get the defaults, so the
-  // answer does not tell whether an account exists.
+  // How to derive the master key.
   for (const path of ['/identity/accounts/prelogin', '/api/accounts/prelogin', '/identity/accounts/prelogin/password']) {
     app.post(path, sensitive, async (c) => {
       const email = (await readJson(c, preloginBody)).email.trim().toLowerCase();
       if (!email) throw badRequest('Email is required');
-      const user = await findUserByEmail(deps.db, email);
-      const kdfType = user?.kdfType ?? 0;
-      const iterations = user?.kdfIterations ?? LIMITS.auth.defaultKdfIterations;
-      const memory = user?.kdfMemory ?? null;
-      const parallelism = user?.kdfParallelism ?? null;
-      return c.json(
-        {
-          kdf: kdfType,
-          kdfIterations: iterations,
-          kdfMemory: memory,
-          kdfParallelism: parallelism,
-          kdfSettings: { kdfType, iterations, memory, parallelism },
-          salt: null,
-          KdfSettings: { KdfType: kdfType, Iterations: iterations, Memory: memory, Parallelism: parallelism },
-          Salt: email,
-        },
-        200,
-        NO_STORE,
-      );
+      return c.json(await prelogin(deps, email), 200, NO_STORE);
     });
   }
 

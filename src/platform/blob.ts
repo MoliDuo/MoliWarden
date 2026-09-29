@@ -1,9 +1,18 @@
 import { AwsClient } from 'aws4fetch';
-import type { S3Config } from '../main/config';
 
 // Attachment and Send files on any S3-compatible service (AWS S3, R2,
 // Backblaze B2, MinIO, ...). Keys are "<cipher>/<attachment>" and
 // "sends/<send>/<file>".
+
+// As the deployment configures it; unset values mean no blob storage.
+export interface S3Config {
+  endpoint?: string;
+  bucket?: string;
+  accessKeyId?: string;
+  secretAccessKey?: string;
+  region?: string;
+  forcePathStyle?: string;
+}
 
 const DEFAULT_CONTENT_TYPE = 'application/octet-stream';
 const PRESIGNED_URL_TTL_SECONDS = 120;

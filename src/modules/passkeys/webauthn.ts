@@ -7,7 +7,7 @@ import type {
 import type { Config } from '../../main/config';
 import { fromBase64url } from '../../platform/crypto';
 import type { AccountPasskeyCredential, AccountPasskeyPrfStatus, WebAuthnPrfDecryptionOption } from '../../types';
-import { getConfiguredWebAuthnAllowedOrigins } from '../../utils/origins';
+import { getConfiguredWebAuthnAllowedOrigins } from '../../http/origins';
 
 // Translation between what clients send and what @simplewebauthn expects,
 // and between stored credentials and the shapes clients read.

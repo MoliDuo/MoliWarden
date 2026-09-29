@@ -3,8 +3,8 @@ import { LIMITS } from '../../config/limits';
 import { rateLimit } from '../../http/rate-limit';
 import { secretProblem } from '../../main/config';
 import type { Deps } from '../../main/deps';
-import { getConfiguredWebAuthnAllowedOrigins } from '../../utils/origins';
-import { countUsers } from '../accounts/repo';
+import { getConfiguredWebAuthnAllowedOrigins } from '../../http/origins';
+import { registrationInviteRequired } from '../accounts/service';
 import { clientConfig } from './client-config';
 import { assetLinkCheck, fillAssistFiles, fillAssistManifest } from './fill-assist';
 
@@ -39,7 +39,7 @@ export function metaRoutes(deps: Deps): Hono {
         defaultKdfIterations: LIMITS.auth.defaultKdfIterations,
         secretProblem: secretProblem(config),
         secretMinLength: LIMITS.auth.secretMinLength,
-        registrationInviteRequired: (await countUsers(deps.db)) > 0,
+        registrationInviteRequired: await registrationInviteRequired(deps),
         webAuthnAllowedOrigins: getConfiguredWebAuthnAllowedOrigins(config.webauthn.allowedOrigins),
         websiteIconsEnabled: config.iconSource !== 'off',
         passwordHintEnabled: config.showPasswordHint,

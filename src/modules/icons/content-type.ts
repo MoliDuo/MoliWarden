@@ -1,11 +1,4 @@
-const ACTIVE_DOWNLOAD_MEDIA_TYPES = new Set([
-  'application/xhtml+xml',
-  'application/xml',
-  'image/svg+xml',
-  'text/html',
-  'text/xml',
-]);
-
+// Icons are served from this origin, so only plain images are passed on.
 const SAFE_ICON_MEDIA_TYPES = new Set([
   'image/avif',
   'image/bmp',
@@ -26,13 +19,4 @@ function normalizeMediaType(contentType: string | null | undefined): string {
 
 export function isSafeWebsiteIconContentType(contentType: string | null | undefined): boolean {
   return SAFE_ICON_MEDIA_TYPES.has(normalizeMediaType(contentType));
-}
-
-export function sanitizeDownloadContentType(contentType: string | null | undefined): string {
-  const mediaType = normalizeMediaType(contentType);
-  if (!mediaType) return 'application/octet-stream';
-  if (ACTIVE_DOWNLOAD_MEDIA_TYPES.has(mediaType)) {
-    return 'application/octet-stream';
-  }
-  return contentType || mediaType;
 }

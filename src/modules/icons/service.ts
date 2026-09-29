@@ -1,7 +1,7 @@
 import { LIMITS } from '../../config/limits';
 import type { IconSource } from '../../main/config';
 import { sha256Hex } from '../../platform/crypto';
-import { isSafeWebsiteIconContentType } from '../../utils/content-type';
+import { isSafeWebsiteIconContentType } from './content-type';
 
 // Website icons for vault items, fetched from a public icon service so
 // clients never contact the sites themselves. ICON_SOURCE picks the service:

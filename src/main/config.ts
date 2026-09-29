@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { LIMITS } from '../config/limits';
+import type { S3Config } from '../platform/blob';
 
 // The deployment's settings, read once from the environment variables (on
 // Vercel: the project's Environment Variables). Nothing else in src/ reads
@@ -11,15 +12,6 @@ import { LIMITS } from '../config/limits';
 // to fix.
 
 export type Source = Record<string, string | undefined>;
-
-export interface S3Config {
-  endpoint?: string;
-  bucket?: string;
-  accessKeyId?: string;
-  secretAccessKey?: string;
-  region?: string;
-  forcePathStyle?: string;
-}
 
 export type IconSource = 'favicon' | 'bitwarden' | 'off';
 

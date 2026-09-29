@@ -61,6 +61,31 @@ function audit(deps: Deps, request: Request, user: User, action: string, level: 
   });
 }
 
+// Registering needs an invite once the first account exists.
+export async function registrationInviteRequired(deps: Deps): Promise<boolean> {
+  return (await countUsers(deps.db)) > 0;
+}
+
+// How to derive the master key. Unknown accounts get the defaults, so the
+// answer does not tell whether an account exists.
+export async function prelogin(deps: Deps, email: string) {
+  const user = await findUserByEmail(deps.db, email);
+  const kdfType = user?.kdfType ?? PBKDF2;
+  const iterations = user?.kdfIterations ?? LIMITS.auth.defaultKdfIterations;
+  const memory = user?.kdfMemory ?? null;
+  const parallelism = user?.kdfParallelism ?? null;
+  return {
+    kdf: kdfType,
+    kdfIterations: iterations,
+    kdfMemory: memory,
+    kdfParallelism: parallelism,
+    kdfSettings: { kdfType, iterations, memory, parallelism },
+    salt: null,
+    KdfSettings: { KdfType: kdfType, Iterations: iterations, Memory: memory, Parallelism: parallelism },
+    Salt: email,
+  };
+}
+
 // The first account becomes the admin; everyone after needs an invite.
 export async function register(deps: Deps, request: Request, input: RegisterInput) {
   const problem = kdfProblem(input);

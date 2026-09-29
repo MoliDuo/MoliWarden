@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { corsHeaders, withResponseHeaders } from '../src/http/headers';
-import { getConfiguredWebAuthnAllowedOrigins } from '../src/utils/origins';
+import { getConfiguredWebAuthnAllowedOrigins } from '../src/http/origins';
 import { resolveRoute } from '../tests/vercel-emulator';
 import { buildVercelConfig } from './vercel-config';
 

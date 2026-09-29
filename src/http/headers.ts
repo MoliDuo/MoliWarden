@@ -5,7 +5,7 @@ import {
   isConfiguredWebAuthnAllowedOrigin,
   isOfficialBitwardenDesktopOrigin,
   normalizeOrigin,
-} from '../utils/origins';
+} from './origins';
 
 // CORS and security headers for every response the function sends. Static
 // files served by Vercel get the same security headers from

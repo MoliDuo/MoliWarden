@@ -1,7 +1,6 @@
 import type { Context, MiddlewareHandler } from 'hono';
 import type { Deps } from '../main/deps';
-import type { AccessClaims } from '../modules/auth/access-token';
-import { findSession } from '../modules/auth/repo';
+import { sessionOf, type AccessClaims, type SessionClaims } from '../modules/auth/access-token';
 import type { TokenType } from '../platform/tokens';
 import type { Device, User } from '../types';
 import { forbidden, unauthorized } from './errors';
@@ -29,19 +28,11 @@ export const callerOf = (c: Context<AuthedEnv>): Caller => ({
   request: c.req.raw,
 });
 
-// The stamps a token carries to end it early: `sstamp` changes with the
-// password or 2FA settings, `dstamp` when the device is logged out.
-type SessionClaims = Pick<AccessClaims, 'sub' | 'sstamp' | 'did' | 'dstamp'>;
-
 // Checks the claims against the current state of the account and draws
-// from the user's `policy` budget. Nothing is cached, so a ban or a logout
-// holds on every instance immediately.
+// from the user's `policy` budget.
 async function actAs(deps: Deps, c: Context<AuthedEnv>, claims: SessionClaims, policy: RatePolicy): Promise<void> {
-  const session = await findSession(deps.db, claims.sub, claims.did ? { identifier: claims.did } : null);
-  if (!session || session.user.status !== 'active' || session.user.securityStamp !== claims.sstamp) {
-    throw unauthorized();
-  }
-  if (claims.did && (!session.device || session.device.sessionStamp !== claims.dstamp)) throw unauthorized();
+  const session = await sessionOf(deps.db, claims);
+  if (!session) throw unauthorized();
   await consume(deps.limiter, policy, session.user.id);
   c.set('actor', session);
 }
