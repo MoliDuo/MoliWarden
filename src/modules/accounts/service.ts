@@ -82,14 +82,7 @@ export async function register(deps: Deps, request: Request, input: RegisterInpu
     securityStamp: randomUUID(),
     role: 'user',
     status: 'active',
-    totpSecret: null,
-    totpRecoveryCode: null,
-    yubikeyKey1: null,
-    yubikeyKey2: null,
-    yubikeyKey3: null,
-    yubikeyKey4: null,
-    yubikeyKey5: null,
-    yubikeyNfc: false,
+    recoveryCode: null,
     // Like upstream, every account starts with a personal API key.
     apiKey: randomAlphanumeric(LIMITS.auth.clientSecretLength),
     createdAt: now,
@@ -266,5 +259,5 @@ export async function apiKey(deps: Deps, request: Request, user: User, secret: s
 
 // Milliseconds since the epoch, as Bitwarden sends it.
 export async function revisionDate(deps: Deps, user: User): Promise<number> {
-  return new Date(await findRevisionDate(deps.db, user.id)).getTime();
+  return new Date((await findRevisionDate(deps.db, user.id)) ?? user.updatedAt).getTime();
 }

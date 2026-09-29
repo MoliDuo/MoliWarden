@@ -1,47 +1,36 @@
 import type { Executor } from '../../platform/db';
 import type { NewRow, Row } from '../../platform/db/schema';
-import { SendAuthType, SendType, type Send, type SendFile, type SendText } from './model';
+import { SendType, type Send, type SendFile, type SendText } from './model';
 
-// Text and file details are kept as JSON in `data`; only the fields clients
-// define are read back.
+// What clients encrypt (name, notes, the text or file details) is kept as
+// JSON in `data`.
 
-function parseData(raw: string): Record<string, unknown> {
-  try {
-    const data: unknown = JSON.parse(raw);
-    return data && typeof data === 'object' && !Array.isArray(data) ? (data as Record<string, unknown>) : {};
-  } catch {
-    return {};
-  }
+interface SendData {
+  name: string;
+  notes: string | null;
+  text: SendText | null;
+  file: SendFile | null;
 }
 
-const str = (value: unknown) => (typeof value === 'string' ? value : null);
-
 function toSend(row: Row<'sends'>): Send {
-  const data = parseData(row.data);
+  const data = row.data as unknown as SendData;
   const type = row.type === SendType.File ? SendType.File : SendType.Text;
-  const text: SendText | null = type === SendType.Text ? { text: str(data.text), hidden: data.hidden === true } : null;
-  const file: SendFile | null =
-    type === SendType.File
-      ? { id: str(data.id) ?? '', fileName: str(data.fileName) ?? '', size: Number(data.size) || 0, sizeName: str(data.sizeName) ?? '' }
-      : null;
   return {
     id: row.id,
     userId: row.user_id,
     type,
-    name: row.name,
-    notes: row.notes,
+    name: data.name,
+    notes: data.notes,
     key: row.key,
-    text,
-    file,
-    // A hash without salt never matches: those are converted by the data
-    // migration.
+    text: type === SendType.Text ? (data.text ?? { text: null, hidden: false }) : null,
+    file: type === SendType.File ? data.file : null,
     password: row.password_hash
-      ? { hash: row.password_hash, salt: row.password_salt ?? '', iterations: row.password_iterations ?? 1 }
+      ? { hash: row.password_hash, salt: row.password_salt!, iterations: row.password_iterations ?? 1 }
       : null,
     maxAccessCount: row.max_access_count,
-    accessCount: Number(row.access_count) || 0,
-    disabled: !!row.disabled,
-    hideEmail: !!row.hide_email,
+    accessCount: row.access_count,
+    disabled: row.disabled,
+    hideEmail: row.hide_email,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     expirationDate: row.expiration_date,
@@ -50,23 +39,20 @@ function toSend(row: Row<'sends'>): Send {
 }
 
 function toRow(send: Send): NewRow<'sends'> {
+  const data: SendData = { name: send.name, notes: send.notes, text: send.text, file: send.file };
   return {
     id: send.id,
     user_id: send.userId,
     type: send.type,
-    name: send.name,
-    notes: send.notes,
-    data: JSON.stringify(send.type === SendType.File ? send.file : send.text),
     key: send.key,
+    data: JSON.stringify(data),
     password_hash: send.password?.hash ?? null,
     password_salt: send.password?.salt ?? null,
     password_iterations: send.password?.iterations ?? null,
-    auth_type: send.password ? SendAuthType.Password : SendAuthType.None,
-    emails: null,
     max_access_count: send.maxAccessCount,
     access_count: send.accessCount,
-    disabled: send.disabled ? 1 : 0,
-    hide_email: send.hideEmail ? 1 : 0,
+    disabled: send.disabled,
+    hide_email: send.hideEmail,
     created_at: send.createdAt,
     updated_at: send.updatedAt,
     expiration_date: send.expirationDate,
@@ -113,7 +99,7 @@ export async function countAccess(db: Executor, id: string, now: string): Promis
     .updateTable('sends')
     .set((eb) => ({ access_count: eb('access_count', '+', 1), updated_at: now }))
     .where('id', '=', id)
-    .where('disabled', '=', 0)
+    .where('disabled', '=', false)
     .where((eb) =>
       eb.and([
         eb.or([eb('max_access_count', 'is', null), eb('access_count', '<', eb.ref('max_access_count'))]),

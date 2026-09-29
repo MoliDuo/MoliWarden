@@ -1,42 +1,37 @@
-import { jsonObjectFrom } from 'kysely/helpers/postgres';
 import type { Executor } from '../../platform/db';
 import type { NewRow, Row } from '../../platform/db/schema';
 import type { Device, User } from '../../types';
 import { toUser } from '../accounts/rows';
 import { toDevice } from '../devices/rows';
 
-// The user an access token names and, when it was issued to a device, that
-// device, in one round trip.
+// The user a token names and, when it was issued to a device, that device.
+// Access tokens name the device by its identifier, refresh tokens by its id.
 export async function findSession(
   db: Executor,
   userId: string,
-  deviceIdentifier: string | null,
+  device: { id: string } | { identifier: string } | null,
 ): Promise<{ user: User; device: Device | null } | null> {
-  const row = await db
-    .selectFrom('users')
-    .selectAll('users')
-    .select((eb) =>
-      jsonObjectFrom(
-        eb
+  const [user, deviceRow] = await Promise.all([
+    db.selectFrom('users').selectAll().where('id', '=', userId).executeTakeFirst(),
+    device
+      ? db
           .selectFrom('devices')
-          .selectAll('devices')
-          .whereRef('devices.user_id', '=', 'users.id')
-          .where('devices.device_identifier', '=', deviceIdentifier ?? ''),
-      ).as('device'),
-    )
-    .where('users.id', '=', userId)
-    .executeTakeFirst();
-  if (!row) return null;
-  const { device, ...user } = row;
-  return { user: toUser(user), device: device ? toDevice(device as Row<'devices'>) : null };
+          .selectAll()
+          .where('user_id', '=', userId)
+          .where((eb) => ('id' in device ? eb('id', '=', device.id) : eb('identifier', '=', device.identifier)))
+          .executeTakeFirst()
+      : undefined,
+  ]);
+  if (!user) return null;
+  return { user: toUser(user), device: deviceRow ? toDevice(deviceRow) : null };
 }
 
 // Refresh tokens are stored under a hash of the token, never the token.
 
 export type RefreshTokenRow = Row<'refresh_tokens'>;
 
-export function findRefreshToken(db: Executor, key: string): Promise<RefreshTokenRow | undefined> {
-  return db.selectFrom('refresh_tokens').selectAll().where('token', '=', key).executeTakeFirst();
+export function findRefreshToken(db: Executor, hash: Buffer): Promise<RefreshTokenRow | undefined> {
+  return db.selectFrom('refresh_tokens').selectAll().where('token_hash', '=', hash).executeTakeFirst();
 }
 
 export async function insertRefreshToken(db: Executor, row: NewRow<'refresh_tokens'>): Promise<void> {
@@ -44,39 +39,33 @@ export async function insertRefreshToken(db: Executor, row: NewRow<'refresh_toke
 }
 
 // Marks a token as replaced. False when another request replaced it first.
-export async function markRefreshTokenRotated(db: Executor, key: string, familyId: string, now: number): Promise<boolean> {
+export async function markRefreshTokenRotated(db: Executor, hash: Buffer, now: string): Promise<boolean> {
   const result = await db
     .updateTable('refresh_tokens')
-    .set({ rotated_at: now, family_id: familyId, last_used_at: now })
-    .where('token', '=', key)
+    .set({ rotated_at: now, last_used_at: now })
+    .where('token_hash', '=', hash)
     .where('rotated_at', 'is', null)
     .executeTakeFirst();
   return result.numUpdatedRows > 0n;
 }
 
-export async function deleteRefreshToken(db: Executor, key: string): Promise<void> {
-  await db.deleteFrom('refresh_tokens').where('token', '=', key).execute();
+export async function deleteRefreshToken(db: Executor, hash: Buffer): Promise<void> {
+  await db.deleteFrom('refresh_tokens').where('token_hash', '=', hash).execute();
 }
 
 export async function deleteRefreshTokenFamily(db: Executor, familyId: string): Promise<void> {
   await db.deleteFrom('refresh_tokens').where('family_id', '=', familyId).execute();
 }
 
-// All the user's tokens, or those of one device. Returns how many there were.
+// All the user's tokens, or those of one device. Returns how many families
+// (sessions) there were.
 export async function deleteUserRefreshTokens(db: Executor, userId: string, deviceIdentifier?: string): Promise<number> {
   let query = db.deleteFrom('refresh_tokens').where('user_id', '=', userId);
-  if (deviceIdentifier !== undefined) query = query.where('device_identifier', '=', deviceIdentifier);
-  const result = await query.executeTakeFirst();
-  return Number(result.numDeletedRows);
-}
-
-// Download tokens work once. False when the token was used before.
-export async function useTokenOnce(db: Executor, jti: string, expiresAtSeconds: number): Promise<boolean> {
-  const row = await db
-    .insertInto('used_attachment_download_tokens')
-    .values({ jti, expires_at: expiresAtSeconds * 1000 })
-    .onConflict((oc) => oc.column('jti').doNothing())
-    .returning('jti')
-    .executeTakeFirst();
-  return !!row;
+  if (deviceIdentifier !== undefined) {
+    query = query.where('device_id', 'in', (eb) =>
+      eb.selectFrom('devices').select('id').where('user_id', '=', userId).where('identifier', '=', deviceIdentifier),
+    );
+  }
+  const rows = await query.returning('family_id').execute();
+  return new Set(rows.map((row) => row.family_id)).size;
 }

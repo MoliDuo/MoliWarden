@@ -84,9 +84,9 @@ export async function exportArchive(deps: Deps, caller: Caller, input: BackupFil
   await requireMasterPassword(caller.user, input.masterPasswordHash);
   const archive = await createArchive(deps, new Date(), 'UTC', input.includeAttachments);
   await audit(deps, caller, 'admin.backup.export', {
-    users: archive.manifest.tableCounts.users,
-    ciphers: archive.manifest.tableCounts.ciphers,
-    attachments: archive.manifest.tableCounts.attachments,
+    users: archive.manifest.counts.users,
+    ciphers: archive.manifest.counts.ciphers,
+    attachments: archive.manifest.counts.attachments,
     compressedBytes: archive.bytes.byteLength,
     includesAttachments: archive.manifest.includes.attachments,
   });

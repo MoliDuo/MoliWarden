@@ -129,7 +129,6 @@ npm test
 | `npm run test:official-cli` | 用官方 Bitwarden CLI（`bw`，首次运行自动下载到 `~/.cache/moliwarden-bw-cli`，不进依赖）走一遍：密码 / API Key 登录、锁定解锁、条目、文件夹、附件、Send、导出、确认组织成员、共享和集合权限。约 5 分钟 |
 | `npm run test:ui` | 用浏览器（Playwright，默认在官方 Docker 镜像里运行）把 Web 密码库的主要页面和流程点一遍，包括条目、文件夹、回收站、附件、Send、导入导出、设置、管理员、组织共享全流程、中文界面和 375px 手机宽度；任何页面报错、控制台错误、错误提示或 5xx 都算失败。见 `tests/ui/README.md` |
 | `npm run test:smoke` | 构建 `.vercel/output`，复制到仓库外，用 `tests/vercel-emulator.ts` 按 Vercel 的路由规则、4.5 MB 请求体限制、`waitUntil` 和 Cron 调用方式运行 |
-| `npm run check:sql` | 把代码中的每条 SQL 在真实 Postgres 上 `PREPARE` 一遍 |
 | `scripts/vercel-build-local.sh` | 不需要 Vercel 账号，用官方 `vercel build` 生成与线上一致的产物（会执行 `npm ci`）|
 
 要验证 Neon 连接池模式，把 `TEST_DATABASE_URL` 指向 PgBouncer 再跑端到端测试：
@@ -144,10 +143,11 @@ GitHub Actions（`.github/workflows/ci.yml`）在每次推送时运行以上全�
 
 ## 架构说明
 
-- `src/platform/node-http.ts`：Node HTTP 与 Web `Request`/`Response` 的转换，Vercel 函数和本地开发服务器共用。
+- `src/main/app.ts`：Hono 应用，挂载 `src/modules/*/routes.ts`；每个模块分为 routes（HTTP）、service（领域逻辑）和 repo（Kysely 查询）。
+- `src/platform/db/migrations/`：数据库结构，由服务端在首个请求时按顺序执行，也可用 `npm run db:migrate` 手动执行。
 - `scripts/build-vercel.ts`：生成 Vercel Build Output（静态 Web 密码库 + 单个 Node 函数 + 路由 + Cron）。
-- `src/services/org-access.ts`：组织权限的唯一判定点。只有**已确认**的成员才能访问组织数据；被撤销、仅邀请或仅接受的成员没有任何访问权限。
-- 条目归属：个人条目 `user_id` 非空，组织条目 `organization_id` 非空，二者由数据库 CHECK 约束保证互斥；组织条目的文件夹、收藏、归档按用户分别存储。
+- `src/modules/organizations/access.ts`：组织权限的唯一判定点。只有**已确认**的成员才能访问组织数据；被撤销、仅邀请或仅接受的成员没有任何访问权限。
+- 条目归属：个人条目 `user_id` 非空，组织条目 `organization_id` 非空，二者由数据库 CHECK 约束保证互斥；文件夹、收藏、归档按用户存放在 `cipher_user_state`。
 
 ## 许可
 

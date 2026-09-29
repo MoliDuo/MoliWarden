@@ -1,16 +1,6 @@
 export type UserRole = 'admin' | 'user';
 export type UserStatus = 'active' | 'banned';
 
-// Attachment model
-export interface Attachment {
-  id: string;
-  cipherId: string;
-  fileName: string;  // encrypted
-  size: number;
-  sizeName: string;
-  key: string | null;  // encrypted attachment key
-}
-
 // User model
 export interface User {
   id: string;
@@ -29,27 +19,13 @@ export interface User {
   role: UserRole;
   status: UserStatus;
   verifyDevices?: boolean;
-  totpSecret: string | null;
-  totpRecoveryCode: string | null;
-  yubikeyKey1: string | null;
-  yubikeyKey2: string | null;
-  yubikeyKey3: string | null;
-  yubikeyKey4: string | null;
-  yubikeyKey5: string | null;
-  yubikeyNfc: boolean;
+  // Turns two-step login off when every second factor is lost.
+  recoveryCode: string | null;
   apiKey: string | null;
   // Written only through setUserKeyIdIfUnset/clearUserKeyId, never by saveUser.
   keyId?: string | null;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface UserDomainSettings {
-  userId: string;
-  equivalentDomains: string[][];
-  customEquivalentDomains: CustomEquivalentDomain[];
-  excludedGlobalEquivalentDomains: number[];
-  updatedAt: string | null;
 }
 
 export interface CustomEquivalentDomain {
@@ -72,176 +48,9 @@ export interface DomainRulesResponse {
   object: 'domains';
 }
 
-export enum CipherType {
-  Login = 1,
-  SecureNote = 2,
-  Card = 3,
-  Identity = 4,
-  SSHKey = 5,
-  BankAccount = 6,
-  DriversLicense = 7,
-  Passport = 8,
-}
-
-export interface CipherLoginUri {
-  uri: string | null;
-  uriChecksum: string | null;
-  match: number | null;
-}
-
-export interface CipherLogin {
-  username: string | null;
-  password: string | null;
-  uris: CipherLoginUri[] | null;
-  totp: string | null;
-  autofillOnPageLoad: boolean | null;
-  fido2Credentials: any[] | null;
-  uri: string | null;
-  passwordRevisionDate: string | null;
-}
-
-export interface CipherCard {
-  cardholderName: string | null;
-  brand: string | null;
-  number: string | null;
-  expMonth: string | null;
-  expYear: string | null;
-  code: string | null;
-}
-
-export interface CipherSshKey {
-  publicKey: string;
-  privateKey: string;
-  keyFingerprint: string;
-}
-
-export interface CipherBankAccount {
-  bankName: string | null;
-  nameOnAccount: string | null;
-  accountType: string | null;
-  accountNumber: string | null;
-  routingNumber: string | null;
-  branchNumber: string | null;
-  pin: string | null;
-  swiftCode: string | null;
-  iban: string | null;
-  bankContactPhone: string | null;
-  [key: string]: any;
-}
-
-export interface CipherDriversLicense {
-  firstName: string | null;
-  middleName: string | null;
-  lastName: string | null;
-  dateOfBirth: string | null;
-  licenseNumber: string | null;
-  issuingCountry: string | null;
-  issuingState: string | null;
-  issueDate: string | null;
-  expirationDate: string | null;
-  issuingAuthority: string | null;
-  licenseClass: string | null;
-  [key: string]: any;
-}
-
-export interface CipherPassport {
-  surname: string | null;
-  givenName: string | null;
-  dateOfBirth: string | null;
-  sex: string | null;
-  birthPlace: string | null;
-  nationality: string | null;
-  issuingCountry: string | null;
-  passportNumber: string | null;
-  passportType: string | null;
-  nationalIdentificationNumber: string | null;
-  issuingAuthority: string | null;
-  issueDate: string | null;
-  expirationDate: string | null;
-  [key: string]: any;
-}
-
-export interface CipherIdentity {
-  title: string | null;
-  firstName: string | null;
-  middleName: string | null;
-  lastName: string | null;
-  address1: string | null;
-  address2: string | null;
-  address3: string | null;
-  city: string | null;
-  state: string | null;
-  postalCode: string | null;
-  country: string | null;
-  company: string | null;
-  email: string | null;
-  phone: string | null;
-  ssn: string | null;
-  username: string | null;
-  passportNumber: string | null;
-  licenseNumber: string | null;
-}
-
-export interface CipherSecureNote {
-  type: number;
-}
-
-export interface CipherField {
-  name: string | null;
-  value: string | null;
-  type: number;
-  linkedId: number | null;
-}
-
-export interface PasswordHistory {
-  password: string;
-  lastUsedDate: string;
-}
-
-export interface Cipher {
-  id: string;
-  // Personal ciphers have userId set; organization ciphers have organizationId
-  // set and userId null (enforced by a CHECK constraint).
-  userId: string | null;
-  organizationId?: string | null;
-  // Server-internal: revision the cipher had right before a client first added
-  // a cipher key to it (see mergeCipherUpdate). Never sent to clients.
-  keyAddedFromRevision?: string | null;
-  type: CipherType;
-  folderId: string | null;
-  name: string | null;
-  notes: string | null;
-  favorite: boolean;
-  login: CipherLogin | null;
-  card: CipherCard | null;
-  identity: CipherIdentity | null;
-  secureNote: CipherSecureNote | null;
-  sshKey: CipherSshKey | null;
-  bankAccount?: CipherBankAccount | null;
-  driversLicense?: CipherDriversLicense | null;
-  passport?: CipherPassport | null;
-  fields: CipherField[] | null;
-  passwordHistory: PasswordHistory[] | null;
-  reprompt: number;
-  key: string | null;
-  createdAt: string;
-  updatedAt: string;
-  archivedAt: string | null;
-  deletedAt: string | null;
-  /** Allow unknown fields from Bitwarden clients to be stored and passed through transparently. */
-  [key: string]: any;
-}
-
-// Folder model
-export interface Folder {
-  id: string;
-  userId: string;
-  name: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface Device {
+  // Ours; clients know a device by its identifier.
+  id: string;
   userId: string;
   deviceIdentifier: string;
   name: string;
@@ -251,7 +60,7 @@ export interface Device {
   encryptedUserKey: string | null;
   encryptedPublicKey: string | null;
   encryptedPrivateKey: string | null;
-  pushUuid: string | null;
+  pushUuid: string;
   pushToken: string | null;
   lastSeenAt: string | null;
   createdAt: string;
@@ -285,105 +94,6 @@ export type AccountPasskeyChallengeScope =
   | 'UpdateKeySet'
   | 'TwoFactorAuthentication'
   | 'TwoFactorCreate';
-
-export interface AccountPasskeyChallenge {
-  challengeHash: string;
-  scope: AccountPasskeyChallengeScope;
-  userId: string | null;
-  expiresAt: number;
-  usedAt: number | null;
-  createdAt: number;
-}
-
-
-
-
-
-
-export interface RefreshTokenRecord {
-  userId: string;
-  expiresAt: number;
-  deviceIdentifier: string | null;
-  deviceSessionStamp: string | null;
-  securityStamp: string | null;
-  createdAt: number | null;
-  lastUsedAt: number | null;
-  absoluteExpiresAt: number | null;
-  clientType: string | null;
-}
-
-
-export enum SendType {
-  Text = 0,
-  File = 1,
-}
-
-export enum SendAuthType {
-  Email = 0,
-  Password = 1,
-  None = 2,
-}
-
-export interface Send {
-  id: string;
-  userId: string;
-  type: SendType;
-  name: string;
-  notes: string | null;
-  data: string;
-  key: string;
-  passwordHash: string | null;
-  passwordSalt: string | null;
-  passwordIterations: number | null;
-  authType: SendAuthType;
-  emails: string | null;
-  maxAccessCount: number | null;
-  accessCount: number;
-  disabled: boolean;
-  hideEmail: boolean | null;
-  createdAt: string;
-  updatedAt: string;
-  expirationDate: string | null;
-  deletionDate: string;
-}
-
-export interface SendResponse {
-  id: string;
-  accessId: string;
-  type: number;
-  name: string;
-  notes: string | null;
-  text: any | null;
-  file: any | null;
-  key: string;
-  maxAccessCount: number | null;
-  accessCount: number;
-  password: string | null;
-  emails: string | null;
-  authType: SendAuthType;
-  disabled: boolean;
-  hideEmail: boolean | null;
-  revisionDate: string;
-  expirationDate: string | null;
-  deletionDate: string;
-  object: string;
-}
-
-// JWT Payload
-export interface JWTPayload {
-  sub: string;      // user id
-  email: string;
-  name: string | null;
-  email_verified: boolean; // required by mobile client
-  amr: string[];    // authentication methods reference - required by mobile client
-  sstamp: string;   // security stamp - invalidates token when user changes password
-  did?: string;     // device identifier - invalidates per-device sessions
-  dstamp?: string;  // device session stamp
-  iat: number;
-  exp: number;
-  iss: string;
-  premium: boolean;
-}
 
 // UserDecryptionOptions types for mobile client compatibility
 export interface MasterPasswordUnlockKdf {
@@ -419,48 +129,6 @@ export interface UserDecryptionOptions {
   WebAuthnPrfOption?: WebAuthnPrfDecryptionOption | null;
 }
 
-// API Response types
-export interface TokenResponse {
-  access_token: string;
-  expires_in: number;
-  token_type: string;
-  refresh_token?: string;
-  web_session?: boolean;
-  TwoFactorToken?: string;
-  Key: string;
-  PrivateKey: string | null;
-  Kdf: number;
-  KdfIterations: number;
-  KdfMemory?: number;
-  KdfParallelism?: number;
-  ForcePasswordReset: boolean;
-  ResetMasterPassword: boolean;
-  scope: string;
-  unofficialServer: boolean;
-  UserVerificationToken?: string;
-  userVerificationToken?: string;
-  MasterPasswordPolicy?: {
-    minComplexity: number;
-    minLength: number;
-    requireUpper: boolean;
-    requireLower: boolean;
-    requireNumbers: boolean;
-    requireSpecial: boolean;
-    enforceOnLogin: boolean;
-    Object: string;
-    object?: string;
-  } | null;
-  ApiUseKeyConnector?: boolean;
-  AccountKeys?: any | null;
-  accountKeys?: any | null;
-  UserDecryptionOptions: UserDecryptionOptions;
-  userDecryptionOptions?: UserDecryptionOptions;
-  VaultKeys?: {
-    symEncKey: string;
-    symMacKey: string;
-  };
-}
-
 export interface ProfileResponse {
   id: string;
   name: string | null;
@@ -487,96 +155,5 @@ export interface ProfileResponse {
   verifyDevices: boolean;
   role?: UserRole;
   status?: UserStatus;
-  object: string;
-}
-
-export interface CipherResponse {
-  id: string;
-  organizationId: string | null;
-  folderId: string | null;
-  type: number;
-  name: string | null;
-  notes: string | null;
-  favorite: boolean;
-  login: CipherLogin | null;
-  card: CipherCard | null;
-  identity: CipherIdentity | null;
-  secureNote: CipherSecureNote | null;
-  sshKey: CipherSshKey | null;
-  bankAccount: CipherBankAccount | null;
-  driversLicense: CipherDriversLicense | null;
-  passport: CipherPassport | null;
-  fields: CipherField[] | null;
-  passwordHistory: PasswordHistory[] | null;
-  reprompt: number;
-  organizationUseTotp: boolean;
-  creationDate: string;
-  revisionDate: string;
-  deletedDate: string | null;
-  archivedDate: string | null;
-  edit: boolean;
-  viewPassword: boolean;
-  permissions: CipherPermissions | null;
-  object: string;
-  collectionIds: string[];
-  attachments: any[] | null;
-  key: string | null;
-  encryptedFor: string | null;
-  /** Allow unknown fields to pass through to clients transparently. */
-  [key: string]: any;
-}
-
-export interface CipherPermissions {
-  delete: boolean;
-  restore: boolean;
-}
-
-export interface FolderResponse {
-  id: string;
-  name: string;
-  revisionDate: string;
-  creationDate: string;
-  object: string;
-}
-
-export interface SyncResponse {
-  profile: ProfileResponse;
-  folders: FolderResponse[];
-  collections: any[];
-  ciphers: CipherResponse[];
-  domains: any;
-  policies: any[];
-  policiesNew?: any[];
-  sends: SendResponse[];
-  UserDecryption?: {
-    MasterPasswordUnlock: MasterPasswordUnlock | null;
-    TrustedDeviceOption?: null;
-    KeyConnectorOption?: null;
-    WebAuthnPrfOption?: WebAuthnPrfDecryptionOption | null;
-    WebAuthnPrfOptions?: WebAuthnPrfDecryptionOption[];
-    V2UpgradeToken?: {
-      WrappedUserKey1: string;
-      WrappedUserKey2: string;
-    } | null;
-    UserKeyId?: string | null;
-    Object?: string;
-  } | null;
-  // PascalCase for desktop/browser clients
-  UserDecryptionOptions: UserDecryptionOptions | null;
-  // camelCase for Android client (SyncResponseJson uses @SerialName("userDecryption"))
-  userDecryption: {
-    masterPasswordUnlock: {
-      kdf: {
-        kdfType: number;
-        iterations: number;
-        memory: number | null;
-        parallelism: number | null;
-      };
-      masterKeyWrappedUserKey: string;
-      masterKeyEncryptedUserKey: string;
-      salt: string;
-    } | null;
-    userKeyId?: string | null;
-  } | null;
   object: string;
 }

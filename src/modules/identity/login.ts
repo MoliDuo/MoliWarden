@@ -127,7 +127,7 @@ export function tokenBody(deps: Deps, user: User, device: Device | null, extras:
 // registration heal.
 async function savePushToken(deps: Deps, user: User, device: Device, pushToken: string): Promise<void> {
   const saved = await setDevicePushToken(deps.db, user.id, device.deviceIdentifier, pushToken);
-  if (saved?.pushUuid) deps.push.register({ userId: user.id, identifier: saved.deviceIdentifier, type: saved.type, pushUuid: saved.pushUuid, pushToken });
+  if (saved) deps.push.register({ userId: user.id, identifier: saved.deviceIdentifier, type: saved.type, pushUuid: saved.pushUuid, pushToken });
 }
 
 export interface Login {

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { zipSync } from 'fflate';
-import { buildArchive, integrityOf, isArchiveName, isBlobName, readArchive, TABLE_NAMES, type Snapshot } from '../../src/modules/backup/archive';
+import { buildArchive, integrityOf, isArchiveName, isBlobName, KIND_NAMES, readArchive, type Snapshot } from '../../src/modules/backup/archive';
 import { checkEndpointUrl } from '../../src/modules/backup/endpoint';
 import { isDue, latestSlot } from '../../src/modules/backup/schedule';
 import { emptyRuntime } from '../../src/modules/backup/settings';
@@ -53,26 +53,27 @@ test('destinations must be public http(s) URLs', () => {
 });
 
 function snapshot(): Snapshot {
-  const empty = Object.fromEntries(TABLE_NAMES.map((table) => [table, []])) as unknown as Snapshot;
+  const empty = Object.fromEntries(KIND_NAMES.map((kind) => [kind, []])) as unknown as Snapshot;
   const now = '2026-05-04T00:00:00.000Z';
   return {
     ...empty,
-    users: [{ id: 'u1', email: 'a@example.com', master_password_hash: '$s$x', key: 'k', kdf_type: 0, kdf_iterations: 600000, security_stamp: 's', created_at: now, updated_at: now }],
-    ciphers: [{ id: 'c1', user_id: 'u1', organization_id: null, type: 1, data: '{}', created_at: now, updated_at: now }],
-    attachments: [{ id: 'a1', cipher_id: 'c1', file_name: 'f', size: 3, size_name: '3 Bytes', key: null }],
+    users: [{ id: 'u1', email: 'a@example.com', masterPasswordHash: '$s$x', key: 'k', kdfType: 0, kdfIterations: 600000, securityStamp: 's', createdAt: now, updatedAt: now }],
+    ciphers: [{ id: 'c1', userId: 'u1', organizationId: null, type: 1, data: { name: 'n' }, createdAt: now, updatedAt: now }],
+    attachments: [{ id: 'a1', cipherId: 'c1', fileName: 'f', size: 3, key: null, uploadedAt: now, createdAt: now }],
   };
 }
 
 test('archives round-trip and name their checksum', () => {
   const archive = buildArchive(snapshot(), { date: new Date('2026-05-04T01:02:03Z'), timeZone: 'Asia/Shanghai', includeAttachments: true });
-  assert.match(archive.fileName, /^nodewarden_backup_20260504_090203_[0-9a-f]{5}\.zip$/);
+  assert.match(archive.fileName, /^moliwarden_backup_20260504_090203_[0-9a-f]{5}\.zip$/);
   assert.ok(isArchiveName(archive.fileName));
   assert.equal(integrityOf(archive.bytes, archive.fileName).matches, true);
   assert.equal(integrityOf(archive.bytes, archive.fileName.replace(/_[0-9a-f]{5}\.zip/, '_00000.zip')).matches, false);
 
   const parsed = readArchive(archive.bytes);
-  assert.equal(parsed.snapshot.users[0].verify_devices, 0);
-  assert.equal(parsed.snapshot.users[0].role, 'user');
+  // Fields a record leaves out read as null; unknown ones are dropped.
+  assert.equal(parsed.snapshot.users[0].verifyDevices, null);
+  assert.deepEqual(parsed.snapshot.ciphers[0].data, { name: 'n' });
   assert.equal(parsed.external.get('c1/a1'), 'c1/a1');
   assert.equal(parsed.files.size, 0);
 
@@ -82,20 +83,21 @@ test('archives round-trip and name their checksum', () => {
 
 test('archives with unexpected content are refused', () => {
   const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
-  const manifest = { formatVersion: 1, attachmentBlobs: [] };
+  const manifest = { formatVersion: 2, attachmentBlobs: [] };
   const zip = (files: Record<string, Uint8Array>) => zipSync(files) as Uint8Array<ArrayBuffer>;
-  assert.throws(() => readArchive(zip({ 'manifest.json': encode(manifest), 'db.json': encode(snapshot()), '../evil': new Uint8Array(1) })), /unexpected file/);
-  assert.throws(() => readArchive(zip({ 'manifest.json': encode({ formatVersion: 9 }), 'db.json': encode(snapshot()) })), /Unsupported backup format/);
+  assert.throws(() => readArchive(zip({ 'manifest.json': encode(manifest), 'vault.json': encode(snapshot()), '../evil': new Uint8Array(1) })), /unexpected file/);
+  assert.throws(() => readArchive(zip({ 'manifest.json': encode({ formatVersion: 9 }), 'vault.json': encode(snapshot()) })), /Unsupported backup format/);
+  // Archives of the earlier format point to the converter.
+  assert.throws(() => readArchive(zip({ 'manifest.json': encode({ formatVersion: 1 }), 'db.json': encode({}) })), /backup:convert-v1/);
   // An attachment without its file.
-  assert.throws(() => readArchive(zip({ 'manifest.json': encode(manifest), 'db.json': encode(snapshot()) })), /file of attachment c1\/a1 is missing/);
-  const twoOwners = snapshot();
-  twoOwners.ciphers[0].organization_id = 'o1';
-  twoOwners.attachments = [];
-  assert.throws(() => readArchive(zip({ 'manifest.json': encode(manifest), 'db.json': encode(twoOwners) })), /single owner/);
+  assert.throws(() => readArchive(zip({ 'manifest.json': encode(manifest), 'vault.json': encode(snapshot()) })), /file of attachment c1\/a1 is missing/);
   const nested = snapshot();
   nested.users[0].name = { evil: true };
   nested.attachments = [];
-  assert.throws(() => readArchive(zip({ 'manifest.json': encode(manifest), 'db.json': encode(nested) })), /malformed value/);
+  assert.throws(() => readArchive(zip({ 'manifest.json': encode(manifest), 'vault.json': encode(nested) })), /users has a malformed name/);
+  const missing = snapshot() as Partial<Snapshot>;
+  delete missing.folders;
+  assert.throws(() => readArchive(zip({ 'manifest.json': encode(manifest), 'vault.json': encode(missing) })), /folders is missing/);
 
   assert.equal(isBlobName('c1/a1'), true);
   for (const name of ['c1', '../a1', 'c1/..', 'sends/s/f', 'c1/a 1']) assert.equal(isBlobName(name), false, name);

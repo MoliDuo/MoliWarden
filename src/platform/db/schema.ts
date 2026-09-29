@@ -1,58 +1,148 @@
-import type { ColumnType, Insertable, Selectable, Updateable } from 'kysely';
+import type { ColumnType, Generated, Insertable, Selectable, Updateable } from 'kysely';
 
-// The tables as they exist today (created by src/services/storage-schema.ts).
-// Timestamps are ISO strings or epoch milliseconds, flags are 0/1 BIGINTs:
-// the repositories translate at the boundary, so the services never see it.
+// The tables as migrations/ creates them. Timestamps read and write as ISO
+// strings (see createPool), JSON columns are written as JSON text.
 
-type Flag = ColumnType<number, number | undefined, number>;
+type Timestamp = ColumnType<string, string, string>;
+type Json<T> = ColumnType<T, string, string>;
 
-export interface ConfigTable {
+export interface SettingsTable {
   key: string;
-  value: string;
+  value: Json<unknown>;
+}
+
+export interface JobLeasesTable {
+  name: string;
+  token: string;
+  expires_at: Timestamp;
 }
 
 export interface UsersTable {
   id: string;
   email: string;
   name: string | null;
-  master_password_hint: string | null;
   master_password_hash: string;
+  master_password_hint: string | null;
   key: string;
-  private_key: string | null;
+  key_id: string | null;
   public_key: string | null;
+  private_key: string | null;
   kdf_type: number;
   kdf_iterations: number;
   kdf_memory: number | null;
   kdf_parallelism: number | null;
   security_stamp: string;
-  role: ColumnType<string, string | undefined, string>;
-  status: ColumnType<string, string | undefined, string>;
-  verify_devices: Flag;
-  totp_secret: string | null;
-  totp_recovery_code: string | null;
-  yubikey_key1: string | null;
-  yubikey_key2: string | null;
-  yubikey_key3: string | null;
-  yubikey_key4: string | null;
-  yubikey_key5: string | null;
-  yubikey_nfc: Flag;
+  role: Generated<'admin' | 'user'>;
+  status: Generated<'active' | 'banned'>;
+  verify_devices: Generated<boolean>;
   api_key: string | null;
-  key_id: string | null;
-  created_at: string;
-  updated_at: string;
+  recovery_code: string | null;
+  custom_domains: ColumnType<unknown[], string | undefined, string>;
+  excluded_global_domains: ColumnType<number[], number[] | undefined, number[]>;
+  revision_date: Timestamp;
+  created_at: Timestamp;
+  updated_at: Timestamp;
 }
 
-export interface DomainSettingsTable {
+export interface TwoFactorProvidersTable {
   user_id: string;
-  equivalent_domains: ColumnType<string, string | undefined, string>;
-  custom_equivalent_domains: ColumnType<string, string | undefined, string>;
-  excluded_global_equivalent_domains: ColumnType<string, string | undefined, string>;
-  updated_at: string;
+  type: number;
+  data: Json<Record<string, unknown>>;
 }
 
-export interface UserRevisionsTable {
+export interface TwoFactorRememberTokensTable {
+  token_hash: Buffer;
   user_id: string;
-  revision_date: string;
+  device_identifier: string;
+  security_stamp: string;
+  expires_at: Timestamp;
+}
+
+export interface DevicesTable {
+  id: Generated<string>;
+  user_id: string;
+  identifier: string;
+  name: string;
+  type: number;
+  note: string | null;
+  session_stamp: string;
+  push_uuid: string;
+  push_token: string | null;
+  encrypted_user_key: string | null;
+  encrypted_public_key: string | null;
+  encrypted_private_key: string | null;
+  last_seen_at: Timestamp | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface RefreshTokensTable {
+  token_hash: Buffer;
+  family_id: string;
+  user_id: string;
+  device_id: string | null;
+  device_session_stamp: string | null;
+  security_stamp: string;
+  client_type: string;
+  created_at: Timestamp;
+  last_used_at: Timestamp;
+  expires_at: Timestamp;
+  absolute_expires_at: Timestamp;
+  rotated_at: Timestamp | null;
+}
+
+export interface WebauthnCredentialsTable {
+  id: string;
+  user_id: string;
+  purpose: 'login' | 'twoFactor';
+  slot: number | null;
+  name: string;
+  credential_id: string;
+  public_key: string;
+  counter: Generated<number>;
+  type: string | null;
+  aa_guid: string | null;
+  transports: string[] | null;
+  supports_prf: Generated<boolean>;
+  encrypted_user_key: string | null;
+  encrypted_public_key: string | null;
+  encrypted_private_key: string | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface WebauthnChallengesTable {
+  challenge_hash: Buffer;
+  scope: string;
+  user_id: string | null;
+  expires_at: Timestamp;
+  used_at: Timestamp | null;
+}
+
+export interface ConsumedTokensTable {
+  key: string;
+  expires_at: Timestamp;
+}
+
+export interface RateLimitsTable {
+  key: string;
+  count: number;
+  expires_at: Timestamp;
+}
+
+export interface LoginFailuresTable {
+  key: string;
+  failures: number;
+  locked_until: Timestamp | null;
+  updated_at: Timestamp;
+}
+
+export interface FoldersTable {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
 }
 
 export interface OrganizationsTable {
@@ -61,39 +151,39 @@ export interface OrganizationsTable {
   billing_email: string;
   public_key: string | null;
   private_key: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
 }
 
-export interface OrgMembershipsTable {
+export interface MembershipsTable {
   id: string;
-  org_id: string;
+  organization_id: string;
   user_id: string;
   status: number;
   type: number;
-  access_all: Flag;
-  akey: string | null;
+  access_all: Generated<boolean>;
+  key: string | null;
   revoked_status: number | null;
   invited_by: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
 }
 
 export interface CollectionsTable {
   id: string;
-  org_id: string;
+  organization_id: string;
   name: string;
   external_id: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
 }
 
-export interface CollectionMembersTable {
+export interface CollectionGrantsTable {
   collection_id: string;
   membership_id: string;
-  read_only: Flag;
-  hide_passwords: Flag;
-  manage: Flag;
+  read_only: Generated<boolean>;
+  hide_passwords: Generated<boolean>;
+  manage: Generated<boolean>;
 }
 
 export interface CiphersTable {
@@ -101,17 +191,12 @@ export interface CiphersTable {
   user_id: string | null;
   organization_id: string | null;
   type: number;
-  folder_id: string | null;
-  name: string | null;
-  notes: string | null;
-  favorite: Flag;
-  data: string;
-  reprompt: number | null;
   key: string | null;
-  created_at: string;
-  updated_at: string;
-  archived_at: string | null;
-  deleted_at: string | null;
+  reprompt: Generated<number>;
+  data: Json<Record<string, unknown>>;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+  deleted_at: Timestamp | null;
 }
 
 export interface CipherCollectionsTable {
@@ -123,110 +208,42 @@ export interface CipherUserStateTable {
   cipher_id: string;
   user_id: string;
   folder_id: string | null;
-  favorite: Flag;
-  archived_at: string | null;
-}
-
-export interface FoldersTable {
-  id: string;
-  user_id: string;
-  name: string;
-  created_at: string;
-  updated_at: string;
+  favorite: Generated<boolean>;
+  archived_at: Timestamp | null;
 }
 
 export interface AttachmentsTable {
   id: string;
   cipher_id: string;
   file_name: string;
-  size: number;
-  size_name: string;
   key: string | null;
+  size: number;
+  uploaded_at: Timestamp | null;
+  created_at: Timestamp;
 }
 
 export interface SendsTable {
   id: string;
   user_id: string;
   type: number;
-  name: string;
-  notes: string | null;
-  data: string;
   key: string;
+  data: Json<Record<string, unknown>>;
   password_hash: string | null;
   password_salt: string | null;
   password_iterations: number | null;
-  auth_type: ColumnType<number, number | undefined, number>;
-  emails: string | null;
   max_access_count: number | null;
-  access_count: ColumnType<number, number | undefined, number>;
-  disabled: Flag;
-  hide_email: number | null;
-  created_at: string;
-  updated_at: string;
-  expiration_date: string | null;
-  deletion_date: string;
-}
-
-export interface RefreshTokensTable {
-  token: string;
-  user_id: string;
-  expires_at: number;
-  device_identifier: string | null;
-  device_session_stamp: string | null;
-  security_stamp: string | null;
-  created_at: number | null;
-  last_used_at: number | null;
-  absolute_expires_at: number | null;
-  client_type: string | null;
-  family_id: string | null;
-  rotated_at: number | null;
-}
-
-export interface InvitesTable {
-  code: string;
-  created_by: string;
-  used_by: string | null;
-  expires_at: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface AuditLogsTable {
-  id: string;
-  actor_user_id: string | null;
-  action: string;
-  category: ColumnType<string, string | undefined, string>;
-  level: ColumnType<string, string | undefined, string>;
-  target_type: string | null;
-  target_id: string | null;
-  metadata: string | null;
-  created_at: string;
-}
-
-export interface DevicesTable {
-  user_id: string;
-  device_identifier: string;
-  name: string;
-  type: number;
-  session_stamp: string | null;
-  encrypted_user_key: string | null;
-  encrypted_public_key: string | null;
-  encrypted_private_key: string | null;
-  push_uuid: string | null;
-  push_token: string | null;
-  banned: Flag;
-  banned_at: string | null;
-  device_note: string | null;
-  last_seen_at: string | null;
-  created_at: string;
-  updated_at: string;
+  access_count: Generated<number>;
+  disabled: Generated<boolean>;
+  hide_email: Generated<boolean>;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+  expiration_date: Timestamp | null;
+  deletion_date: Timestamp;
 }
 
 export interface AuthRequestsTable {
   id: string;
   user_id: string;
-  organization_id: string | null;
   type: number;
   request_device_identifier: string;
   request_device_type: number;
@@ -236,102 +253,60 @@ export interface AuthRequestsTable {
   access_code: string;
   public_key: string;
   key: string | null;
-  master_password_hash: string | null;
-  approved: number | null;
-  creation_date: string;
-  response_date: string | null;
-  authentication_date: string | null;
+  approved: boolean | null;
+  created_at: Timestamp;
+  responded_at: Timestamp | null;
+  authenticated_at: Timestamp | null;
 }
 
-export interface TrustedTwoFactorDeviceTokensTable {
-  token: string;
-  user_id: string;
-  device_identifier: string;
-  expires_at: number;
-  security_stamp: string | null;
+export interface InvitesTable {
+  code: string;
+  created_by: string;
+  used_by: string | null;
+  status: 'active' | 'used';
+  expires_at: Timestamp;
+  created_at: Timestamp;
+  updated_at: Timestamp;
 }
 
-export interface TotpLoginReplaysTable {
-  user_id: string;
-  time_counter: number;
-  consumed_at: number;
-}
-
-export interface WebauthnCredentialsTable {
+export interface AuditLogsTable {
   id: string;
-  user_id: string;
-  purpose: ColumnType<string, string | undefined, string>;
-  name: string;
-  public_key: string;
-  credential_id: string;
-  counter: ColumnType<number, number | undefined, number>;
-  type: string | null;
-  aa_guid: string | null;
-  transports: string | null;
-  encrypted_user_key: string | null;
-  encrypted_public_key: string | null;
-  encrypted_private_key: string | null;
-  supports_prf: Flag;
-  slot: number | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface WebauthnChallengesTable {
-  challenge_hash: string;
-  scope: string;
-  user_id: string | null;
-  expires_at: number;
-  used_at: number | null;
-  created_at: number;
-}
-
-export interface LoginAttemptsIpTable {
-  ip: string;
-  attempts: number;
-  locked_until: number | null;
-  updated_at: number;
-}
-
-export interface RateLimitBucketsTable {
-  bucket_key: string;
-  count: number;
-  expires_at: number;
-  updated_at: number;
-}
-
-export interface UsedAttachmentDownloadTokensTable {
-  jti: string;
-  expires_at: number;
+  actor_user_id: string | null;
+  action: string;
+  category: string;
+  level: string;
+  target_type: string | null;
+  target_id: string | null;
+  metadata: Json<Record<string, unknown>> | null;
+  created_at: Timestamp;
 }
 
 export interface Database {
-  config: ConfigTable;
+  settings: SettingsTable;
+  job_leases: JobLeasesTable;
   users: UsersTable;
-  domain_settings: DomainSettingsTable;
-  user_revisions: UserRevisionsTable;
+  two_factor_providers: TwoFactorProvidersTable;
+  two_factor_remember_tokens: TwoFactorRememberTokensTable;
+  devices: DevicesTable;
+  refresh_tokens: RefreshTokensTable;
+  webauthn_credentials: WebauthnCredentialsTable;
+  webauthn_challenges: WebauthnChallengesTable;
+  consumed_tokens: ConsumedTokensTable;
+  rate_limits: RateLimitsTable;
+  login_failures: LoginFailuresTable;
+  folders: FoldersTable;
   organizations: OrganizationsTable;
-  org_memberships: OrgMembershipsTable;
+  memberships: MembershipsTable;
   collections: CollectionsTable;
-  collection_members: CollectionMembersTable;
+  collection_grants: CollectionGrantsTable;
   ciphers: CiphersTable;
   cipher_collections: CipherCollectionsTable;
   cipher_user_state: CipherUserStateTable;
-  folders: FoldersTable;
   attachments: AttachmentsTable;
   sends: SendsTable;
-  refresh_tokens: RefreshTokensTable;
+  auth_requests: AuthRequestsTable;
   invites: InvitesTable;
   audit_logs: AuditLogsTable;
-  devices: DevicesTable;
-  auth_requests: AuthRequestsTable;
-  trusted_two_factor_device_tokens: TrustedTwoFactorDeviceTokensTable;
-  totp_login_replays: TotpLoginReplaysTable;
-  webauthn_credentials: WebauthnCredentialsTable;
-  webauthn_challenges: WebauthnChallengesTable;
-  login_attempts_ip: LoginAttemptsIpTable;
-  rate_limit_buckets: RateLimitBucketsTable;
-  used_attachment_download_tokens: UsedAttachmentDownloadTokensTable;
 }
 
 export type Row<T extends keyof Database> = Selectable<Database[T]>;

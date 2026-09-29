@@ -59,7 +59,7 @@ interface ChallengeClaims {
 const ttlSeconds = (scope: AccountPasskeyChallengeScope) =>
   scope === 'CreateCredential' || scope === 'TwoFactorCreate' ? 7 * 60 : 17 * 60;
 
-const challengeHash = (challenge: string) => base64url(sha256(challenge));
+const challengeHash = (challenge: string) => sha256(challenge);
 
 // The key set the client wraps with the passkey's PRF output.
 export interface PrfKeySet {
@@ -71,8 +71,7 @@ export interface PrfKeySet {
 export class PasskeyRejected extends Error {}
 
 async function remember(db: Executor, scope: AccountPasskeyChallengeScope, challenge: string, userId: string | null): Promise<void> {
-  const now = Date.now();
-  await saveChallenge(db, challengeHash(challenge), scope, userId, now + ttlSeconds(scope) * 1000, now);
+  await saveChallenge(db, challengeHash(challenge), scope, userId, new Date(Date.now() + ttlSeconds(scope) * 1000));
 }
 
 function signChallenge(deps: Deps, claims: ChallengeClaims): string {
@@ -85,7 +84,7 @@ function readChallenge(deps: Deps, token: string, scope: AccountPasskeyChallenge
 }
 
 async function consume(db: Executor, challenge: string, scope: AccountPasskeyChallengeScope, userId: string | null): Promise<void> {
-  if (!(await consumeChallenge(db, challengeHash(challenge), scope, userId, Date.now()))) {
+  if (!(await consumeChallenge(db, challengeHash(challenge), scope, userId))) {
     throw new PasskeyRejected('Passkey challenge has expired or was already used');
   }
 }
@@ -350,7 +349,7 @@ export async function verifySecurityKeyAssertion(deps: Deps, request: Request, u
   if (!response || !challenge) return false;
   const key = await findPasskeyByCredentialId(deps.db, response.rawId);
   if (!key || key.userId !== userId || key.purpose !== 'twoFactor') return false;
-  if (!(await consumeChallenge(deps.db, challengeHash(challenge), 'TwoFactorAuthentication', userId, Date.now()))) return false;
+  if (!(await consumeChallenge(deps.db, challengeHash(challenge), 'TwoFactorAuthentication', userId))) return false;
 
   const { origins, rpId } = relyingParty(deps.config, request);
   const counter = await verifyAssertion({

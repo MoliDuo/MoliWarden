@@ -20,7 +20,6 @@ export interface SendFile {
   id: string;
   fileName: string;
   size: number;
-  sizeName: string;
 }
 
 // Clients send a hash of the Send password, stretched with the Send key.

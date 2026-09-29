@@ -4,9 +4,9 @@ import type { Deps } from '../../main/deps';
 import { listFolders, saveFolders, type Folder } from '../folders/repo';
 import { PushType } from '../push/service';
 import { commit } from '../sync/changes';
-import { saveCiphers } from './repo';
+import { saveCiphers, saveUserStates } from './repo';
 import type { ImportInput } from './schemas';
-import { newCipher } from './writes';
+import { newCipher, stateOf } from './writes';
 
 // Imports into the personal vault, all or nothing. Large imports arrive in
 // several requests: later ones may put items into the folders an earlier
@@ -30,6 +30,7 @@ export async function importCiphers(deps: Deps, caller: Caller, input: ImportInp
   await commit(deps, caller, date, { orgIds: [], push: { type: PushType.SyncVault } }, async (tx) => {
     await saveFolders(tx, folders);
     await saveCiphers(tx, ciphers);
+    await saveUserStates(tx, userId, ciphers.map(stateOf));
   });
   return {
     object: 'import-result',

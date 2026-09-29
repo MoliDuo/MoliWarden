@@ -37,7 +37,7 @@ type SessionClaims = Pick<AccessClaims, 'sub' | 'sstamp' | 'did' | 'dstamp'>;
 // from the user's `policy` budget. Nothing is cached, so a ban or a logout
 // holds on every instance immediately.
 async function actAs(deps: Deps, c: Context<AuthedEnv>, claims: SessionClaims, policy: RatePolicy): Promise<void> {
-  const session = await findSession(deps.db, claims.sub, claims.did ?? null);
+  const session = await findSession(deps.db, claims.sub, claims.did ? { identifier: claims.did } : null);
   if (!session || session.user.status !== 'active' || session.user.securityStamp !== claims.sstamp) {
     throw unauthorized();
   }

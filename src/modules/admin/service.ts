@@ -43,7 +43,7 @@ async function requireOtherUser(deps: Deps, caller: Caller, id: string, selfMess
 
 export async function usersJson(deps: Deps) {
   const users = await listUsers(deps.db);
-  const withSecondFactor = await usersWithSecondFactor(deps.db, users);
+  const withSecondFactor = await usersWithSecondFactor(deps.db, users.map((user) => user.id));
   return listJson(
     users.map((user) => ({
       id: user.id,

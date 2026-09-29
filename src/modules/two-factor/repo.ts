@@ -1,39 +1,107 @@
 import type { Executor } from '../../platform/db';
+import { readSetting, writeSetting } from '../../platform/db/settings';
 import type { YubicoCredentials } from './yubico';
+
+// --- Providers ---------------------------------------------------------------
+
+// The authenticator app and YubiKeys a user set up. Security keys are
+// WebAuthn credentials and live with the passkeys.
+
+export const TOTP = 0;
+export const YUBIKEY = 3;
+
+export interface TotpData {
+  secret: string;
+}
+
+export interface YubiKeyData {
+  // The public ids in the five slots clients show, empty ones null.
+  keys: (string | null)[];
+  nfc: boolean;
+}
+
+export async function findProviders(db: Executor, userId: string): Promise<{ totp: TotpData | null; yubiKey: YubiKeyData | null }> {
+  const rows = await db.selectFrom('two_factor_providers').select(['type', 'data']).where('user_id', '=', userId).execute();
+  const data = (type: number) => rows.find((row) => row.type === type)?.data ?? null;
+  return { totp: data(TOTP) as TotpData | null, yubiKey: data(YUBIKEY) as YubiKeyData | null };
+}
+
+export async function saveProvider(db: Executor, userId: string, type: typeof TOTP, data: TotpData): Promise<void>;
+export async function saveProvider(db: Executor, userId: string, type: typeof YUBIKEY, data: YubiKeyData): Promise<void>;
+export async function saveProvider(db: Executor, userId: string, type: number, data: TotpData | YubiKeyData): Promise<void> {
+  const json = JSON.stringify(data);
+  await db
+    .insertInto('two_factor_providers')
+    .values({ user_id: userId, type, data: json })
+    .onConflict((oc) => oc.columns(['user_id', 'type']).doUpdateSet({ data: json }))
+    .execute();
+}
+
+// One provider, or all of them.
+export async function deleteProviders(db: Executor, userId: string, type?: number): Promise<void> {
+  let query = db.deleteFrom('two_factor_providers').where('user_id', '=', userId);
+  if (type !== undefined) query = query.where('type', '=', type);
+  await query.execute();
+}
+
+// Which of the users have a provider or a security key, in one query.
+export async function usersWithSecondFactor(db: Executor, userIds: string[]): Promise<Set<string>> {
+  if (!userIds.length) return new Set();
+  const rows = await db
+    .selectFrom('two_factor_providers')
+    .select('user_id')
+    .where('user_id', 'in', userIds)
+    .union((eb) =>
+      eb
+        .selectFrom('webauthn_credentials')
+        .select('user_id')
+        .where('user_id', 'in', userIds)
+        .where('purpose', '=', 'twoFactor'),
+    )
+    .execute();
+  return new Set(rows.map((row) => row.user_id));
+}
+
+// --- Remembered devices ------------------------------------------------------
 
 // Devices that may skip two-step login ("remember me"), stored under a hash
 // of the token and bound to the security stamp they were issued under.
 
 export async function saveRememberToken(
   db: Executor,
-  key: string,
+  tokenHash: Buffer,
   userId: string,
   deviceIdentifier: string,
   securityStamp: string,
-  expiresAt: number,
+  expiresAt: Date,
 ): Promise<void> {
   await db
-    .insertInto('trusted_two_factor_device_tokens')
-    .values({ token: key, user_id: userId, device_identifier: deviceIdentifier, security_stamp: securityStamp, expires_at: expiresAt })
+    .insertInto('two_factor_remember_tokens')
+    .values({
+      token_hash: tokenHash,
+      user_id: userId,
+      device_identifier: deviceIdentifier,
+      security_stamp: securityStamp,
+      expires_at: expiresAt.toISOString(),
+    })
     .execute();
 }
 
 export async function hasRememberToken(
   db: Executor,
-  key: string,
+  tokenHash: Buffer,
   userId: string,
   deviceIdentifier: string,
   securityStamp: string,
-  now: number,
 ): Promise<boolean> {
   const row = await db
-    .selectFrom('trusted_two_factor_device_tokens')
-    .select('token')
-    .where('token', '=', key)
+    .selectFrom('two_factor_remember_tokens')
+    .select('user_id')
+    .where('token_hash', '=', tokenHash)
     .where('user_id', '=', userId)
     .where('device_identifier', '=', deviceIdentifier)
     .where('security_stamp', '=', securityStamp)
-    .where('expires_at', '>=', now)
+    .where('expires_at', '>=', new Date().toISOString())
     .executeTakeFirst();
   return !!row;
 }
@@ -42,33 +110,26 @@ export async function hasRememberToken(
 export async function listRememberedDevices(
   db: Executor,
   userId: string,
-  now: number,
-): Promise<Array<{ identifier: string; expiresAt: number; tokenCount: number }>> {
+): Promise<Array<{ identifier: string; expiresAt: string; tokenCount: number }>> {
   const rows = await db
-    .selectFrom('trusted_two_factor_device_tokens')
+    .selectFrom('two_factor_remember_tokens')
     .select((eb) => ['device_identifier', eb.fn.max('expires_at').as('expires_at'), eb.fn.countAll<string>().as('token_count')])
     .where('user_id', '=', userId)
-    .where('expires_at', '>=', now)
+    .where('expires_at', '>=', new Date().toISOString())
     .groupBy('device_identifier')
     .orderBy('expires_at', 'desc')
     .execute();
-  return rows.map((row) => ({ identifier: row.device_identifier, expiresAt: Number(row.expires_at), tokenCount: Number(row.token_count) }));
+  return rows.map((row) => ({ identifier: row.device_identifier, expiresAt: row.expires_at, tokenCount: Number(row.token_count) }));
 }
 
 // Moves the expiry of a device's unexpired tokens. Returns how many there were.
-export async function extendRememberTokens(
-  db: Executor,
-  userId: string,
-  deviceIdentifier: string,
-  expiresAt: number,
-  now: number,
-): Promise<number> {
+export async function extendRememberTokens(db: Executor, userId: string, deviceIdentifier: string, expiresAt: Date): Promise<number> {
   const result = await db
-    .updateTable('trusted_two_factor_device_tokens')
-    .set({ expires_at: expiresAt })
+    .updateTable('two_factor_remember_tokens')
+    .set({ expires_at: expiresAt.toISOString() })
     .where('user_id', '=', userId)
     .where('device_identifier', '=', deviceIdentifier)
-    .where('expires_at', '>=', now)
+    .where('expires_at', '>=', new Date().toISOString())
     .executeTakeFirst();
   return Number(result.numUpdatedRows);
 }
@@ -76,63 +137,22 @@ export async function extendRememberTokens(
 // Forgets the tokens of the given devices, or of all the user's devices.
 export async function deleteRememberTokens(db: Executor, userId: string, deviceIdentifiers?: string[]): Promise<number> {
   if (deviceIdentifiers && !deviceIdentifiers.length) return 0;
-  let query = db.deleteFrom('trusted_two_factor_device_tokens').where('user_id', '=', userId);
+  let query = db.deleteFrom('two_factor_remember_tokens').where('user_id', '=', userId);
   if (deviceIdentifiers) query = query.where('device_identifier', 'in', deviceIdentifiers);
   const result = await query.executeTakeFirst();
   return Number(result.numDeletedRows);
 }
 
-// Records an authenticator time step as used. False if it was used before.
-export async function useTotpStep(db: Executor, userId: string, step: number, now: number): Promise<boolean> {
-  const result = await db
-    .insertInto('totp_login_replays')
-    .values({ user_id: userId, time_counter: step, consumed_at: now })
-    .onConflict((oc) => oc.columns(['user_id', 'time_counter']).doNothing())
-    .executeTakeFirst();
-  return Number(result.numInsertedOrUpdatedRows ?? 0n) > 0;
-}
+// --- Yubico ------------------------------------------------------------------
 
-// The server's Yubico API credentials live in the config table.
-
-const CLIENT_ID = 'globalSettings__yubico__clientId';
-const SECRET_KEY = 'globalSettings__yubico__key';
-export const YUBICO_BOOTSTRAP_CLAIM = 'yubico.bootstrap.claim.v1';
+// The server's credentials for Yubico's OTP validation API.
+const YUBICO_CREDENTIALS = 'yubico.credentials';
 
 export async function findYubicoCredentials(db: Executor): Promise<YubicoCredentials | null> {
-  const rows = await db.selectFrom('config').selectAll().where('key', 'in', [CLIENT_ID, SECRET_KEY]).execute();
-  const value = (key: string) => rows.find((row) => row.key === key)?.value.trim() ?? '';
-  const clientId = value(CLIENT_ID);
-  const secretKey = value(SECRET_KEY);
-  return clientId && secretKey ? { clientId, secretKey } : null;
+  const credentials = await readSetting<YubicoCredentials>(db, YUBICO_CREDENTIALS);
+  return credentials?.clientId && credentials.secretKey ? credentials : null;
 }
 
 export async function saveYubicoCredentials(db: Executor, credentials: YubicoCredentials): Promise<void> {
-  await db
-    .insertInto('config')
-    .values([
-      { key: CLIENT_ID, value: credentials.clientId },
-      { key: SECRET_KEY, value: credentials.secretKey },
-    ])
-    .onConflict((oc) => oc.column('key').doUpdateSet((eb) => ({ value: eb.ref('excluded.value') })))
-    .execute();
-}
-
-// A short-lived claim, so that only one request asks Yubico for new
-// credentials at a time. Returns the claim, or null if another holds it.
-export async function claimYubicoBootstrap(db: Executor, now: number, ttlMs: number): Promise<string | null> {
-  const current = await db.selectFrom('config').select('value').where('key', '=', YUBICO_BOOTSTRAP_CLAIM).executeTakeFirst();
-  if (current && Number(current.value.split(':')[0]) < now) {
-    await db.deleteFrom('config').where('key', '=', YUBICO_BOOTSTRAP_CLAIM).where('value', '=', current.value).execute();
-  }
-  const claim = `${now + ttlMs}:${crypto.randomUUID()}`;
-  const result = await db
-    .insertInto('config')
-    .values({ key: YUBICO_BOOTSTRAP_CLAIM, value: claim })
-    .onConflict((oc) => oc.column('key').doNothing())
-    .executeTakeFirst();
-  return Number(result.numInsertedOrUpdatedRows ?? 0n) > 0 ? claim : null;
-}
-
-export async function releaseYubicoBootstrap(db: Executor, claim: string): Promise<void> {
-  await db.deleteFrom('config').where('key', '=', YUBICO_BOOTSTRAP_CLAIM).where('value', '=', claim).execute();
+  await writeSetting(db, YUBICO_CREDENTIALS, { clientId: credentials.clientId, secretKey: credentials.secretKey });
 }

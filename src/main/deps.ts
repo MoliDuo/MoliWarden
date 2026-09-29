@@ -2,8 +2,7 @@ import { attachDatabasePool } from '@vercel/functions';
 import type pg from 'pg';
 import { createPushService, type PushService } from '../modules/push/service';
 import { createBlobStore, type BlobStore } from '../platform/blob';
-import { createDb, type Db } from '../platform/db';
-import { createPgPool } from '../platform/pg-d1';
+import { createDb, createPool, type Db } from '../platform/db';
 import { createRateLimiter, type RateLimiter } from '../platform/rate-limit';
 import { createTokenService, type TokenService } from '../platform/tokens';
 import type { Config } from './config';
@@ -20,7 +19,7 @@ export interface Deps {
 }
 
 export function createDeps(config: Config): { deps: Deps; dispose(): Promise<void> } {
-  const pool = createPgPool({ connectionString: config.databaseUrl, max: config.databasePoolMax });
+  const pool = createPool({ connectionString: config.databaseUrl, max: config.databasePoolMax });
   try {
     // Lets Vercel Fluid compute close idle connections before suspending.
     attachDatabasePool(pool);

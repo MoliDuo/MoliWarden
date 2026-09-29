@@ -1,7 +1,8 @@
 import { sql } from 'kysely';
 import type { Executor } from '../../platform/db';
+import { readSetting, writeSetting } from '../../platform/db/settings';
 
-// Audit log entries, and how long they are kept (in the config table).
+// Audit log entries, and how long they are kept.
 
 export interface AuditLogRow {
   id: string;
@@ -11,6 +12,7 @@ export interface AuditLogRow {
   level: string;
   targetType: string | null;
   targetId: string | null;
+  // A JSON object, as text.
   metadata: string | null;
   createdAt: string;
 }
@@ -35,7 +37,7 @@ export interface AuditRetention {
   maxEntries: number | null;
 }
 
-const RETENTION_KEY = 'audit.logs.settings.v1';
+const RETENTION_KEY = 'audit.retention';
 
 export async function insertAuditLog(db: Executor, entry: AuditLogRow): Promise<void> {
   await db
@@ -59,7 +61,7 @@ function filtered(db: Executor, filter: AuditLogFilter) {
     .selectFrom('audit_logs as l')
     .leftJoin('users as actor', 'actor.id', 'l.actor_user_id')
     .leftJoin('users as target', (join) =>
-      join.onRef('target.id', '=', 'l.target_id').on('l.target_type', '=', 'user'),
+      join.on(sql`target.id::text`, '=', sql.ref('l.target_id')).on('l.target_type', '=', 'user'),
     );
   if (filter.from) query = query.where('l.created_at', '>=', filter.from);
   if (filter.to) query = query.where('l.created_at', '<=', filter.to);
@@ -70,7 +72,7 @@ function filtered(db: Executor, filter: AuditLogFilter) {
     query = query.where((eb) =>
       eb.or(
         [sql.ref('l.action'), sql.ref('l.actor_user_id'), sql.ref('l.target_type'), sql.ref('l.target_id'), sql.ref('actor.email'), sql.ref('target.email')].map(
-          (column) => eb(sql`lower(coalesce(${column}, ''))`, 'like', like),
+          (column) => eb(sql`lower(coalesce(${column}::text, ''))`, 'like', like),
         ),
       ),
     );
@@ -120,7 +122,7 @@ export async function listAuditLogs(
       targetType: row.target_type,
       targetId: row.target_id,
       targetUserEmail: row.target_email,
-      metadata: row.metadata,
+      metadata: row.metadata === null ? null : JSON.stringify(row.metadata),
       createdAt: row.created_at,
     })),
   };
@@ -149,26 +151,16 @@ export async function pruneAuditLogs(db: Executor, retention: AuditRetention, no
   return 0;
 }
 
-// The stored retention, or null when there is none (or it is unreadable).
+// The stored retention, or null when there is none.
 export async function findAuditRetention(db: Executor): Promise<AuditRetention | null> {
-  const row = await db.selectFrom('config').select('value').where('key', '=', RETENTION_KEY).executeTakeFirst();
-  if (!row) return null;
-  try {
-    const value = JSON.parse(row.value) as Partial<AuditRetention>;
-    return {
-      retentionDays: typeof value.retentionDays === 'number' ? value.retentionDays : null,
-      maxEntries: typeof value.maxEntries === 'number' ? value.maxEntries : null,
-    };
-  } catch {
-    return null;
-  }
+  const value = await readSetting<Partial<AuditRetention>>(db, RETENTION_KEY);
+  if (!value) return null;
+  return {
+    retentionDays: typeof value.retentionDays === 'number' ? value.retentionDays : null,
+    maxEntries: typeof value.maxEntries === 'number' ? value.maxEntries : null,
+  };
 }
 
 export async function saveAuditRetention(db: Executor, retention: AuditRetention): Promise<void> {
-  const value = JSON.stringify(retention);
-  await db
-    .insertInto('config')
-    .values({ key: RETENTION_KEY, value })
-    .onConflict((oc) => oc.column('key').doUpdateSet({ value }))
-    .execute();
+  await writeSetting(db, RETENTION_KEY, retention);
 }

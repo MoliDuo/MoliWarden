@@ -1,3 +1,4 @@
+import { sizeName } from '../../http/files';
 import { isEncString } from '../../platform/enc-string';
 import type { Attachment } from '../attachments/repo';
 import type { CipherAccess } from '../organizations/access';
@@ -14,7 +15,7 @@ export function attachmentJson(attachment: Attachment) {
     key: attachment.key,
     // Clients read the size as a string.
     size: String(attachment.size),
-    sizeName: attachment.sizeName,
+    sizeName: sizeName(attachment.size),
     object: 'attachment',
   };
 }

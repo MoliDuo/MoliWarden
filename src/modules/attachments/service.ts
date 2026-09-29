@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type { Caller } from '../../http/authenticate';
 import { badRequest, conflict, forbidden, notFound, unauthorized } from '../../http/errors';
-import { FILE_TOKEN_TTL_SECONDS, fileDownload, maxSizeName, sizeName, type Upload } from '../../http/files';
+import { FILE_TOKEN_TTL_SECONDS, fileDownload, maxSizeName, type Upload } from '../../http/files';
 import type { Deps } from '../../main/deps';
 import type { Executor } from '../../platform/db';
 import { attachmentKey, BLOB_STORAGE_MISSING } from '../../platform/blob';
 import { recordAudit, requestMetadata } from '../audit/service';
-import { useTokenOnce } from '../auth/repo';
-import { touchCipher } from '../ciphers/repo';
+import { consumeOnce } from '../../platform/db/consumed';
+import { touchCiphers } from '../ciphers/repo';
 import { attachmentJson } from '../ciphers/responses';
 import { canEdit, requireView, viewJson, type CipherView } from '../ciphers/views';
 import { pushItem } from '../ciphers/writes';
@@ -47,7 +47,7 @@ async function changeCipher(deps: Deps, caller: Caller, view: CipherView, write:
   };
   await commit(deps, caller, date, change, async (tx) => {
     await write(tx);
-    await touchCipher(tx, cipher.id, date);
+    await touchCiphers(tx, [cipher.id], date);
   });
   return { ...view, cipher };
 }
@@ -62,7 +62,15 @@ export async function createAttachment(deps: Deps, caller: Caller, cipherId: str
   // Too large a body would be cut off by the platform and leave a broken
   // attachment behind.
   if (size > deps.config.maxUploadBytes) throw badRequest(tooLarge(deps));
-  const attachment: Attachment = { id: randomUUID(), cipherId, fileName: input.fileName, key: input.key, size, sizeName: sizeName(size) };
+  const attachment: Attachment = {
+    id: randomUUID(),
+    cipherId,
+    fileName: input.fileName,
+    key: input.key,
+    size,
+    uploadedAt: null,
+    createdAt: new Date().toISOString(),
+  };
   const changed = await changeCipher(deps, caller, view, (tx) => saveAttachment(tx, attachment));
   return { attachment, cipherResponse: await viewJson(deps.db, changed) };
 }
@@ -78,13 +86,13 @@ export async function uploadAttachment(
 ): Promise<void> {
   const view = await requireCipher(deps, caller, cipherId, true);
   const attachment = await requireAttachment(deps, cipherId, id);
+  if (attachment.uploadedAt) throw conflict('Attachment file has already been uploaded');
   const key = attachmentKey(cipherId, id);
-  if (await deps.blobs.head(key)) throw conflict('Attachment file has already been uploaded');
   // Clients that did not announce the size get it recorded now.
   const upload = await read(attachment.size || null);
   await deps.blobs.put(key, upload.bytes, upload.contentType);
-  const size = upload.bytes.byteLength;
-  await changeCipher(deps, caller, view, (tx) => saveAttachment(tx, { ...attachment, size, sizeName: sizeName(size) }));
+  const uploaded = { ...attachment, size: upload.bytes.byteLength, uploadedAt: new Date().toISOString() };
+  await changeCipher(deps, caller, view, (tx) => saveAttachment(tx, uploaded));
 }
 
 // Where to download the file, good for one download.
@@ -106,7 +114,7 @@ export async function downloadAttachment(deps: Deps, cipherId: string, id: strin
   const key = attachmentKey(cipherId, id);
   if (claims.file !== key) throw unauthorized('Token mismatch');
   const attachment = await requireAttachment(deps, cipherId, id);
-  if (!(await useTokenOnce(deps.db, claims.jti, claims.exp))) throw unauthorized('Invalid or expired token');
+  if (!(await consumeOnce(deps.db, `download:${claims.jti}`, new Date(claims.exp * 1000)))) throw unauthorized('Invalid or expired token');
   return fileDownload(deps.blobs, key, attachment.fileName || 'attachment', 'Attachment file not found');
 }
 

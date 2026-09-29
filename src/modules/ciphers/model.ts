@@ -164,19 +164,13 @@ export const cipherData = z.object({
 });
 export type CipherData = z.output<typeof cipherData>;
 
-export function readCipherData(json: string): CipherData {
-  let parsed: unknown = {};
-  try {
-    parsed = JSON.parse(json);
-  } catch {
-    // Unreadable data reads as empty.
-  }
-  return cipherData.parse(normalizeKeys(parsed && typeof parsed === 'object' ? parsed : {}));
+export function readCipherData(stored: Record<string, unknown>): CipherData {
+  return cipherData.parse(normalizeKeys(stored));
 }
 
 // Only what is set, so the column stays small.
-export function writeCipherData(data: CipherData): string {
-  return JSON.stringify(Object.fromEntries(Object.entries(data).filter(([, value]) => value !== null)));
+export function writeCipherData(head: { name: string; notes: string | null }, data: CipherData): string {
+  return JSON.stringify(Object.fromEntries(Object.entries({ ...head, ...data }).filter(([, value]) => value !== null)));
 }
 
 export interface Cipher {

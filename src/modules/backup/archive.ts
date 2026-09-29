@@ -2,82 +2,131 @@ import { createHash } from 'node:crypto';
 import { unzipSync, zipSync, type UnzipFileInfo } from 'fflate';
 import { APP_VERSION } from '../../../shared/app-version';
 import { badRequest } from '../../http/errors';
+import type { Database } from '../../platform/db/schema';
 
 // An instance backup is a zip of:
 //   manifest.json                     what is inside
-//   db.json                           the rows of the tables below
+//   vault.json                        the records below, by kind
 //   attachments/<cipher>/<id>.bin     attachment files, when included
 // Archives made for a remote destination leave the files out: they are
 // stored next to the archive and listed in manifest.attachmentBlobs.
 //
-// Sessions, devices, Sends and other short-lived state are not backed up.
+// The records describe accounts and vaults, not tables: each kind lists its
+// fields, and a field is stored in the column of the same name in
+// snake_case. Sessions, devices, Sends and other short-lived state are not
+// backed up.
 
+export const FORMAT_VERSION = 2;
 export const MAX_ARCHIVE_BYTES = 64 * 1024 * 1024;
 const MAX_ENTRIES = 10_000;
-const MAX_DB_JSON_BYTES = 32 * 1024 * 1024;
+const MAX_VAULT_JSON_BYTES = 32 * 1024 * 1024;
 const CHECKSUM_LENGTH = 5;
-// Wire name of the files; renamed with the 3.3 migration.
-const FILE_PREFIX = 'nodewarden_backup_';
-const ARCHIVE_NAME = /^(?:nodewarden|moliwarden)_backup_\d{8}_\d{6}(?:_[0-9a-f]{5})?\.zip$/i;
+const FILE_PREFIX = 'moliwarden_backup_';
+const ARCHIVE_NAME = /^moliwarden_backup_\d{8}_\d{6}(?:_[0-9a-f]{5})?\.zip$/i;
 
-type Row = Record<string, unknown>;
+type FieldType = 'text' | 'int' | 'bool' | 'time' | 'json' | 'object' | 'ints' | 'texts';
+type RecordValue = string | number | boolean | unknown[] | Record<string, unknown> | null;
+export type VaultRecord = Record<string, RecordValue>;
 
-// The tables, parents first, with the columns backed up and the values
-// older archives may lack.
-export const TABLES = {
-  config: { columns: ['key', 'value'] },
+interface RecordKind {
+  table: keyof Database;
+  fields: Record<string, FieldType>;
+  // Records in a stable order, so the same data gives the same archive.
+  order: string[];
+}
+
+const BY_CREATION = ['createdAt', 'id'];
+
+// Parents first: that is the order they are restored in.
+export const RECORD_KINDS = {
+  // Server settings worth carrying over; see BACKED_UP_SETTINGS.
+  settings: { table: 'settings', fields: { key: 'text', value: 'json' }, order: ['key'] },
   users: {
-    columns: [
-      'id', 'email', 'name', 'master_password_hint', 'master_password_hash', 'key', 'private_key', 'public_key',
-      'kdf_type', 'kdf_iterations', 'kdf_memory', 'kdf_parallelism', 'security_stamp', 'role', 'status',
-      'verify_devices', 'totp_secret', 'totp_recovery_code', 'yubikey_key1', 'yubikey_key2', 'yubikey_key3',
-      'yubikey_key4', 'yubikey_key5', 'yubikey_nfc', 'created_at', 'updated_at',
-    ],
-    defaults: { role: 'user', status: 'active', verify_devices: 0, yubikey_nfc: 0 },
+    table: 'users',
+    fields: {
+      id: 'text', email: 'text', name: 'text', masterPasswordHash: 'text', masterPasswordHint: 'text', key: 'text',
+      keyId: 'text', publicKey: 'text', privateKey: 'text', kdfType: 'int', kdfIterations: 'int', kdfMemory: 'int',
+      kdfParallelism: 'int', securityStamp: 'text', role: 'text', status: 'text', verifyDevices: 'bool',
+      recoveryCode: 'text', customDomains: 'json', excludedGlobalDomains: 'ints', revisionDate: 'time',
+      createdAt: 'time', updatedAt: 'time',
+    },
+    order: BY_CREATION,
   },
-  domain_settings: {
-    columns: ['user_id', 'equivalent_domains', 'custom_equivalent_domains', 'excluded_global_equivalent_domains', 'updated_at'],
-    defaults: { equivalent_domains: '[]', custom_equivalent_domains: '[]', excluded_global_equivalent_domains: '[]' },
+  twoFactorProviders: {
+    table: 'two_factor_providers',
+    fields: { userId: 'text', type: 'int', data: 'object' },
+    order: ['userId', 'type'],
   },
-  user_revisions: { columns: ['user_id', 'revision_date'] },
-  webauthn_credentials: {
-    columns: [
-      'id', 'user_id', 'purpose', 'name', 'public_key', 'credential_id', 'counter', 'type', 'aa_guid', 'transports',
-      'encrypted_user_key', 'encrypted_public_key', 'encrypted_private_key', 'supports_prf', 'slot', 'created_at', 'updated_at',
-    ],
-    defaults: { purpose: 'login', counter: 0, supports_prf: 0 },
+  passkeys: {
+    table: 'webauthn_credentials',
+    fields: {
+      id: 'text', userId: 'text', purpose: 'text', slot: 'int', name: 'text', credentialId: 'text', publicKey: 'text',
+      counter: 'int', type: 'text', aaGuid: 'text', transports: 'texts', supportsPrf: 'bool', encryptedUserKey: 'text',
+      encryptedPublicKey: 'text', encryptedPrivateKey: 'text', createdAt: 'time', updatedAt: 'time',
+    },
+    order: BY_CREATION,
   },
-  folders: { columns: ['id', 'user_id', 'name', 'created_at', 'updated_at'] },
-  organizations: { columns: ['id', 'name', 'billing_email', 'public_key', 'private_key', 'created_at', 'updated_at'] },
-  org_memberships: {
-    columns: ['id', 'org_id', 'user_id', 'status', 'type', 'access_all', 'akey', 'revoked_status', 'invited_by', 'created_at', 'updated_at'],
-    defaults: { access_all: 0 },
+  folders: {
+    table: 'folders',
+    fields: { id: 'text', userId: 'text', name: 'text', createdAt: 'time', updatedAt: 'time' },
+    order: BY_CREATION,
   },
-  collections: { columns: ['id', 'org_id', 'name', 'external_id', 'created_at', 'updated_at'] },
-  collection_members: {
-    columns: ['collection_id', 'membership_id', 'read_only', 'hide_passwords', 'manage'],
-    defaults: { read_only: 0, hide_passwords: 0, manage: 0 },
+  organizations: {
+    table: 'organizations',
+    fields: {
+      id: 'text', name: 'text', billingEmail: 'text', publicKey: 'text', privateKey: 'text', createdAt: 'time', updatedAt: 'time',
+    },
+    order: BY_CREATION,
+  },
+  memberships: {
+    table: 'memberships',
+    fields: {
+      id: 'text', organizationId: 'text', userId: 'text', status: 'int', type: 'int', accessAll: 'bool', key: 'text',
+      revokedStatus: 'int', invitedBy: 'text', createdAt: 'time', updatedAt: 'time',
+    },
+    order: BY_CREATION,
+  },
+  collections: {
+    table: 'collections',
+    fields: { id: 'text', organizationId: 'text', name: 'text', externalId: 'text', createdAt: 'time', updatedAt: 'time' },
+    order: BY_CREATION,
+  },
+  collectionGrants: {
+    table: 'collection_grants',
+    fields: { collectionId: 'text', membershipId: 'text', readOnly: 'bool', hidePasswords: 'bool', manage: 'bool' },
+    order: ['collectionId', 'membershipId'],
   },
   ciphers: {
-    columns: [
-      'id', 'user_id', 'organization_id', 'type', 'folder_id', 'name', 'notes', 'favorite', 'data', 'reprompt', 'key',
-      'created_at', 'updated_at', 'archived_at', 'deleted_at',
-    ],
-    defaults: { favorite: 0 },
+    table: 'ciphers',
+    fields: {
+      id: 'text', userId: 'text', organizationId: 'text', type: 'int', key: 'text', reprompt: 'int', data: 'object',
+      createdAt: 'time', updatedAt: 'time', deletedAt: 'time',
+    },
+    order: BY_CREATION,
   },
-  cipher_collections: { columns: ['cipher_id', 'collection_id'] },
-  cipher_user_state: { columns: ['cipher_id', 'user_id', 'folder_id', 'favorite', 'archived_at'], defaults: { favorite: 0 } },
-  attachments: { columns: ['id', 'cipher_id', 'file_name', 'size', 'size_name', 'key'] },
-} satisfies Record<string, { columns: string[]; defaults?: Row }>;
+  cipherCollections: {
+    table: 'cipher_collections',
+    fields: { cipherId: 'text', collectionId: 'text' },
+    order: ['cipherId', 'collectionId'],
+  },
+  cipherStates: {
+    table: 'cipher_user_state',
+    fields: { cipherId: 'text', userId: 'text', folderId: 'text', favorite: 'bool', archivedAt: 'time' },
+    order: ['cipherId', 'userId'],
+  },
+  // Only attachments whose file was uploaded.
+  attachments: {
+    table: 'attachments',
+    fields: { id: 'text', cipherId: 'text', fileName: 'text', key: 'text', size: 'int', uploadedAt: 'time', createdAt: 'time' },
+    order: ['cipherId', 'id'],
+  },
+} as const satisfies Record<string, RecordKind>;
 
-export type TableName = keyof typeof TABLES;
-export type Snapshot = Record<TableName, Row[]>;
-export const TABLE_NAMES = Object.keys(TABLES) as TableName[];
-// Archives from before organizations have none of these.
-const OPTIONAL_TABLES = new Set<TableName>([
-  'domain_settings', 'webauthn_credentials', 'organizations', 'org_memberships', 'collections',
-  'collection_members', 'cipher_collections', 'cipher_user_state',
-]);
+export type KindName = keyof typeof RECORD_KINDS;
+export type Snapshot = Record<KindName, VaultRecord[]>;
+export const KIND_NAMES = Object.keys(RECORD_KINDS) as KindName[];
+
+export const columnOf = (field: string) => field.replace(/[A-Z]/g, (char) => `_${char.toLowerCase()}`);
 
 export interface AttachmentRef {
   cipherId: string;
@@ -87,11 +136,10 @@ export interface AttachmentRef {
 }
 
 export interface Manifest {
-  formatVersion: 1;
+  formatVersion: typeof FORMAT_VERSION;
   exportedAt: string;
   appVersion: string;
-  storageKind: 's3';
-  tableCounts: Record<string, number>;
+  counts: Record<KindName, number>;
   includes: { attachments: boolean };
   blobSummary: { attachmentFiles: number; totalBytes: number; largestObjectBytes: number };
   attachmentBlobs: AttachmentRef[];
@@ -146,19 +194,18 @@ function stamp(date: Date, timeZone: string): string {
 
 export function buildArchive(snapshot: Snapshot, options: { date: Date; timeZone: string; includeAttachments: boolean }): Archive {
   const attachments = options.includeAttachments ? snapshot.attachments : [];
-  const refs: AttachmentRef[] = attachments.map((row) => ({
-    cipherId: String(row.cipher_id),
-    attachmentId: String(row.id),
-    blobName: `${row.cipher_id}/${row.id}`,
-    sizeBytes: Number(row.size) || 0,
+  const refs: AttachmentRef[] = attachments.map((record) => ({
+    cipherId: String(record.cipherId),
+    attachmentId: String(record.id),
+    blobName: `${record.cipherId}/${record.id}`,
+    sizeBytes: Number(record.size) || 0,
   }));
-  const db = { ...snapshot, attachments };
+  const vault = { ...snapshot, attachments };
   const manifest: Manifest = {
-    formatVersion: 1,
+    formatVersion: FORMAT_VERSION,
     exportedAt: options.date.toISOString(),
     appVersion: APP_VERSION,
-    storageKind: 's3',
-    tableCounts: Object.fromEntries(TABLE_NAMES.map((table) => [table, db[table].length])),
+    counts: Object.fromEntries(KIND_NAMES.map((kind) => [kind, vault[kind].length])) as Record<KindName, number>,
     includes: { attachments: options.includeAttachments },
     blobSummary: {
       attachmentFiles: refs.length,
@@ -169,7 +216,7 @@ export function buildArchive(snapshot: Snapshot, options: { date: Date; timeZone
   };
   const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value, null, 2));
   // Stored, not deflated: the payload is mostly ciphertext.
-  const bytes = zipSync({ 'manifest.json': encode(manifest), 'db.json': encode(db) }, { level: 0 });
+  const bytes = zipSync({ 'manifest.json': encode(manifest), 'vault.json': encode(vault) }, { level: 0 });
   const checksum = integrityOf(bytes, '').actualPrefix;
   return { bytes, fileName: `${FILE_PREFIX}${stamp(options.date, options.timeZone)}_${checksum}.zip`, manifest };
 }
@@ -184,6 +231,8 @@ export interface ParsedArchive {
 }
 
 const invalid = (message: string) => badRequest(`Invalid backup: ${message}`);
+const OLD_FORMAT =
+  'the archive is in the format of an earlier version. Convert it with `npm run backup:convert-v1` (see the README), then import the result.';
 
 function unzip(bytes: Uint8Array<ArrayBuffer>): Record<string, Uint8Array<ArrayBuffer>> {
   let entries = 0;
@@ -192,10 +241,11 @@ function unzip(bytes: Uint8Array<ArrayBuffer>): Record<string, Uint8Array<ArrayB
     if (++entries > MAX_ENTRIES) throw invalid('the archive has too many files');
     const name = file.name;
     const attachment = /^attachments\/([^/]+)\/([^/]+)\.bin$/.exec(name);
-    if (name !== 'manifest.json' && name !== 'db.json' && !(attachment && isSegment(attachment[1]) && isSegment(attachment[2]))) {
+    if (name === 'db.json') throw invalid(OLD_FORMAT);
+    if (name !== 'manifest.json' && name !== 'vault.json' && !(attachment && isSegment(attachment[1]) && isSegment(attachment[2]))) {
       throw invalid(`unexpected file ${name.slice(0, 200)}`);
     }
-    if (name === 'db.json' && file.originalSize > MAX_DB_JSON_BYTES) throw invalid('db.json is too large');
+    if (name === 'vault.json' && file.originalSize > MAX_VAULT_JSON_BYTES) throw invalid('vault.json is too large');
     expanded += file.originalSize;
     if (expanded > MAX_ARCHIVE_BYTES) throw invalid('the archive expands beyond the restore limit');
     return true;
@@ -217,32 +267,44 @@ function json(bytes: Uint8Array | undefined, name: string): unknown {
   }
 }
 
-// Every column holds text, a number or a 0/1 flag.
-function cell(table: string, value: unknown): string | number | null {
-  if (typeof value === 'boolean') return value ? 1 : 0;
-  if (value === null || typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value))) return value;
-  throw invalid(`table ${table} has a malformed value`);
-}
+const isTime = (value: unknown) => typeof value === 'string' && !Number.isNaN(Date.parse(value));
 
+const CHECKS: Record<FieldType, (value: unknown) => boolean> = {
+  text: (value) => typeof value === 'string',
+  int: (value) => Number.isSafeInteger(value),
+  bool: (value) => typeof value === 'boolean',
+  time: isTime,
+  json: () => true,
+  object: (value) => typeof value === 'object' && !Array.isArray(value),
+  ints: (value) => Array.isArray(value) && value.every((item) => Number.isSafeInteger(item)),
+  texts: (value) => Array.isArray(value) && value.every((item) => typeof item === 'string'),
+};
+
+// Each record has exactly the fields of its kind; a missing one is null.
+// The database checks the rest (required fields, ranges, references).
 function snapshotOf(value: unknown): Snapshot {
-  if (!value || typeof value !== 'object') throw invalid('db.json is not an object');
+  if (!value || typeof value !== 'object') throw invalid('vault.json is not an object');
   const source = value as Record<string, unknown>;
   const snapshot = {} as Snapshot;
-  for (const table of TABLE_NAMES) {
-    const rows = source[table] ?? (OPTIONAL_TABLES.has(table) ? [] : undefined);
-    if (!Array.isArray(rows) || rows.some((row) => !row || typeof row !== 'object')) throw invalid(`table ${table} is missing or malformed`);
-    const { columns, defaults = {} } = TABLES[table] as { columns: string[]; defaults?: Row };
-    snapshot[table] = rows.map((row: Row) => Object.fromEntries(columns.map((column) => [column, cell(table, row[column] ?? defaults[column] ?? null)])));
+  for (const kind of KIND_NAMES) {
+    const records = source[kind];
+    if (!Array.isArray(records) || records.some((record) => !record || typeof record !== 'object')) {
+      throw invalid(`${kind} is missing or malformed`);
+    }
+    const fields = Object.entries(RECORD_KINDS[kind].fields) as Array<[string, FieldType]>;
+    snapshot[kind] = records.map((record: Record<string, unknown>) =>
+      Object.fromEntries(
+        fields.map(([field, type]) => {
+          const cell = record[field] ?? null;
+          if (cell !== null && !CHECKS[type](cell)) throw invalid(`${kind} has a malformed ${field}`);
+          return [field, cell as RecordValue];
+        }),
+      ),
+    );
   }
-  // What the database does not check itself.
-  for (const cipher of snapshot.ciphers) {
-    if (!isSegment(cipher.id) || !cipher.user_id === !cipher.organization_id) throw invalid('a cipher has no single owner');
-  }
+  // Ids that become blob paths.
   for (const attachment of snapshot.attachments) {
-    if (!isSegment(attachment.id) || !isSegment(attachment.cipher_id)) throw invalid('an attachment has a malformed id');
-  }
-  for (const passkey of snapshot.webauthn_credentials) {
-    if (passkey.purpose !== 'login' && passkey.purpose !== 'twoFactor') throw invalid('a passkey has an unknown purpose');
+    if (!isSegment(attachment.id) || !isSegment(attachment.cipherId)) throw invalid('an attachment has a malformed id');
   }
   return snapshot;
 }
@@ -253,15 +315,16 @@ export function readArchive(bytes: Uint8Array<ArrayBuffer>): ParsedArchive {
   }
   const entries = unzip(bytes);
   const manifest = json(entries['manifest.json'], 'manifest.json') as Manifest;
-  if (manifest?.formatVersion !== 1) throw badRequest('Unsupported backup format version');
-  const snapshot = snapshotOf(json(entries['db.json'], 'db.json'));
+  if ((manifest?.formatVersion as number) === 1) throw invalid(OLD_FORMAT);
+  if (manifest?.formatVersion !== FORMAT_VERSION) throw badRequest('Unsupported backup format version');
+  const snapshot = snapshotOf(json(entries['vault.json'], 'vault.json'));
 
   const files = new Map<string, Uint8Array<ArrayBuffer>>();
   const external = new Map<string, string>();
   const refs = new Map((Array.isArray(manifest.attachmentBlobs) ? manifest.attachmentBlobs : []).map((ref) => [`${ref.cipherId}/${ref.attachmentId}`, ref.blobName]));
   for (const attachment of snapshot.attachments) {
-    const key = `${attachment.cipher_id}/${attachment.id}`;
-    const inline = entries[attachmentEntry(String(attachment.cipher_id), String(attachment.id))];
+    const key = `${attachment.cipherId}/${attachment.id}`;
+    const inline = entries[attachmentEntry(String(attachment.cipherId), String(attachment.id))];
     const blobName = refs.get(key);
     if (inline) files.set(key, inline);
     else if (isBlobName(blobName)) external.set(key, blobName);

@@ -10,16 +10,6 @@ export interface Passkey extends AccountPasskeyCredential {
   slot: number | null;
 }
 
-function parseTransports(value: string | null): string[] | null {
-  if (!value) return null;
-  try {
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : null;
-  } catch {
-    return null;
-  }
-}
-
 function toPasskey(row: Row<'webauthn_credentials'>): Passkey {
   return {
     id: row.id,
@@ -28,15 +18,15 @@ function toPasskey(row: Row<'webauthn_credentials'>): Passkey {
     name: row.name,
     publicKey: row.public_key,
     credentialId: row.credential_id,
-    counter: Number(row.counter),
+    counter: row.counter,
     type: row.type,
     aaGuid: row.aa_guid,
-    transports: parseTransports(row.transports),
+    transports: row.transports,
     encryptedUserKey: row.encrypted_user_key,
     encryptedPublicKey: row.encrypted_public_key,
     encryptedPrivateKey: row.encrypted_private_key,
-    supportsPrf: !!row.supports_prf,
-    slot: row.slot === null ? null : Number(row.slot),
+    supportsPrf: row.supports_prf,
+    slot: row.slot,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -52,19 +42,6 @@ export async function listPasskeys(db: Executor, userId: string, purpose: Purpos
     .orderBy('id')
     .execute();
   return rows.map(toPasskey);
-}
-
-// Which of the users have a passkey for `purpose`.
-export async function usersWithPasskeys(db: Executor, userIds: string[], purpose: Purpose): Promise<Set<string>> {
-  if (!userIds.length) return new Set();
-  const rows = await db
-    .selectFrom('webauthn_credentials')
-    .select('user_id')
-    .distinct()
-    .where('user_id', 'in', userIds)
-    .where('purpose', '=', purpose)
-    .execute();
-  return new Set(rows.map((row) => row.user_id));
 }
 
 export async function findPasskeyByCredentialId(db: Executor, credentialId: string): Promise<Passkey | null> {
@@ -85,11 +62,11 @@ export async function insertPasskey(db: Executor, passkey: Passkey): Promise<voi
       counter: passkey.counter,
       type: passkey.type,
       aa_guid: passkey.aaGuid,
-      transports: passkey.transports ? JSON.stringify(passkey.transports) : null,
+      transports: passkey.transports,
       encrypted_user_key: passkey.encryptedUserKey,
       encrypted_public_key: passkey.encryptedPublicKey,
       encrypted_private_key: passkey.encryptedPrivateKey,
-      supports_prf: passkey.supportsPrf ? 1 : 0,
+      supports_prf: passkey.supportsPrf,
       slot: passkey.slot,
       created_at: passkey.createdAt,
       updated_at: passkey.updatedAt,
@@ -117,7 +94,7 @@ export async function updatePasskeyKeys(
       encrypted_user_key: keys.encryptedUserKey,
       encrypted_public_key: keys.encryptedPublicKey,
       encrypted_private_key: keys.encryptedPrivateKey,
-      supports_prf: 1,
+      supports_prf: true,
       updated_at: now,
     })
     .where('id', '=', id)
@@ -143,15 +120,14 @@ export async function deletePasskeys(db: Executor, userId: string, purpose: Purp
 
 export async function saveChallenge(
   db: Executor,
-  challengeHash: string,
+  challengeHash: Buffer,
   scope: AccountPasskeyChallengeScope,
   userId: string | null,
-  expiresAt: number,
-  now: number,
+  expiresAt: Date,
 ): Promise<void> {
   await db
     .insertInto('webauthn_challenges')
-    .values({ challenge_hash: challengeHash, scope, user_id: userId, expires_at: expiresAt, used_at: null, created_at: now })
+    .values({ challenge_hash: challengeHash, scope, user_id: userId, expires_at: expiresAt.toISOString(), used_at: null })
     .execute();
 }
 
@@ -159,11 +135,11 @@ export async function saveChallenge(
 // another scope or user, or was answered before.
 export async function consumeChallenge(
   db: Executor,
-  challengeHash: string,
+  challengeHash: Buffer,
   scope: AccountPasskeyChallengeScope,
   userId: string | null,
-  now: number,
 ): Promise<boolean> {
+  const now = new Date().toISOString();
   const result = await db
     .updateTable('webauthn_challenges')
     .set({ used_at: now })

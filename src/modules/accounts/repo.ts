@@ -38,17 +38,10 @@ export async function insertUser(db: Executor, user: User): Promise<void> {
       security_stamp: user.securityStamp,
       role: user.role,
       status: user.status,
-      verify_devices: 0,
-      totp_secret: null,
-      totp_recovery_code: null,
-      yubikey_key1: null,
-      yubikey_key2: null,
-      yubikey_key3: null,
-      yubikey_key4: null,
-      yubikey_key5: null,
-      yubikey_nfc: 0,
       api_key: user.apiKey,
+      recovery_code: user.recoveryCode,
       key_id: null,
+      revision_date: user.createdAt,
       created_at: user.createdAt,
       updated_at: user.updatedAt,
     })
@@ -74,12 +67,8 @@ export type UserChanges = Partial<
     | 'securityStamp'
     | 'apiKey'
     | 'keyId'
-    | 'totpSecret'
-    | 'totpRecoveryCode'
-    | 'yubikeyNfc'
-  > & {
-    yubikeys: (string | null)[];
-  }
+    | 'recoveryCode'
+  >
 >;
 
 const COLUMNS = {
@@ -92,24 +81,18 @@ const COLUMNS = {
   securityStamp: 'security_stamp',
   apiKey: 'api_key',
   keyId: 'key_id',
-  totpSecret: 'totp_secret',
-  totpRecoveryCode: 'totp_recovery_code',
-} as const satisfies Record<string, keyof RowUpdate<'users'>>;
+  recoveryCode: 'recovery_code',
+} as const satisfies Record<keyof UserChanges, keyof RowUpdate<'users'>>;
 
 // Returns the new updated-at time.
 export async function updateUser(db: Executor, id: string, changes: UserChanges): Promise<string> {
   const updatedAt = new Date().toISOString();
-  const set: Record<string, unknown> = { updated_at: updatedAt };
+  const set: RowUpdate<'users'> = { updated_at: updatedAt };
   for (const [field, column] of Object.entries(COLUMNS)) {
-    const value = changes[field as keyof typeof COLUMNS];
-    if (value !== undefined) set[column] = value;
+    const value = changes[field as keyof UserChanges];
+    if (value !== undefined) Object.assign(set, { [column]: value });
   }
-  if (changes.yubikeyNfc !== undefined) set.yubikey_nfc = changes.yubikeyNfc ? 1 : 0;
-  if (changes.yubikeys !== undefined) {
-    const [key1 = null, key2 = null, key3 = null, key4 = null, key5 = null] = changes.yubikeys;
-    Object.assign(set, { yubikey_key1: key1, yubikey_key2: key2, yubikey_key3: key3, yubikey_key4: key4, yubikey_key5: key5 });
-  }
-  await db.updateTable('users').set(set as RowUpdate<'users'>).where('id', '=', id).execute();
+  await db.updateTable('users').set(set).where('id', '=', id).execute();
   return updatedAt;
 }
 
@@ -151,22 +134,23 @@ export async function useInvite(db: Executor, code: string, userId: string): Pro
 
 // When anything in the user's vault last changed. Clients compare it with
 // their copy to decide whether to sync.
-export async function findRevisionDate(db: Executor, userId: string): Promise<string> {
-  const row = await db.selectFrom('user_revisions').select('revision_date').where('user_id', '=', userId).executeTakeFirst();
-  if (row) return row.revision_date;
-  const now = new Date().toISOString();
-  await db
-    .insertInto('user_revisions')
-    .values({ user_id: userId, revision_date: now })
-    .onConflict((oc) => oc.column('user_id').doNothing())
+export async function findRevisionDate(db: Executor, userId: string): Promise<string | null> {
+  const row = await db.selectFrom('users').select('revision_date').where('id', '=', userId).executeTakeFirst();
+  return row?.revision_date ?? null;
+}
+
+// Moves the revision date of the users given; returns those that exist.
+export async function touchRevisionDates(db: Executor, userIds: string[], date: string): Promise<string[]> {
+  if (!userIds.length) return [];
+  const rows = await db
+    .updateTable('users')
+    .set({ revision_date: date })
+    .where((eb) => eb('id', '=', eb.fn.any(eb.val(userIds))))
+    .returning('id')
     .execute();
-  return now;
+  return rows.map((row) => row.id);
 }
 
 export async function touchRevisionDate(db: Executor, userId: string, date: string): Promise<void> {
-  await db
-    .insertInto('user_revisions')
-    .values({ user_id: userId, revision_date: date })
-    .onConflict((oc) => oc.column('user_id').doUpdateSet({ revision_date: date }))
-    .execute();
+  await touchRevisionDates(db, [userId], date);
 }

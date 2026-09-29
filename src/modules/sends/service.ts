@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Caller } from '../../http/authenticate';
 import { badRequest, conflict, notFound, notImplemented } from '../../http/errors';
-import { sizeName, type Upload } from '../../http/files';
+import type { Upload } from '../../http/files';
 import { listJson } from '../../http/list';
 import type { Deps } from '../../main/deps';
 import { BLOB_STORAGE_MISSING, sendFileKey, type BlobStore } from '../../platform/blob';
@@ -121,7 +121,7 @@ export async function createFileSend(deps: Deps, caller: Caller, input: SendBody
   if (input.fileLength == null) throw badRequest('Invalid send length');
   if (input.fileLength > deps.config.maxUploadBytes) throw badRequest('Send storage limit exceeded with this file');
   if (!input.file) throw badRequest('Send data not provided');
-  const file = { id: randomUUID(), fileName: input.file.fileName, size: input.fileLength, sizeName: sizeName(input.fileLength) };
+  const file = { id: randomUUID(), fileName: input.file.fileName, size: input.fileLength };
   return create(deps, caller, input, { type: SendType.File, text: null, file });
 }
 

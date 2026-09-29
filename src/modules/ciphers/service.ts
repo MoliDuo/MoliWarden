@@ -193,7 +193,7 @@ async function setStates(deps: Deps, caller: Caller, views: CipherView[], change
       ? { type: PushType.SyncCipherUpdate, item: pushItem(changed[0]) }
       : { type: PushType.SyncCiphers };
   // Nobody else sees the change.
-  await commit(deps, caller, date, { orgIds: [], push }, (tx) => saveStates(tx, caller.user.id, changed));
+  await commit(deps, caller, date, { orgIds: [], push }, (tx) => saveStates(tx, caller.user.id, changed, date));
   return changed;
 }
 

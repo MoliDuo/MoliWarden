@@ -27,6 +27,7 @@ import {
   disableProvider,
   enableAuthenticator,
   enableYubiKeys,
+  isTotpEnabled,
   listProviders,
   Provider,
   readSecurityKeys,
@@ -79,7 +80,7 @@ export function twoFactorRoutes(deps: Deps): Hono<AuthedEnv> {
   });
 
   // The web vault's authenticator endpoints.
-  app.get('/api/accounts/totp', authed, (c) => c.json({ enabled: !!c.var.actor.user.totpSecret, object: 'twoFactor' }));
+  app.get('/api/accounts/totp', authed, async (c) => c.json({ enabled: await isTotpEnabled(deps, c.var.actor.user), object: 'twoFactor' }));
   app.on(['PUT', 'POST'], '/api/accounts/totp', authed, async (c) => {
     const body = await readJson(c, totpBody);
     return c.json(await setTotp(deps, c.req.raw, c.var.actor.user, body));

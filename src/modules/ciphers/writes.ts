@@ -7,7 +7,7 @@ import { canWriteCollection, type OrgContext } from '../organizations/access';
 import { listCollections } from '../organizations/repo';
 import type { PushEvent } from '../push/service';
 import { TYPE_PARTS, type Cipher, type CipherData, type CipherInput } from './model';
-import { saveCiphers, saveUserStates } from './repo';
+import { saveCiphers, saveUserStates, touchCiphers } from './repo';
 
 // How changes to ciphers are made: from what a client sent to what is
 // stored, then who is told.
@@ -160,24 +160,18 @@ export async function checkWritableCollections(db: Executor, ctx: OrgContext, or
 export async function saveView(tx: Executor, userId: string, cipher: Cipher, movedFrom?: string): Promise<void> {
   const written = await saveCiphers(tx, [cipher], { movedFrom });
   if (!written.has(cipher.id)) throw conflict('The item was moved at the same time. Resync the client and try again.');
-  if (cipher.organizationId) await saveUserStates(tx, userId, [stateOf(cipher)]);
+  await saveUserStates(tx, userId, [stateOf(cipher)]);
 }
 
-// Writes only the user's folder, favorite and archive state: on the row of
-// a personal cipher, per user for an organization cipher.
-export async function saveStates(tx: Executor, userId: string, ciphers: Cipher[]): Promise<void> {
-  await saveCiphers(
-    tx,
-    ciphers.filter((cipher) => !cipher.organizationId),
-  );
-  await saveUserStates(
-    tx,
-    userId,
-    ciphers.filter((cipher) => cipher.organizationId).map(stateOf),
-  );
+// Writes only the user's folder, favorite and archive state. A personal
+// cipher is the user's alone, so it counts as changed too.
+export async function saveStates(tx: Executor, userId: string, ciphers: Cipher[], date: string): Promise<void> {
+  const personal = ciphers.filter((cipher) => !cipher.organizationId).map((cipher) => cipher.id);
+  await touchCiphers(tx, personal, date);
+  await saveUserStates(tx, userId, ciphers.map(stateOf));
 }
 
-const stateOf = (cipher: Cipher) => ({
+export const stateOf = (cipher: Cipher) => ({
   cipherId: cipher.id,
   folderId: cipher.folderId,
   favorite: cipher.favorite,

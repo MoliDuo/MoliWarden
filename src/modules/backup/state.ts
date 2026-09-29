@@ -39,10 +39,10 @@ export async function createArchive(deps: Deps, date: Date, timeZone: string, in
     .transaction()
     .setIsolationLevel('repeatable read')
     .execute((tx) => readSnapshot(tx));
-  snapshot.config = snapshot.config.flatMap((row) => {
-    if (row.key !== SETTINGS_KEY) return [row];
-    const value = portableOnly(String(row.value));
-    return value ? [{ key: row.key, value }] : [];
+  snapshot.settings = snapshot.settings.flatMap((record) => {
+    if (record.key !== SETTINGS_KEY) return [record];
+    const value = portableOnly(String(record.value));
+    return value ? [{ key: record.key, value }] : [];
   });
   return buildArchive(snapshot, { date, timeZone, includeAttachments });
 }

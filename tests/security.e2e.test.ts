@@ -72,12 +72,12 @@ test('clear-token requires a bearer token and clears the push token', async () =
     json: { pushToken: 'push-token-value' },
   });
   assert.equal(set.status, 200, await set.clone().text());
-  const [before] = await query('SELECT push_token FROM devices WHERE device_identifier = $1', [alice.deviceIdentifier]);
+  const [before] = await query('SELECT push_token FROM devices WHERE identifier = $1', [alice.deviceIdentifier]);
   assert.equal(before.push_token, 'push-token-value');
 
   const cleared = await alice.request(path, { method: 'PUT' });
   assert.equal(cleared.status, 200);
-  const [afterClear] = await query('SELECT push_token FROM devices WHERE device_identifier = $1', [alice.deviceIdentifier]);
+  const [afterClear] = await query('SELECT push_token FROM devices WHERE identifier = $1', [alice.deviceIdentifier]);
   assert.equal(afterClear.push_token, null);
 });
 

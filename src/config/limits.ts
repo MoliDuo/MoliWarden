@@ -20,12 +20,6 @@ export const LIMITS = {
     loginMaxAttempts: 10,
     loginLockoutMinutes: 2,
   },
-  // Only read by src/services/storage.ts until the schema switch.
-  cleanup: {
-    refreshTokenCleanupIntervalMs: 30 * 60 * 1000,
-    attachmentTokenCleanupIntervalMs: 10 * 60 * 1000,
-    cleanupProbability: 0.05,
-  },
   cors: {
     preflightMaxAgeSeconds: 86400,
   },

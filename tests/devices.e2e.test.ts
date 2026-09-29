@@ -21,8 +21,8 @@ async function query<T = any>(sql: string, params: unknown[] = []): Promise<T[]>
 
 function remember(userId: string, deviceIdentifier: string, expiresAt = Date.now() + 3_600_000) {
   return query(
-    'INSERT INTO trusted_two_factor_device_tokens(token, user_id, device_identifier, expires_at, security_stamp) VALUES($1, $2, $3, $4, $5)',
-    [crypto.randomUUID(), userId, deviceIdentifier, expiresAt, 'stamp'],
+    'INSERT INTO two_factor_remember_tokens(token_hash, user_id, device_identifier, expires_at, security_stamp) VALUES($1, $2, $3, $4, $5)',
+    [crypto.getRandomValues(Buffer.alloc(32)), userId, deviceIdentifier, new Date(expiresAt), 'stamp'],
   );
 }
 
@@ -54,7 +54,7 @@ test('a device registers itself, gets a note, and stores trusted-device keys', a
   });
   assert.equal(registered.id, identifier);
   assert.equal(registered.type, 0);
-  const [row] = await query('SELECT push_token, push_uuid FROM devices WHERE device_identifier = $1', [identifier]);
+  const [row] = await query('SELECT push_token, push_uuid FROM devices WHERE identifier = $1', [identifier]);
   assert.equal(row.push_token, 'fcm-token');
   assert.ok(row.push_uuid);
 

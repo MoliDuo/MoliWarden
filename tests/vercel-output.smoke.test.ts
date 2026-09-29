@@ -160,7 +160,7 @@ test('API routes reach the function with path, query and CORS intact', async () 
   assert.equal(preflight.headers.get('access-control-allow-origin'), 'chrome-extension://nngceckbapebfimnlniiiahkandclblb');
 
   const unknown = await get('/api/definitely-not-a-route');
-  assert.equal(unknown.status, 401);
+  assert.equal(unknown.status, 404);
   assert.match(unknown.headers.get('content-type') || '', /json/);
 });
 

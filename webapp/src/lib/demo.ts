@@ -1189,10 +1189,11 @@ function createDemoImportBackupResult(): AdminBackupImportResponse {
   return {
     object: 'instance-backup-import',
     imported: {
-      config: 0,
+      settings: 0,
       users: 0,
-      userRevisions: 0,
+      passkeys: 0,
       folders: 0,
+      organizations: 0,
       ciphers: 0,
       attachments: 0,
       attachmentFiles: 0,

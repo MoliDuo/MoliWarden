@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { badRequest, forbidden, HttpError } from '../../http/errors';
 import type { Deps } from '../../main/deps';
 import type { Db, Executor } from '../../platform/db';
+import { consumeOnce } from '../../platform/db/consumed';
+import { withLease } from '../../platform/db/lease';
 import type { User } from '../../types';
 import { findUserByEmail, updateUser } from '../accounts/repo';
 import { requestMetadata, recordAudit } from '../audit/service';
@@ -16,17 +18,20 @@ import {
   listSecurityKeys,
   securityKeyCreationOptions,
 } from '../passkeys/service';
-import { usersWithPasskeys, type Passkey } from '../passkeys/repo';
+import type { Passkey } from '../passkeys/repo';
 import { createRecoveryCode, recoveryCodeMatches } from './recovery-code';
 import {
-  claimYubicoBootstrap,
+  deleteProviders,
   deleteRememberTokens,
+  findProviders,
   findYubicoCredentials,
-  releaseYubicoBootstrap,
+  saveProvider,
   saveYubicoCredentials,
-  useTotpStep,
+  TOTP,
+  YUBIKEY,
+  type YubiKeyData,
 } from './repo';
-import { isTotpSecret, normalizeTotpSecret, randomTotpSecret, totpStep } from './totp';
+import { isTotpSecret, normalizeTotpSecret, randomTotpSecret, stepExpiry, totpStep } from './totp';
 import {
   isYubiKeyOtp,
   requestYubicoCredentials,
@@ -53,36 +58,26 @@ type ManagedProvider = typeof Provider.Authenticator | typeof Provider.YubiKey |
 // The second factors a user has set up.
 export interface Factors {
   totpSecret: string | null;
+  yubiKey: YubiKeyData | null;
+  // The public ids of the registered YubiKeys.
   yubiKeys: string[];
   securityKeys: Passkey[];
 }
 
-export const yubiKeysOf = (user: User): string[] =>
-  [user.yubikeyKey1, user.yubikeyKey2, user.yubikeyKey3, user.yubikeyKey4, user.yubikeyKey5]
-    .map((key) => key?.trim().toLowerCase() ?? '')
-    .filter(Boolean);
-
 export async function factorsOf(db: Executor, user: User): Promise<Factors> {
+  const [{ totp, yubiKey }, securityKeys] = await Promise.all([findProviders(db, user.id), listSecurityKeys(db, user.id)]);
   return {
-    totpSecret: isTotpSecret(user.totpSecret) ? normalizeTotpSecret(user.totpSecret) : null,
-    yubiKeys: yubiKeysOf(user),
-    securityKeys: await listSecurityKeys(db, user.id),
+    totpSecret: totp?.secret ?? null,
+    yubiKey,
+    yubiKeys: (yubiKey?.keys ?? []).filter((key): key is string => !!key),
+    securityKeys,
   };
 }
 
 export const hasSecondFactor = (factors: Factors) =>
   !!factors.totpSecret || factors.yubiKeys.length > 0 || factors.securityKeys.length > 0;
 
-// Which of the users have a second factor, in one query.
-export async function usersWithSecondFactor(db: Executor, users: User[]): Promise<Set<string>> {
-  const keyHolders = await usersWithPasskeys(
-    db,
-    users.map((user) => user.id),
-    'twoFactor',
-  );
-  const enabled = (user: User) => isTotpSecret(user.totpSecret) || yubiKeysOf(user).length > 0 || keyHolders.has(user.id);
-  return new Set(users.filter(enabled).map((user) => user.id));
-}
+export { usersWithSecondFactor } from './repo';
 
 async function requirePassword(user: User, secret: string | null | undefined): Promise<void> {
   if (!(await verifyMasterPassword(user, secret))) throw badRequest('User verification failed.');
@@ -91,10 +86,7 @@ async function requirePassword(user: User, secret: string | null | undefined): P
 // Turning a factor on also makes sure a recovery code exists, and signs out
 // every other session so it has to pass the new factor.
 async function afterFactorChange(deps: Deps, user: User): Promise<void> {
-  if (!user.totpRecoveryCode) {
-    user.totpRecoveryCode = createRecoveryCode();
-    await updateUser(deps.db, user.id, { totpRecoveryCode: user.totpRecoveryCode });
-  }
+  await ensureRecoveryCode(deps.db, user);
   await endAllSessions(deps.db, user.id);
 }
 
@@ -110,11 +102,19 @@ function audit(deps: Deps, request: Request, user: User, action: string, target:
   });
 }
 
+async function ensureRecoveryCode(db: Executor, user: User): Promise<string> {
+  if (!user.recoveryCode) {
+    user.recoveryCode = createRecoveryCode();
+    await updateUser(db, user.id, { recoveryCode: user.recoveryCode });
+  }
+  return user.recoveryCode;
+}
+
 // Counts a TOTP code once: codes are valid for about a minute and a copy
 // must not work a second time.
-async function useTotpCode(db: Executor, userId: string, secret: string, code: string): Promise<boolean> {
+export async function useTotpCode(db: Executor, userId: string, secret: string, code: string): Promise<boolean> {
   const step = totpStep(secret, code);
-  return step !== null && (await useTotpStep(db, userId, step, Date.now()));
+  return step !== null && (await consumeOnce(db, `totp:${userId}:${step}`, stepExpiry(step)));
 }
 
 // --- Overview ----------------------------------------------------------------
@@ -142,9 +142,8 @@ export async function disableProvider(deps: Deps, request: Request, user: User, 
     [Provider.YubiKey]: 'account.yubikey.disable',
     [Provider.WebAuthn]: 'account.webauthn_2fa.disable',
   };
-  if (type === Provider.Authenticator) await updateUser(deps.db, user.id, { totpSecret: null });
-  else if (type === Provider.YubiKey) await updateUser(deps.db, user.id, { yubikeys: [], yubikeyNfc: false });
-  else await deleteAllSecurityKeys(deps.db, user.id);
+  if (type === Provider.WebAuthn) await deleteAllSecurityKeys(deps.db, user.id);
+  else await deleteProviders(deps.db, user.id, type === Provider.Authenticator ? TOTP : YUBIKEY);
   await endAllSessions(deps.db, user.id);
   await audit(deps, request, user, actions[type]);
   return providerJson(type, false);
@@ -160,14 +159,15 @@ function authenticatorJson(enabled: boolean, key: string, userVerificationToken:
 // the master password again.
 export async function authenticatorSetup(deps: Deps, user: User, secret: string | null) {
   await requirePassword(user, secret);
-  const key = normalizeTotpSecret(user.totpSecret) || randomTotpSecret();
-  return authenticatorJson(!!user.totpSecret, key, signUserVerification(deps.tokens, user, 'totp.setup', key));
+  const { totp } = await findProviders(deps.db, user.id);
+  const key = totp?.secret ?? randomTotpSecret();
+  return authenticatorJson(!!totp, key, signUserVerification(deps.tokens, user, 'totp.setup', key));
 }
 
 async function enableTotp(deps: Deps, request: Request, user: User, secret: string, code: string, invalidCode: string) {
   if (!isTotpSecret(secret)) throw badRequest('Invalid TOTP secret');
   if (!(await useTotpCode(deps.db, user.id, secret, code))) throw badRequest(invalidCode);
-  await updateUser(deps.db, user.id, { totpSecret: secret });
+  await saveProvider(deps.db, user.id, TOTP, { secret });
   await afterFactorChange(deps, user);
   await audit(deps, request, user, 'account.totp.enable');
 }
@@ -205,12 +205,12 @@ export async function setTotp(
       (await verifyMasterPassword(user, input.masterPasswordHash));
     if (!verified) throw badRequest('User verification failed.');
     await enableTotp(deps, request, user, secret, input.token, 'Invalid TOTP token');
-    return { enabled: true, recoveryCode: user.totpRecoveryCode, object: 'twoFactor' };
+    return { enabled: true, recoveryCode: user.recoveryCode, object: 'twoFactor' };
   }
   if (input.enabled === false) {
     if (!input.masterPasswordHash) throw badRequest('masterPasswordHash is required to disable TOTP');
     if (!(await verifyMasterPassword(user, input.masterPasswordHash))) throw badRequest('Invalid password');
-    await updateUser(deps.db, user.id, { totpSecret: null });
+    await deleteProviders(deps.db, user.id, TOTP);
     await endAllSessions(deps.db, user.id);
     await audit(deps, request, user, 'account.totp.disable');
     return { enabled: false, object: 'twoFactor' };
@@ -220,17 +220,22 @@ export async function setTotp(
 
 // --- YubiKey -----------------------------------------------------------------
 
+export async function isTotpEnabled(deps: Deps, user: User): Promise<boolean> {
+  return !!(await findProviders(deps.db, user.id)).totp;
+}
+
 export async function yubiKeySettings(deps: Deps, user: User) {
-  const credentials = await findYubicoCredentials(deps.db);
+  const [credentials, { yubiKey }] = await Promise.all([findYubicoCredentials(deps.db), findProviders(deps.db, user.id)]);
   const canManage = user.role === 'admin' && user.status === 'active';
+  const slot = (index: number) => yubiKey?.keys[index] ?? null;
   return {
-    Enabled: yubiKeysOf(user).length > 0,
-    Key1: user.yubikeyKey1,
-    Key2: user.yubikeyKey2,
-    Key3: user.yubikeyKey3,
-    Key4: user.yubikeyKey4,
-    Key5: user.yubikeyKey5,
-    Nfc: user.yubikeyNfc,
+    Enabled: !!yubiKey?.keys.some(Boolean),
+    Key1: slot(0),
+    Key2: slot(1),
+    Key3: slot(2),
+    Key4: slot(3),
+    Key5: slot(4),
+    Nfc: yubiKey?.nfc ?? false,
     Object: 'twoFactorYubiKey',
     YubicoConfigured: !!credentials,
     YubicoCanManage: canManage,
@@ -243,7 +248,7 @@ export async function readYubiKeySettings(deps: Deps, user: User, secret: string
   return yubiKeySettings(deps, user);
 }
 
-const BOOTSTRAP_CLAIM_MS = 2 * 60_000;
+const BOOTSTRAP_LEASE_MS = 2 * 60_000;
 
 // Validating OTPs needs Yubico API credentials. Without any, the first OTP
 // a user presents gets the server its own. `created` tells that this OTP
@@ -255,21 +260,18 @@ async function yubicoCredentialsFor(
 ): Promise<{ credentials: YubicoCredentials; created: boolean } | null> {
   const existing = await findYubicoCredentials(db);
   if (existing) return { credentials: existing, created: false };
-  const claim = await claimYubicoBootstrap(db, Date.now(), BOOTSTRAP_CLAIM_MS);
-  if (!claim) {
-    const concurrent = await findYubicoCredentials(db);
-    return concurrent ? { credentials: concurrent, created: false } : null;
-  }
-  try {
-    const issued = await requestYubicoCredentials(email, otp);
-    if (!issued) return null;
+  const leased = await withLease(db, 'yubico.bootstrap', BOOTSTRAP_LEASE_MS, async () => {
     const concurrent = await findYubicoCredentials(db);
     if (concurrent) return { credentials: concurrent, created: false };
+    const issued = await requestYubicoCredentials(email, otp);
+    if (!issued) return null;
     await saveYubicoCredentials(db, issued);
     return { credentials: issued, created: true };
-  } finally {
-    await releaseYubicoBootstrap(db, claim).catch(() => undefined);
-  }
+  });
+  if (leased) return leased.value;
+  // Someone else is getting them right now.
+  const concurrent = await findYubicoCredentials(db);
+  return concurrent ? { credentials: concurrent, created: false } : null;
 }
 
 export async function checkYubiKeyOtp(deps: Deps, email: string, otp: string): Promise<boolean> {
@@ -303,15 +305,7 @@ export async function enableYubiKeys(
   }
   if (!publicIds.some(Boolean)) throw badRequest('At least one YubiKey OTP is required.');
 
-  Object.assign(user, {
-    yubikeyKey1: publicIds[0] ?? null,
-    yubikeyKey2: publicIds[1] ?? null,
-    yubikeyKey3: publicIds[2] ?? null,
-    yubikeyKey4: publicIds[3] ?? null,
-    yubikeyKey5: publicIds[4] ?? null,
-    yubikeyNfc: input.nfc,
-  });
-  await updateUser(deps.db, user.id, { yubikeys: publicIds, yubikeyNfc: input.nfc });
+  await saveProvider(deps.db, user.id, YUBIKEY, { keys: publicIds.slice(0, 5), nfc: input.nfc });
   await afterFactorChange(deps, user);
   await audit(deps, request, user, 'account.yubikey.enable');
   return yubiKeySettings(deps, user);
@@ -399,37 +393,24 @@ export async function removeSecurityKey(deps: Deps, request: Request, user: User
 export async function revealRecoveryCode(deps: Deps, user: User, masterPasswordHash: string | null) {
   if (!masterPasswordHash) throw badRequest('masterPasswordHash is required');
   if (!(await verifyMasterPassword(user, masterPasswordHash))) throw badRequest('Invalid password');
-  if (!user.totpRecoveryCode) {
-    user.totpRecoveryCode = createRecoveryCode();
-    await updateUser(deps.db, user.id, { totpRecoveryCode: user.totpRecoveryCode });
-  }
-  const code = user.totpRecoveryCode;
+  const code = await ensureRecoveryCode(deps.db, user);
   return { Code: code, code, Object: 'twoFactorRecover', object: 'twoFactorRecover' };
 }
 
 // Turns every second factor off and signs the user out everywhere: the
 // recovery code is spent, and a new one replaces it.
 export async function resetTwoFactor(deps: Deps, user: User): Promise<string> {
-  const changes = {
-    totpSecret: null,
-    yubikeyKey1: null,
-    yubikeyKey2: null,
-    yubikeyKey3: null,
-    yubikeyKey4: null,
-    yubikeyKey5: null,
-    yubikeyNfc: false,
-    totpRecoveryCode: createRecoveryCode(),
-    securityStamp: randomUUID(),
-  };
+  const changes = { recoveryCode: createRecoveryCode(), securityStamp: randomUUID() };
   await deps.db.transaction().execute(async (tx) => {
-    await updateUser(tx, user.id, { ...changes, yubikeys: [] });
+    await updateUser(tx, user.id, changes);
+    await deleteProviders(tx, user.id);
     await deleteAllSecurityKeys(tx, user.id);
     await deleteRememberTokens(tx, user.id);
     await endAllSessions(tx, user.id);
   });
   // The caller may go on to sign the user in with the new stamp.
   Object.assign(user, changes);
-  return changes.totpRecoveryCode;
+  return changes.recoveryCode;
 }
 
 export async function recoverWithCode(
@@ -451,7 +432,7 @@ export async function recoverWithCode(
     !!user &&
     user.status === 'active' &&
     (await verifyMasterPassword(user, input.masterPasswordHash)) &&
-    recoveryCodeMatches(input.recoveryCode, user.totpRecoveryCode);
+    recoveryCodeMatches(input.recoveryCode, user.recoveryCode);
   if (!valid) {
     await recordFailure(deps.limiter, lockKey);
     throw badRequest('Invalid credentials or recovery code');

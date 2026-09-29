@@ -62,7 +62,7 @@ Run the server locally with `npm run build && npm run dev:server` (reads the var
 npm test
 ```
 
-runs type checks, i18n validation, unit tests, `check:sql` (every SQL statement is `PREPARE`d on Postgres), the API end-to-end suites (`npm run test:e2e`) and `npm run test:smoke`, which builds `.vercel/output`, copies it outside the repository and serves it with `tests/vercel-emulator.ts` (Vercel routing, 4.5 MB body limit, `waitUntil`, cron calls). `scripts/vercel-build-local.sh` runs the official `vercel build` without an account. CI runs all of it on every push.
+runs type checks, i18n validation, unit tests, the API end-to-end suites (`npm run test:e2e`) and `npm run test:smoke`, which builds `.vercel/output`, copies it outside the repository and serves it with `tests/vercel-emulator.ts` (Vercel routing, 4.5 MB body limit, `waitUntil`, cron calls). `scripts/vercel-build-local.sh` runs the official `vercel build` without an account. CI runs all of it on every push.
 
 `tests/official-cli.test.ts` drives the official Bitwarden CLI (`bw`) over HTTPS against accounts and organizations created with real client crypto: login (password and API key), lock/unlock, items, folders, attachments, Sends, export, confirming members, sharing and collections. The CLI is not a dependency; it is installed on first run into `~/.cache/moliwarden-bw-cli` (override with `BW_CLI=/path/to/bw` or `BW_CLI_VERSION`). Run it with `npm run test:official-cli` (about 5 minutes; part of `npm test` and CI).
 

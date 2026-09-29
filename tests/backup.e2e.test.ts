@@ -174,18 +174,19 @@ test('export, attachment files, and local restore', async () => {
   assert.equal(exported.headers.get('Content-Type'), 'application/zip');
   const bytes = new Uint8Array(await exported.arrayBuffer());
   const fileName = fileNameOf(exported);
-  assert.match(fileName, /^nodewarden_backup_\d{8}_\d{6}_[0-9a-f]{5}\.zip$/);
+  assert.match(fileName, /^moliwarden_backup_\d{8}_\d{6}_[0-9a-f]{5}\.zip$/);
   assert.ok(fileName.endsWith(`_${checksum(bytes)}.zip`));
 
   const entries = unzipSync(bytes);
   const manifest = JSON.parse(new TextDecoder().decode(entries['manifest.json']));
-  const dump = JSON.parse(new TextDecoder().decode(entries['db.json']));
+  const dump = JSON.parse(new TextDecoder().decode(entries['vault.json']));
+  assert.equal(manifest.formatVersion, 2);
   assert.deepEqual(manifest.attachmentBlobs.map((ref: any) => ref.blobName), [`${cipherId}/${attachmentId}`]);
   assert.equal(dump.users.length, 1);
-  assert.equal(dump.users[0].api_key, undefined);
-  assert.ok(!('sends' in dump) && !('devices' in dump) && !('refresh_tokens' in dump));
+  assert.equal(dump.users[0].apiKey, undefined);
+  assert.ok(!('sends' in dump) && !('devices' in dump) && !('refreshTokens' in dump));
   // Settings go in only in their portable form.
-  const settings = dump.config.find((row: any) => row.key === 'backup.settings.v1');
+  const settings = dump.settings.find((record: any) => record.key === 'backup.settings');
   assert.equal(JSON.parse(settings.value).portableOnly, true);
   assert.ok(!JSON.stringify(dump).includes('mwsecret123'));
 
@@ -324,20 +325,20 @@ test('remote archives can be checked, downloaded, restored and deleted', async (
 });
 
 test('one run at a time', async () => {
-  await db.query(`INSERT INTO config (key, value) VALUES ('lease.backup', $1)`, [JSON.stringify({ token: 'other', expiresAt: Date.now() + 60_000 })]);
+  await db.query(`INSERT INTO job_leases (name, token, expires_at) VALUES ('backup', gen_random_uuid(), $1)`, [new Date(Date.now() + 60_000)]);
   try {
     const busy = await alice.request('/api/admin/backup/run', { method: 'POST', json: { destinationId: S3_ID, masterPasswordHash: PASSWORD } });
     assert.equal(busy.status, 409);
     assert.equal((await busy.json()).message, 'Another backup run is already in progress');
   } finally {
-    await db.query(`DELETE FROM config WHERE key = 'lease.backup'`);
+    await db.query(`DELETE FROM job_leases WHERE name = 'backup'`);
   }
 });
 
 test('the cron job catches up on a missed scheduled run', async () => {
   await saveSettings([s3Destination({ enabled: true, startTime: '00:00', intervalHours: 1 }), davDestination()]);
   // The latest hourly slot passed after the last run.
-  await db.query(`UPDATE config SET value = jsonb_set(value::jsonb, '{destinations,${S3_ID},lastAttemptAt}', to_jsonb($1::text))::text WHERE key = 'backup.runtime.v1'`, [
+  await db.query(`UPDATE settings SET value = jsonb_set(value, '{destinations,${S3_ID},lastAttemptAt}', to_jsonb($1::text)) WHERE key = 'backup.runtime'`, [
     new Date(Date.now() - 2 * 3_600_000).toISOString(),
   ]);
   const before = (await alice.json('/api/admin/backup/settings')).destinations[0].runtime;

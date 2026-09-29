@@ -60,3 +60,8 @@ export function totpStep(secret: string, input: string, now = Date.now()): numbe
   }
   return match;
 }
+
+// When a code of `step` stops being accepted.
+export function stepExpiry(step: number): Date {
+  return new Date((step + DRIFT_STEPS + 1) * STEP_SECONDS * 1000);
+}

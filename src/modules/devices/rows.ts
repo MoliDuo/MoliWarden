@@ -3,12 +3,13 @@ import type { Device } from '../../types';
 
 export function toDevice(row: Row<'devices'>): Device {
   return {
+    id: row.id,
     userId: row.user_id,
-    deviceIdentifier: row.device_identifier,
+    deviceIdentifier: row.identifier,
     name: row.name,
-    deviceNote: row.device_note,
+    deviceNote: row.note,
     type: row.type,
-    sessionStamp: row.session_stamp || '',
+    sessionStamp: row.session_stamp,
     encryptedUserKey: row.encrypted_user_key,
     encryptedPublicKey: row.encrypted_public_key,
     encryptedPrivateKey: row.encrypted_private_key,

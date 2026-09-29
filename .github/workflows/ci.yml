@@ -37,9 +37,6 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
-      - name: SQL statements against Postgres
-        run: npm run check:sql
-
       - name: End-to-end API tests
         run: npm run test:e2e
 

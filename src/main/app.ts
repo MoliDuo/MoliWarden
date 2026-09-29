@@ -26,8 +26,7 @@ import { syncRoutes } from '../modules/sync/routes';
 import { twoFactorRoutes } from '../modules/two-factor/routes';
 import { constantTimeEqual } from '../platform/crypto';
 import { BlobStoreError } from '../platform/blob';
-import { PgD1Database } from '../platform/pg-d1';
-import { StorageService } from '../services/storage';
+import { migrateToLatest, schemaState } from '../platform/db/migrate';
 import type { Deps } from './deps';
 
 // Routes whose bodies are file contents; they enforce the upload limit
@@ -50,22 +49,34 @@ function limitRequestBody(): MiddlewareHandler {
   return (c, next) => (isFileUpload(c.req.path) ? next() : limit(c, next));
 }
 
-// Creates or upgrades the schema once per process; a failure is retried on
-// the next request.
-function ensureDatabase(deps: Deps): MiddlewareHandler {
+// Brings the schema up to date once per process; a failure is retried on
+// the next request. Tables of an earlier version are never converted here:
+// that is scripts/migrate-legacy.ts, run by the operator.
+function ensureMigrated(deps: Deps): MiddlewareHandler {
   let ready: Promise<void> | null = null;
+  const migrate = async () => {
+    const state = await schemaState(deps.db);
+    if (state === 'legacy') throw LEGACY_DATABASE;
+    if (state === 'outdated') await migrateToLatest(deps.pool);
+  };
   return async (_c, next) => {
-    const pending = (ready ??= new StorageService(new PgD1Database(deps.pool)).initializeDatabase());
+    const pending = (ready ??= migrate());
     try {
       await pending;
     } catch (error) {
       if (ready === pending) ready = null;
-      console.error('Database initialization failed:', error);
+      if (error === LEGACY_DATABASE) throw error;
+      console.error('Database migration failed:', error);
       throw new HttpError(500, 'Database unavailable. Check DATABASE_URL and the function logs.');
     }
     await next();
   };
 }
+
+const LEGACY_DATABASE = new HttpError(
+  503,
+  'The database holds the data of an earlier MoliWarden version. Run `npm run db:migrate-legacy` against it (see the README), then reload.',
+);
 
 // Everything past this point signs or verifies tokens.
 function requireJwtSecret(deps: Deps): MiddlewareHandler {
@@ -84,9 +95,15 @@ export const handleError: ErrorHandler = (error, c) => {
     console.error('File storage error:', error.detail || error.message);
     return c.json(new HttpError(500, error.message).body, 500);
   }
+  // An id that is not a UUID gets this far only where no schema checks it.
+  if ((error as { code?: unknown }).code === INVALID_TEXT_REPRESENTATION) {
+    return c.json(new HttpError(400, 'Invalid identifier').body, 400);
+  }
   console.error('Request error:', error);
   return c.json(new HttpError(500, 'Internal server error').body, 500);
 };
+
+const INVALID_TEXT_REPRESENTATION = '22P02';
 
 export function createApp(deps: Deps): Hono {
   const app = new Hono({ strict: false });
@@ -95,7 +112,7 @@ export function createApp(deps: Deps): Hono {
   app.use(responseHeaders(cors));
   app.options('*', preflight(cors));
   app.use(limitRequestBody());
-  app.use(ensureDatabase(deps));
+  app.use(ensureMigrated(deps));
 
   app.route('/', metaRoutes(deps));
   app.route('/', iconRoutes(deps));

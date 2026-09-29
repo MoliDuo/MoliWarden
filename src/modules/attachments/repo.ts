@@ -11,7 +11,9 @@ export interface Attachment {
   fileName: string;
   key: string | null;
   size: number;
-  sizeName: string;
+  // Null until the file is in blob storage.
+  uploadedAt: string | null;
+  createdAt: string;
 }
 
 function toAttachment(row: Row<'attachments'>): Attachment {
@@ -20,8 +22,9 @@ function toAttachment(row: Row<'attachments'>): Attachment {
     cipherId: row.cipher_id,
     fileName: row.file_name,
     key: row.key,
-    size: Number(row.size) || 0,
-    sizeName: row.size_name,
+    size: row.size,
+    uploadedAt: row.uploaded_at,
+    createdAt: row.created_at,
   };
 }
 
@@ -71,12 +74,15 @@ export async function saveAttachment(db: Executor, attachment: Attachment): Prom
     file_name: attachment.fileName,
     key: attachment.key,
     size: attachment.size,
-    size_name: attachment.sizeName,
+    uploaded_at: attachment.uploadedAt,
+    created_at: attachment.createdAt,
   };
   await db
     .insertInto('attachments')
     .values(row)
-    .onConflict((oc) => oc.column('id').doUpdateSet({ file_name: row.file_name, key: row.key, size: row.size, size_name: row.size_name }))
+    .onConflict((oc) =>
+      oc.column('id').doUpdateSet({ file_name: row.file_name, key: row.key, size: row.size, uploaded_at: row.uploaded_at }),
+    )
     .execute();
 }
 

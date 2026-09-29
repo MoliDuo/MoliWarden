@@ -5,7 +5,7 @@ import type { Deps } from '../../main/deps';
 import { sendFileKey } from '../../platform/blob';
 import { findUserById } from '../accounts/repo';
 import { clearFailures, lockedFor, lockoutKey, minutes, recordFailure } from '../auth/lockout';
-import { useTokenOnce } from '../auth/repo';
+import { consumeOnce } from '../../platform/db/consumed';
 import { PushType } from '../push/service';
 import { commit } from '../sync/changes';
 import { checkSendPassword, isAvailable, sendIdOf, SendType, type Send } from './model';
@@ -131,7 +131,7 @@ export async function downloadSendFile(deps: Deps, sendId: string, fileId: strin
   // The download was counted when the URL was handed out.
   const send = await findSend(deps.db, sendId);
   if (!send || send.file?.id !== fileId) throw notFound(INACCESSIBLE);
-  if (!(await useTokenOnce(deps.db, claims.jti, claims.exp))) throw unauthorized('Invalid or expired token');
+  if (!(await consumeOnce(deps.db, `send-download:${claims.jti}`, new Date(claims.exp * 1000)))) throw unauthorized('Invalid or expired token');
   return fileDownload(deps.blobs, sendFileKey(sendId, fileId), send.file.fileName || 'send-file', 'Send file not found');
 }
 

@@ -1,12 +1,11 @@
 import { IdentityError } from '../../http/errors';
 import type { Deps } from '../../main/deps';
-import { randomToken, sha256Hex } from '../../platform/crypto';
+import { randomToken, sha256 } from '../../platform/crypto';
 import type { User } from '../../types';
 import { securityKeyAssertionOptions, verifySecurityKeyAssertion } from '../passkeys/service';
 import { recoveryCodeMatches } from './recovery-code';
-import { hasRememberToken, saveRememberToken, useTotpStep } from './repo';
-import { checkYubiKeyOtp, factorsOf, hasSecondFactor, Provider, resetTwoFactor, type Factors } from './service';
-import { totpStep } from './totp';
+import { hasRememberToken, saveRememberToken } from './repo';
+import { checkYubiKeyOtp, factorsOf, hasSecondFactor, Provider, resetTwoFactor, useTotpCode, type Factors } from './service';
 import { yubiKeyPublicId } from './yubico';
 
 // The second step of a password login. Each provider a client may answer
@@ -44,8 +43,7 @@ interface Check {
 // Each provider checks the answer; true means it passed.
 const CHECKS: Record<number, (check: Check) => Promise<boolean>> = {
   async [Provider.Authenticator]({ deps, user, factors, token }) {
-    const step = factors.totpSecret ? totpStep(factors.totpSecret, token) : null;
-    return step !== null && (await useTotpStep(deps.db, user.id, step, Date.now()));
+    return !!factors.totpSecret && (await useTotpCode(deps.db, user.id, factors.totpSecret, token));
   },
   async [Provider.YubiKey]({ deps, user, factors, token }) {
     const publicId = yubiKeyPublicId(token);
@@ -63,13 +61,11 @@ const CHECKS: Record<number, (check: Check) => Promise<boolean>> = {
   },
 };
 
-const rememberKey = (token: string) => `sha256:${sha256Hex(token)}`;
-
 // What the client needs to show for each provider the user has set up.
 async function challenge(deps: Deps, request: Request, user: User, factors: Factors): Promise<IdentityError> {
   const providers: Record<string, unknown> = {};
   if (factors.totpSecret) providers[Provider.Authenticator] = null;
-  if (factors.yubiKeys.length) providers[Provider.YubiKey] = { Nfc: user.yubikeyNfc };
+  if (factors.yubiKeys.length) providers[Provider.YubiKey] = { Nfc: factors.yubiKey?.nfc ?? false };
   const webAuthn = await securityKeyAssertionOptions(deps, request, factors.securityKeys);
   if (webAuthn) providers[Provider.WebAuthn] = webAuthn;
   return twoFactorRequired(providers);
@@ -120,7 +116,7 @@ export async function secondStep(deps: Deps, request: Request, user: User, input
   if (provider === String(Provider.Remember)) {
     const remembered =
       !!input.deviceIdentifier &&
-      (await hasRememberToken(deps.db, rememberKey(token), user.id, input.deviceIdentifier, user.securityStamp, Date.now()));
+      (await hasRememberToken(deps.db, sha256(token), user.id, input.deviceIdentifier, user.securityStamp));
     return remembered
       ? { status: 'passed', rememberToken: null }
       : { status: 'challenge', error: await challenge(deps, request, user, factors) };
@@ -128,7 +124,7 @@ export async function secondStep(deps: Deps, request: Request, user: User, input
 
   // The recovery code turns two-step login off, so there is nothing to remember.
   if (RECOVERY_CODE_PROVIDERS.has(provider)) {
-    if (!recoveryCodeMatches(token, user.totpRecoveryCode)) return { status: 'failed' };
+    if (!recoveryCodeMatches(token, user.recoveryCode)) return { status: 'failed' };
     await resetTwoFactor(deps, user);
     return { status: 'passed', rememberToken: null };
   }
@@ -140,11 +136,11 @@ export async function secondStep(deps: Deps, request: Request, user: User, input
   const rememberToken = randomToken();
   await saveRememberToken(
     deps.db,
-    rememberKey(rememberToken),
+    sha256(rememberToken),
     user.id,
     input.deviceIdentifier,
     user.securityStamp,
-    Date.now() + REMEMBER_TTL_MS,
+    new Date(Date.now() + REMEMBER_TTL_MS),
   );
   return { status: 'passed', rememberToken };
 }

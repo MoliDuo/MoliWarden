@@ -5,7 +5,6 @@ import type { Deps } from '../../main/deps';
 import type { User } from '../../types';
 import { touchRevisionDate } from '../accounts/repo';
 import { recordAudit, requestMetadata } from '../audit/service';
-import { unsetFolders } from '../ciphers/repo';
 import { PushType } from '../push/service';
 import { deleteFolders, findFolder, listFolders, saveFolders, type Folder } from './repo';
 import type { FolderInput } from './schemas';
@@ -46,13 +45,13 @@ export async function saveFolder(deps: Deps, caller: Caller, id: string | null, 
   return folderJson(folder);
 }
 
-// The ciphers in a deleted folder stay, outside any folder.
+// The ciphers in a deleted folder stay, outside any folder (the foreign
+// key clears their folder).
 export async function removeFolders(deps: Deps, caller: Caller, ids: string[], action = 'folder.delete.bulk'): Promise<void> {
   const now = new Date().toISOString();
   const deleted = await deps.db.transaction().execute(async (tx) => {
     const removed = await deleteFolders(tx, caller.user.id, ids);
     if (!removed.length) return removed;
-    await unsetFolders(tx, caller.user.id, removed);
     await touchRevisionDate(tx, caller.user.id, now);
     return removed;
   });

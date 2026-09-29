@@ -1,7 +1,8 @@
+import { sizeName } from '../../http/files';
 import { SendAuthType, accessIdOf, type Send } from './model';
 
 // Clients read file sizes as strings.
-const fileJson = (send: Send) => send.file && { ...send.file, size: String(send.file.size) };
+const fileJson = (send: Send) => send.file && { ...send.file, size: String(send.file.size), sizeName: sizeName(send.file.size) };
 
 // Bitwarden's SendResponseModel, for the owner.
 export function sendJson(send: Send) {

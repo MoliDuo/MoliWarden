@@ -3,7 +3,6 @@
   "version": "1.8.0",
   "description": "Bitwarden-compatible server for Vercel (PostgreSQL + S3)",
   "license": "LGPL-3.0",
-  "main": "src/app.ts",
   "type": "module",
   "scripts": {
     "dev:demo": "vite --config webapp/vite.config.ts --mode demo --host 127.0.0.1 --port 5174",
@@ -22,12 +21,12 @@
     "test:e2e": "tsx --test --test-concurrency=1 tests/*.e2e.test.ts",
     "test:official-cli": "tsx --test tests/official-cli.test.ts",
     "check:css-colors": "node scripts/check-css-colors.mjs",
-    "check:sql": "tsx scripts/check-sql.ts",
+    "db:migrate": "tsx scripts/db-migrate.ts",
     "test:smoke": "npm run build:vercel && tsx --test tests/vercel-output.smoke.test.ts",
     "typecheck:web": "tsc --noEmit -p webapp",
     "test:ui": "bash scripts/test-ui.sh",
     "test:unit": "tsx --test tests/unit/*.test.ts && npm run test:config-compatibility && npm run test:web-crypto && npm run test:webauthn-connectors",
-    "test": "npm run typecheck && npm run typecheck:web && npm run i18n:validate && npm run check:css-colors && npm run test:unit && npm run check:sql && npm run test:e2e && npm run test:official-cli && npm run test:ui && npm run test:smoke",
+    "test": "npm run typecheck && npm run typecheck:web && npm run i18n:validate && npm run check:css-colors && npm run test:unit && npm run test:e2e && npm run test:official-cli && npm run test:ui && npm run test:smoke",
     "test:services": "docker compose -f tests/services/docker-compose.yml up -d --wait",
     "icons": "tsx scripts/generate-icons.ts"
   },

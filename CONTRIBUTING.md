@@ -39,35 +39,36 @@ these areas, check the related files before calling the work complete.
 
 ### Database Changes
 
-The PostgreSQL schema lives only in `src/services/storage-schema.ts`.
+The schema is defined by the migrations in `src/platform/db/migrations/`, and
+its TypeScript shape by `src/platform/db/schema.ts`; keep the two in step.
 
 If you add or change a table, column, or index:
 
-- Add new columns with `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
-- Run `npm run check:sql` against a scratch database.
-- Bump `STORAGE_SCHEMA_VERSION` in `src/services/storage.ts`.
-- Decide whether the data should be included in instance backup.
+- Add a new migration file and register it in `src/platform/db/migrate.ts`.
+  Never edit a migration that has shipped.
+- Prefer additive changes; the server applies pending migrations on its first
+  request, while the previous deployment may still be serving.
+- Queries are typed by Kysely, so `npm run typecheck` catches most mismatches;
+  `npm run test:e2e` runs every migration on an empty database.
+- Decide whether the data belongs in instance backups.
 
 ### Backup And Restore
 
-Backup export and restore are whitelist-based. This protects old backups from
-breaking when fields are removed and prevents transient or secret runtime data
-from being exported by accident.
+Backups are whitelist-based: `src/modules/backup/archive.ts` lists every record
+kind and field an archive carries, independent of the table layout. Transient
+rows (sessions, rate limits, leases, consumed tokens) are never exported.
 
 When adding persistent data, check:
 
-- `src/services/backup-archive.ts`
-- `src/services/backup-import.ts`
+- `src/modules/backup/archive.ts`
+- `src/modules/backup/repo.ts`
 - `webapp/src/lib/api/backup.ts`
-
-Do not export runtime lock rows such as `backup.runner.lock.v1`. Do not import
-retired sensitive fields such as `users.api_key`.
 
 ### Secrets And Provider Settings
 
-Provider credentials must not be stored or exported as plain config JSON. Follow
-the encrypted settings pattern in `src/services/backup-settings-crypto.ts`, or
-document a replacement design before changing it.
+Provider credentials must not be stored or exported as plain JSON. Follow the
+sealed settings in `src/modules/backup/settings-crypto.ts`, or document a
+replacement design before changing it.
 
 ### Bitwarden Client Compatibility
 
@@ -77,16 +78,15 @@ unless they are known-invalid or server-owned.
 
 Check these files when changing vault item shape or sync behavior:
 
-- `src/handlers/ciphers.ts`
-- `src/handlers/sync.ts`
-- `src/services/storage-cipher-repo.ts`
+- `src/modules/ciphers/model.ts`
+- `src/modules/ciphers/responses.ts`
+- `src/modules/sync/service.ts`
 
 ### Domain Rules
 
-Equivalent-domain settings store both client/UI rule state and derived active
-groups. Do not remove `equivalent_domains`, `custom_equivalent_domains`, or
-`excluded_global_equivalent_domains` as duplicates without a migration and
-compatibility plan.
+`users.custom_domains` holds the user's own equivalent-domain groups and
+`users.excluded_global_domains` the global groups they turned off; the active
+groups are derived from both when the rules are read.
 
 ### Accounts And Passwords
 

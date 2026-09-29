@@ -5,7 +5,7 @@ import { attachmentKey } from '../../platform/blob';
 import { removeAttachmentFiles } from '../attachments/files';
 import { listSends } from '../sends/repo';
 import { removeSendFiles } from '../sends/service';
-import { attachmentEntry, type ParsedArchive } from './archive';
+import { attachmentEntry, KIND_NAMES, type KindName, type ParsedArchive } from './archive';
 import { hasVaultData, listAttachmentKeys, replaceInstance } from './repo';
 
 // Restoring replaces every account and vault on the server with the
@@ -20,17 +20,7 @@ const EXTERNAL_FILES = 'Attachment files stored next to a remote backup are only
 
 export interface RestoreResult {
   object: 'instance-backup-import';
-  imported: {
-    config: number;
-    users: number;
-    domainSettings: number;
-    userRevisions: number;
-    webauthnCredentials: number;
-    folders: number;
-    ciphers: number;
-    attachments: number;
-    attachmentFiles: number;
-  };
+  imported: Record<KindName, number> & { attachmentFiles: number };
   skipped: {
     reason: string | null;
     attachments: number;
@@ -49,11 +39,11 @@ export interface RestoreOptions {
 async function uploadFiles(deps: Deps, archive: ParsedArchive, options: RestoreOptions) {
   const uploaded = new Set<string>();
   const failed = new Map<string, string>();
-  const rows = archive.snapshot.attachments;
-  for (let i = 0; i < rows.length; i += UPLOAD_CONCURRENCY) {
+  const records = archive.snapshot.attachments;
+  for (let i = 0; i < records.length; i += UPLOAD_CONCURRENCY) {
     await Promise.all(
-      rows.slice(i, i + UPLOAD_CONCURRENCY).map(async (row) => {
-        const key = attachmentKey(String(row.cipher_id), String(row.id));
+      records.slice(i, i + UPLOAD_CONCURRENCY).map(async (record) => {
+        const key = attachmentKey(String(record.cipherId), String(record.id));
         if (!deps.blobs.configured) return void failed.set(key, STORAGE_MISSING);
         const external = archive.external.get(key);
         if (external && !options.fetchExternal) return void failed.set(key, EXTERNAL_FILES);
@@ -89,7 +79,7 @@ export async function restoreArchive(deps: Deps, caller: Caller, archive: Parsed
   const { uploaded, failed } = await uploadFiles(deps, archive, options);
   const snapshot = {
     ...archive.snapshot,
-    attachments: archive.snapshot.attachments.filter((row) => uploaded.has(attachmentKey(String(row.cipher_id), String(row.id)))),
+    attachments: archive.snapshot.attachments.filter((record) => uploaded.has(attachmentKey(String(record.cipherId), String(record.id)))),
   };
   const kept = new Set(previousFiles.map((file) => attachmentKey(file.cipherId, file.id)));
   try {
@@ -98,7 +88,7 @@ export async function restoreArchive(deps: Deps, caller: Caller, archive: Parsed
     const orphans = [...uploaded].filter((key) => !kept.has(key)).map((key) => ({ cipherId: key.split('/')[0], id: key.split('/')[1] }));
     await removeAttachmentFiles(deps.blobs, orphans);
     if (!isDataError(error)) throw error;
-    throw badRequest(`Invalid backup: rows in ${error.table ?? 'a table'} contradict the rest of the backup`);
+    throw badRequest(`Invalid backup: records in ${error.table ?? 'a table'} contradict the rest of the backup`);
   }
 
   await removeAttachmentFiles(
@@ -107,28 +97,21 @@ export async function restoreArchive(deps: Deps, caller: Caller, archive: Parsed
   );
   await removeSendFiles(deps.blobs, previousSends);
 
-  const skippedRows = archive.snapshot.attachments.filter((row) => failed.has(attachmentKey(String(row.cipher_id), String(row.id))));
+  const skipped = archive.snapshot.attachments.filter((record) => failed.has(attachmentKey(String(record.cipherId), String(record.id))));
   const reasons = new Set(failed.values());
   const result: RestoreResult = {
     object: 'instance-backup-import',
     imported: {
-      config: snapshot.config.length,
-      users: snapshot.users.length,
-      domainSettings: snapshot.domain_settings.length,
-      userRevisions: snapshot.user_revisions.length,
-      webauthnCredentials: snapshot.webauthn_credentials.length,
-      folders: snapshot.folders.length,
-      ciphers: snapshot.ciphers.length,
-      attachments: snapshot.attachments.length,
+      ...(Object.fromEntries(KIND_NAMES.map((kind) => [kind, snapshot[kind].length])) as Record<KindName, number>),
       attachmentFiles: uploaded.size,
     },
     skipped: {
       reason: reasons.size === 1 ? [...reasons][0] : reasons.size ? SOME_FILES_FAILED : null,
-      attachments: skippedRows.length,
-      items: skippedRows.map((row) => ({
+      attachments: skipped.length,
+      items: skipped.map((record) => ({
         kind: 'attachment',
-        path: attachmentEntry(String(row.cipher_id), String(row.id)),
-        sizeBytes: Number(row.size) || 0,
+        path: attachmentEntry(String(record.cipherId), String(record.id)),
+        sizeBytes: Number(record.size) || 0,
       })),
     },
   };

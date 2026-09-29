@@ -43,10 +43,10 @@ function toAuthRequest(row: Row<'auth_requests'>): AuthRequest {
     accessCode: row.access_code,
     publicKey: row.public_key,
     key: row.key,
-    approved: row.approved === null ? null : row.approved === 1,
-    creationDate: row.creation_date,
-    responseDate: row.response_date,
-    authenticationDate: row.authentication_date,
+    approved: row.approved,
+    creationDate: row.created_at,
+    responseDate: row.responded_at,
+    authenticationDate: row.authenticated_at,
   };
 }
 
@@ -58,7 +58,6 @@ export async function insertAuthRequest(db: Executor, request: AuthRequest): Pro
     .values({
       id: request.id,
       user_id: request.userId,
-      organization_id: null,
       type: request.type,
       request_device_identifier: request.requestDeviceIdentifier,
       request_device_type: request.requestDeviceType,
@@ -68,18 +67,17 @@ export async function insertAuthRequest(db: Executor, request: AuthRequest): Pro
       access_code: request.accessCode,
       public_key: request.publicKey,
       key: null,
-      master_password_hash: null,
       approved: null,
-      creation_date: request.creationDate,
-      response_date: null,
-      authentication_date: null,
+      created_at: request.creationDate,
+      responded_at: null,
+      authenticated_at: null,
     })
     .execute();
 }
 
 // Unexpired requests only. Without a user, any user's.
 export async function findAuthRequest(db: Executor, id: string, userId: string | null, now = Date.now()): Promise<AuthRequest | null> {
-  let query = db.selectFrom('auth_requests').selectAll().where('id', '=', id).where('creation_date', '>', cutoff(now));
+  let query = db.selectFrom('auth_requests').selectAll().where('id', '=', id).where('created_at', '>', cutoff(now));
   if (userId) query = query.where('user_id', '=', userId);
   const row = await query.executeTakeFirst();
   return row ? toAuthRequest(row) : null;
@@ -90,7 +88,7 @@ export async function listAuthRequests(db: Executor, userId: string): Promise<Au
     .selectFrom('auth_requests')
     .selectAll()
     .where('user_id', '=', userId)
-    .orderBy('creation_date', 'desc')
+    .orderBy('created_at', 'desc')
     .execute();
   return rows.map(toAuthRequest);
 }
@@ -104,9 +102,9 @@ async function latestPerDevice(db: Executor, userId: string, now: number, device
     .distinctOn('request_device_identifier')
     .where('user_id', '=', userId)
     .where('type', 'in', ANSWERED_BY_USER)
-    .where('creation_date', '>', cutoff(now));
+    .where('created_at', '>', cutoff(now));
   if (deviceIdentifier !== undefined) query = query.where('request_device_identifier', '=', deviceIdentifier);
-  const rows = await query.orderBy('request_device_identifier').orderBy('creation_date', 'desc').execute();
+  const rows = await query.orderBy('request_device_identifier').orderBy('created_at', 'desc').execute();
   return rows.map(toAuthRequest);
 }
 
@@ -132,16 +130,16 @@ export async function answerAuthRequest(
   const row = await db
     .updateTable('auth_requests')
     .set({
-      approved: answer.approved ? 1 : 0,
+      approved: answer.approved,
       key: answer.approved ? answer.key : null,
       response_device_identifier: answer.deviceIdentifier,
-      response_date: new Date().toISOString(),
+      responded_at: new Date().toISOString(),
     })
     .where('id', '=', request.id)
     .where('user_id', '=', request.userId)
     .where('approved', 'is', null)
-    .where('response_date', 'is', null)
-    .where('authentication_date', 'is', null)
+    .where('responded_at', 'is', null)
+    .where('authenticated_at', 'is', null)
     .returningAll()
     .executeTakeFirst();
   return row ? toAuthRequest(row) : null;
@@ -166,10 +164,10 @@ export async function findApprovedLoginRequest(
     .where('id', '=', id)
     .where('user_id', '=', userId)
     .where('type', '=', AuthRequestType.LoginAndUnlock)
-    .where('approved', '=', 1)
-    .where('response_date', 'is not', null)
-    .where('authentication_date', 'is', null)
-    .where('creation_date', '>', cutoff(now))
+    .where('approved', '=', true)
+    .where('responded_at', 'is not', null)
+    .where('authenticated_at', 'is', null)
+    .where('created_at', '>', cutoff(now))
     .executeTakeFirst();
   return row?.key ? { id: row.id, accessCode: row.access_code, key: row.key } : null;
 }
@@ -178,15 +176,15 @@ export async function findApprovedLoginRequest(
 export async function markAuthRequestUsed(db: Executor, id: string): Promise<boolean> {
   const result = await db
     .updateTable('auth_requests')
-    .set({ authentication_date: new Date().toISOString() })
+    .set({ authenticated_at: new Date().toISOString() })
     .where('id', '=', id)
-    .where('authentication_date', 'is', null)
+    .where('authenticated_at', 'is', null)
     .executeTakeFirst();
   return result.numUpdatedRows > 0n;
 }
 
 // For the scheduled cleanup.
 export async function deleteExpiredAuthRequests(db: Executor, now = Date.now()): Promise<number> {
-  const result = await db.deleteFrom('auth_requests').where('creation_date', '<=', cutoff(now)).executeTakeFirst();
+  const result = await db.deleteFrom('auth_requests').where('created_at', '<=', cutoff(now)).executeTakeFirst();
   return Number(result.numDeletedRows);
 }

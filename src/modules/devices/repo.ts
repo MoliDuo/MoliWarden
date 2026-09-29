@@ -24,7 +24,7 @@ export async function findDevice(db: Executor, userId: string, identifier: strin
     .selectFrom('devices')
     .selectAll()
     .where('user_id', '=', userId)
-    .where('device_identifier', '=', identifier)
+    .where('identifier', '=', identifier)
     .executeTakeFirst();
   return row ? toDevice(row) : null;
 }
@@ -45,16 +45,16 @@ export async function isKnownDevice(db: Executor, email: string, identifier: str
   const row = await db
     .selectFrom('devices')
     .innerJoin('users', 'users.id', 'devices.user_id')
-    .select('devices.device_identifier')
+    .select('devices.identifier')
     .where('users.email', '=', email)
-    .where('devices.device_identifier', '=', identifier)
+    .where('devices.identifier', '=', identifier)
     .executeTakeFirst();
   return !!row;
 }
 
 // Records a device the user signed in on, or that registered itself. A
-// device keeps its session stamp, push id and keys across sign-ins; a new
-// one gets fresh ones.
+// device keeps its id, session stamp, push id and keys across sign-ins; a
+// new one gets fresh ones.
 export async function saveDevice(
   db: Executor,
   userId: string,
@@ -66,23 +66,20 @@ export async function saveDevice(
     .insertInto('devices')
     .values({
       user_id: userId,
-      device_identifier: device.identifier,
+      identifier: device.identifier,
       name: device.name,
       type: device.type,
       session_stamp: randomUUID(),
       push_uuid: randomUUID(),
-      banned: 0,
       last_seen_at: now,
       created_at: now,
       updated_at: now,
       ...keys,
     })
     .onConflict((oc) =>
-      oc.columns(['user_id', 'device_identifier']).doUpdateSet({
+      oc.columns(['user_id', 'identifier']).doUpdateSet({
         name: (eb) => eb.ref('excluded.name'),
         type: (eb) => eb.ref('excluded.type'),
-        session_stamp: sql`COALESCE(NULLIF(devices.session_stamp, ''), excluded.session_stamp)`,
-        push_uuid: sql`COALESCE(devices.push_uuid, excluded.push_uuid)`,
         last_seen_at: now,
         updated_at: now,
         ...keys,
@@ -103,7 +100,7 @@ async function updateDevice(
     .updateTable('devices')
     .set(changes)
     .where('user_id', '=', userId)
-    .where('device_identifier', '=', identifier)
+    .where('identifier', '=', identifier)
     .returningAll()
     .executeTakeFirst();
   return row ? toDevice(row) : null;
@@ -115,16 +112,11 @@ export function setDeviceKeys(db: Executor, userId: string, identifier: string, 
 
 // The note the user gave the device, shown in place of its name.
 export function setDeviceNote(db: Executor, userId: string, identifier: string, note: string): Promise<Device | null> {
-  return updateDevice(db, userId, identifier, { device_note: note, updated_at: new Date().toISOString() });
+  return updateDevice(db, userId, identifier, { note, updated_at: new Date().toISOString() });
 }
 
-// Devices from before push ids existed get one here.
 export function setDevicePushToken(db: Executor, userId: string, identifier: string, pushToken: string): Promise<Device | null> {
-  return updateDevice(db, userId, identifier, {
-    push_token: pushToken,
-    push_uuid: sql`COALESCE(push_uuid, ${randomUUID()})`,
-    updated_at: new Date().toISOString(),
-  });
+  return updateDevice(db, userId, identifier, { push_token: pushToken, updated_at: new Date().toISOString() });
 }
 
 // Returns the device as it was, so its push registration can be removed.
@@ -141,7 +133,7 @@ export async function clearDeviceKeys(db: Executor, userId: string, identifiers:
     .updateTable('devices')
     .set({ encrypted_user_key: null, encrypted_public_key: null, encrypted_private_key: null, updated_at: new Date().toISOString() })
     .where('user_id', '=', userId)
-    .where('device_identifier', 'in', identifiers)
+    .where('identifier', 'in', identifiers)
     .executeTakeFirst();
   return Number(result.numUpdatedRows);
 }
@@ -154,7 +146,7 @@ export async function deleteDevice(db: Executor, userId: string, identifier: str
   const row = await db
     .deleteFrom('devices')
     .where('user_id', '=', userId)
-    .where('device_identifier', '=', identifier)
+    .where('identifier', '=', identifier)
     .returningAll()
     .executeTakeFirst();
   return row ? toDevice(row) : null;

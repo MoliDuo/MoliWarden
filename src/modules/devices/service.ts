@@ -30,7 +30,7 @@ import type { RegisterDeviceInput, TrustInput } from './schemas';
 // to a key of its own so it can unlock without the master password.
 
 // "Trust permanently" in the web vault.
-const PERMANENT_TRUST_UNTIL = Date.UTC(2099, 11, 31, 23, 59, 59);
+const PERMANENT_TRUST_UNTIL = new Date(Date.UTC(2099, 11, 31, 23, 59, 59));
 
 const UNKNOWN_DEVICE_TYPE = 14;
 
@@ -83,7 +83,7 @@ export async function deviceKeys(deps: Deps, user: User, identifier: string) {
 export async function authorizedDevices(deps: Deps, user: User) {
   const [devices, remembered] = await Promise.all([
     listDevices(deps.db, user.id),
-    listRememberedDevices(deps.db, user.id, Date.now()),
+    listRememberedDevices(deps.db, user.id),
   ]);
   const byIdentifier = new Map(remembered.map((entry) => [entry.identifier, entry]));
   const trust = (identifier: string) => {
@@ -92,7 +92,7 @@ export async function authorizedDevices(deps: Deps, user: User) {
       online: false,
       trusted: !!entry,
       trustedTokenCount: entry?.tokenCount ?? 0,
-      trustedUntil: entry ? new Date(entry.expiresAt).toISOString() : null,
+      trustedUntil: entry?.expiresAt ?? null,
     };
   };
 
@@ -101,6 +101,7 @@ export async function authorizedDevices(deps: Deps, user: User) {
     .filter((entry) => !known.has(entry.identifier))
     .map((entry) => ({
       ...deviceJson({
+        id: '',
         userId: user.id,
         deviceIdentifier: entry.identifier,
         name: 'Unknown device',
@@ -109,7 +110,7 @@ export async function authorizedDevices(deps: Deps, user: User) {
         encryptedUserKey: null,
         encryptedPublicKey: null,
         encryptedPrivateKey: null,
-        pushUuid: null,
+        pushUuid: '',
         pushToken: null,
         deviceNote: null,
         lastSeenAt: null,
@@ -191,10 +192,10 @@ export async function forgetRemembered(deps: Deps, request: Request, user: User,
 }
 
 export async function rememberPermanently(deps: Deps, request: Request, user: User, identifier: string) {
-  const updated = await extendRememberTokens(deps.db, user.id, identifier, PERMANENT_TRUST_UNTIL, Date.now());
+  const updated = await extendRememberTokens(deps.db, user.id, identifier, PERMANENT_TRUST_UNTIL);
   if (!updated) throw conflict('Device is not currently trusted');
   await audit(deps, request, user, 'device.trust.permanent', { type: 'device', id: identifier }, 'security', { updated });
-  return { success: true, updated, trustedUntil: new Date(PERMANENT_TRUST_UNTIL).toISOString() };
+  return { success: true, updated, trustedUntil: PERMANENT_TRUST_UNTIL.toISOString() };
 }
 
 // Signs the device out: its sessions end and it is forgotten.
@@ -228,7 +229,7 @@ export async function removeAllDevices(deps: Deps, request: Request, user: User,
   });
   deps.push.signOut(
     user.id,
-    result.devices.flatMap((device) => (device.pushToken && device.pushUuid ? [device.pushUuid] : [])),
+    result.devices.flatMap((device) => (device.pushToken ? [device.pushUuid] : [])),
   );
   const counts = {
     removedTrusted: result.removedTrusted,
@@ -243,9 +244,7 @@ export async function removeAllDevices(deps: Deps, request: Request, user: User,
 export async function setPushToken(deps: Deps, user: User, identifier: string, pushToken: string): Promise<Device> {
   const device = await setDevicePushToken(deps.db, user.id, identifier, pushToken);
   if (!device) throw notFound('Device not found');
-  if (device.pushUuid) {
-    deps.push.register({ userId: user.id, identifier, type: device.type, pushUuid: device.pushUuid, pushToken });
-  }
+  deps.push.register({ userId: user.id, identifier, type: device.type, pushUuid: device.pushUuid, pushToken });
   return device;
 }
 
