@@ -11,9 +11,15 @@ const { Pool, types } = pg;
 
 // int8 (COUNT(*), BIGINT columns) and numeric (SUM) come back as strings by
 // default. The codebase stores millisecond timestamps and counters that fit in
-// a double, so parse them as numbers like D1 did.
-types.setTypeParser(20, (value) => (value === null ? null : Number(value)));
-types.setTypeParser(1700, (value) => (value === null ? null : Number(value)));
+// a double, so this pool parses them as numbers like D1 did.
+const INT8_OID = 20;
+const NUMERIC_OID = 1700;
+const poolTypes = {
+  getTypeParser(oid: number, format?: 'text' | 'binary') {
+    if (oid === INT8_OID || oid === NUMERIC_OID) return (value: string) => Number(value);
+    return types.getTypeParser(oid, format);
+  },
+};
 
 type Queryable = Pick<pg.Pool, 'query'> | pg.PoolClient;
 
@@ -228,5 +234,6 @@ export function createPgPool(options: PgPoolOptions): pg.Pool {
     max: options.max ?? 5,
     idleTimeoutMillis: 5_000,
     connectionTimeoutMillis: 10_000,
+    types: poolTypes,
   });
 }

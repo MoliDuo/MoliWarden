@@ -105,7 +105,7 @@ function canonicalQuery(params: URLSearchParams): string {
 }
 
 function validationUrls(env: Env): string[] {
-  const configured = String(env['globalSettings__yubico__validationUrls'] || env.YUBICO_VALIDATION_URLS || '')
+  const configured = String(env.YUBICO_VALIDATION_URLS || '')
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);

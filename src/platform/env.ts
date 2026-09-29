@@ -1,55 +1,35 @@
-import { attachDatabasePool } from '@vercel/functions';
+import type pg from 'pg';
+import type { Config } from '../main/config';
 import type { Env } from '../types';
 import { BackupTransferRunner } from '../durable/backup-transfer-runner';
 import { createInProcessNamespace } from './in-process-object';
-import { createPgPool, PgD1Database } from './pg-d1';
+import { PgD1Database } from './pg-d1';
 
-// Builds the runtime Env from a set of environment variables.
-
-type Source = Record<string, string | undefined>;
-
-function readDatabaseUrl(source: Source): string {
-  const url = source.DATABASE_URL || source.POSTGRES_URL || source.NEON_DATABASE_URL || '';
-  if (!url) {
-    throw new Error('DATABASE_URL is not configured');
-  }
-  return url;
-}
-
-export function createEnv(source: Source): { env: Env; dispose(): Promise<void> } {
-  const pool = createPgPool({
-    connectionString: readDatabaseUrl(source),
-    max: Number(source.DATABASE_POOL_MAX || 5) || 5,
-  });
-  try {
-    // Lets Vercel Fluid compute close idle connections before suspending.
-    attachDatabasePool(pool);
-  } catch {
-    // Not on Vercel.
-  }
-
+// The Env object the handlers that have not been ported yet expect, built
+// from the parsed configuration.
+export function createLegacyEnv(config: Config, pool: pg.Pool): Env {
+  const flag = (value: boolean) => (value ? '1' : undefined);
   const env: Env = {
     DB: new PgD1Database(pool),
     BACKUP_TRANSFER_RUNNER: createInProcessNamespace(
       () => env,
       (state, currentEnv) => new BackupTransferRunner(state, currentEnv)
     ),
-    JWT_SECRET: source.JWT_SECRET || '',
-    S3_ENDPOINT: source.S3_ENDPOINT,
-    S3_BUCKET: source.S3_BUCKET,
-    S3_ACCESS_KEY_ID: source.S3_ACCESS_KEY_ID,
-    S3_SECRET_ACCESS_KEY: source.S3_SECRET_ACCESS_KEY,
-    S3_REGION: source.S3_REGION,
-    S3_FORCE_PATH_STYLE: source.S3_FORCE_PATH_STYLE,
-    MAX_UPLOAD_BYTES: source.MAX_UPLOAD_BYTES,
-    HIDE_WEB_VAULT: source.HIDE_WEB_VAULT,
-    SHOW_PASSWORD_HINT: source.SHOW_PASSWORD_HINT,
-    CRON_SECRET: source.CRON_SECRET,
-    WEBAUTHN_RP_ID: source.WEBAUTHN_RP_ID,
-    WEBAUTHN_RP_NAME: source.WEBAUTHN_RP_NAME,
-    WEBAUTHN_ALLOWED_ORIGINS: source.WEBAUTHN_ALLOWED_ORIGINS,
-    YUBICO_VALIDATION_URLS: source.YUBICO_VALIDATION_URLS,
-    globalSettings__yubico__validationUrls: source.globalSettings__yubico__validationUrls,
+    JWT_SECRET: config.jwtSecret,
+    S3_ENDPOINT: config.s3.endpoint,
+    S3_BUCKET: config.s3.bucket,
+    S3_ACCESS_KEY_ID: config.s3.accessKeyId,
+    S3_SECRET_ACCESS_KEY: config.s3.secretAccessKey,
+    S3_REGION: config.s3.region,
+    S3_FORCE_PATH_STYLE: config.s3.forcePathStyle,
+    MAX_UPLOAD_BYTES: config.maxUploadBytes,
+    HIDE_WEB_VAULT: flag(config.hideWebVault),
+    SHOW_PASSWORD_HINT: flag(config.showPasswordHint),
+    CRON_SECRET: config.cronSecret,
+    WEBAUTHN_RP_ID: config.webauthn.rpId,
+    WEBAUTHN_RP_NAME: config.webauthn.rpName,
+    WEBAUTHN_ALLOWED_ORIGINS: config.webauthn.allowedOrigins,
+    YUBICO_VALIDATION_URLS: config.yubicoValidationUrls,
   };
-  return { env, dispose: () => pool.end() };
+  return env;
 }

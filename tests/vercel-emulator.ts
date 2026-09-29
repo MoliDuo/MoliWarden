@@ -220,19 +220,28 @@ export async function startVercelEmulator(outputDir: string, env: Record<string,
         chunks.push(chunk);
       }
       const forwardedFor = '203.0.113.7';
+      const headers: Record<string, string | string[] | undefined> = {
+        ...req.headers,
+        'x-forwarded-proto': 'https',
+        'x-forwarded-host': req.headers.host,
+        'x-forwarded-for': forwardedFor,
+        'x-real-ip': forwardedFor,
+        'x-vercel-forwarded-for': forwardedFor,
+        'x-vercel-ip-country': 'NL',
+        'x-vercel-id': `iad1::${Date.now()}`,
+      };
+      // The launcher hands the function a real IncomingMessage, so both
+      // header views must agree.
+      const rawHeaders = Object.entries(headers).flatMap(([name, value]) =>
+        value === undefined ? [] : (Array.isArray(value) ? value : [value]).flatMap((item) => [name, item]),
+      );
       const upstream = Object.assign(Readable.from(chunks.length ? [Buffer.concat(chunks)] : []), {
         method: req.method,
         url: result.url,
-        headers: {
-          ...req.headers,
-          'x-forwarded-proto': 'https',
-          'x-forwarded-host': req.headers.host,
-          'x-forwarded-for': forwardedFor,
-          'x-real-ip': forwardedFor,
-          'x-vercel-forwarded-for': forwardedFor,
-          'x-vercel-ip-country': 'NL',
-          'x-vercel-id': `iad1::${Date.now()}`,
-        },
+        headers,
+        rawHeaders,
+        httpVersion: '1.1',
+        socket: req.socket,
       }) as unknown as IncomingMessage;
       const handler = await loadFunction(result.name);
       await handler(upstream, res);

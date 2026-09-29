@@ -506,15 +506,15 @@ test('security regressions: casing, cross-org links, orphaning, admin collection
     json: { name: 'Other', billingEmail: 'alice@example.com', key: fakeRsaEncString('k'), collectionName: fakeEncString('O1'), planType: 0 },
   });
   const o1 = (await alice.json(`/api/organizations/${other.id}/collections`)).data[0].id;
-  const { createEnv } = await import('../src/platform/env');
+  const { createPgPool, PgD1Database } = await import('../src/platform/pg-d1');
   const { addCipherCollectionStatement } = await import('../src/services/storage-org-repo');
-  const direct = createEnv({ DATABASE_URL: TEST_DATABASE_URL });
+  const pool = createPgPool({ connectionString: TEST_DATABASE_URL });
   try {
-    const db = direct.env.DB;
+    const db = new PgD1Database(pool);
     await addCipherCollectionStatement(db, item.id, o1).run();
     const links = await db.prepare('SELECT collection_id FROM cipher_collections WHERE cipher_id = ?').bind(item.id).all<{ collection_id: string }>();
     assert.ok(!links.results.some((row) => row.collection_id === o1));
   } finally {
-    await direct.dispose();
+    await pool.end();
   }
 });

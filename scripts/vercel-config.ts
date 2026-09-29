@@ -1,5 +1,6 @@
 // Routing for the Vercel Build Output API bundle (.vercel/output/config.json).
 // Kept separate from build-vercel.ts so tests can check it without building.
+import { FRAMEABLE_CONNECTOR_CSP } from '../src/http/headers';
 import { BACKEND_EXACT_PATHS, BACKEND_PATH_PREFIXES } from '../src/web-vault-visibility';
 
 // The single function serving every API route (.vercel/output/functions/<name>.func).
@@ -10,11 +11,9 @@ export interface VercelConfigOptions {
   cronSchedule: string;
 }
 
-export const WEBAUTHN_FRAME_CONNECTOR_CSP =
-  "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'";
 
 // Static files are served by Vercel without passing through the function, so
-// the headers applyCors() adds to API responses are declared here instead.
+// the headers src/http/headers.ts adds to API responses are declared here instead.
 const STATIC_SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -47,7 +46,7 @@ export function buildVercelConfig(options: VercelConfigOptions): Record<string, 
       // Official clients frame this exact page; everything else must not be framed.
       {
         src: '^/webauthn-connector\\.html$',
-        headers: { ...STATIC_SECURITY_HEADERS, 'Content-Security-Policy': WEBAUTHN_FRAME_CONNECTOR_CSP },
+        headers: { ...STATIC_SECURITY_HEADERS, 'Content-Security-Policy': FRAMEABLE_CONNECTOR_CSP },
         continue: true,
       },
       // `vercel build` moves header-only routes ahead of the API route, so
