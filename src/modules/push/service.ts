@@ -22,6 +22,7 @@ interface Installation {
   key: string;
 }
 const INSTALLATION_CONTEXT = 'push.installation';
+export const sealInstallationKey = (secrets: SecretBox, key: string) => secrets.seal(key, INSTALLATION_CONTEXT);
 
 export const PushType = {
   SyncCipherUpdate: 0,
@@ -117,7 +118,7 @@ export function createPushService(
     const body = (await response?.json().catch(() => null)) as { id?: string; key?: string } | null;
     if (!body?.id || !body.key) return null;
     const created = { id: String(body.id), key: String(body.key) };
-    await saveInstallation(db, { id: created.id, key: secrets.seal(created.key, INSTALLATION_CONTEXT) });
+    await saveInstallation(db, { id: created.id, key: sealInstallationKey(secrets, created.key) });
     return created;
   }
 

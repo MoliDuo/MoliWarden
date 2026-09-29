@@ -49,7 +49,11 @@ function parseEnvelope(raw: string): Envelope | null {
   }
 }
 
-export function sealSettings(plaintext: string, secrets: SecretBox, users: User[]): string {
+export function sealSettings(
+  plaintext: string,
+  secrets: SecretBox,
+  users: Array<Pick<User, 'id' | 'role' | 'status' | 'publicKey'>>,
+): string {
   const dek = randomBytes(32);
   const wraps: PortableSettings['wraps'] = [];
   for (const user of users) {

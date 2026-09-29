@@ -192,7 +192,11 @@ function stamp(date: Date, timeZone: string): string {
   return `${pick('year')}${pick('month')}${pick('day')}_${pick('hour')}${pick('minute')}${pick('second')}`;
 }
 
-export function buildArchive(snapshot: Snapshot, options: { date: Date; timeZone: string; includeAttachments: boolean }): Archive {
+// `files` puts attachment files into the archive, by "<cipherId>/<attachmentId>".
+export function buildArchive(
+  snapshot: Snapshot,
+  options: { date: Date; timeZone: string; includeAttachments: boolean; files?: Map<string, Uint8Array> },
+): Archive {
   const attachments = options.includeAttachments ? snapshot.attachments : [];
   const refs: AttachmentRef[] = attachments.map((record) => ({
     cipherId: String(record.cipherId),
@@ -216,7 +220,12 @@ export function buildArchive(snapshot: Snapshot, options: { date: Date; timeZone
   };
   const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value, null, 2));
   // Stored, not deflated: the payload is mostly ciphertext.
-  const bytes = zipSync({ 'manifest.json': encode(manifest), 'vault.json': encode(vault) }, { level: 0 });
+  const entries: Record<string, Uint8Array> = { 'manifest.json': encode(manifest), 'vault.json': encode(vault) };
+  for (const ref of refs) {
+    const file = options.files?.get(ref.blobName);
+    if (file) entries[attachmentEntry(ref.cipherId, ref.attachmentId)] = file;
+  }
+  const bytes = zipSync(entries, { level: 0 });
   const checksum = integrityOf(bytes, '').actualPrefix;
   return { bytes, fileName: `${FILE_PREFIX}${stamp(options.date, options.timeZone)}_${checksum}.zip`, manifest };
 }

@@ -15,6 +15,7 @@ all data went in through the HTTP API. Direct SQL was used in two cases only:
 | `v1-backup.zip` | Admin backup export with attachments, assembled the same way the web vault does it (server zip plus blobs from `/api/admin/backup/blob`). It has no sends, devices, tokens, invites or audit logs, because backups never include those. |
 | `manifest.json` | Accounts and credentials, feature ids, expected sync counts and cipher ids per account, row counts per table, and the legacy variants and clock adjustments. |
 | `generate.ts` / `verify.ts` / `common.ts` | The generator, the restore-and-check script, and the helpers they share. |
+| `restore.ts` | Loads `v1.sql` through the pg driver, without `psql`. `tests/legacy-migration.e2e.test.ts` uses it to migrate the fixture with `scripts/migrate-legacy.ts` and check every account against today's server. |
 
 ## Regenerate / verify
 

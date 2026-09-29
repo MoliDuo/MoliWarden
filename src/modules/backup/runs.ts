@@ -22,8 +22,8 @@ export const BACKUP_LEASE = 'backup';
 export const BACKUP_LEASE_MS = 15 * 60 * 1000;
 const UPLOAD_ATTEMPTS = 3;
 const FILE_CONCURRENCY = 4;
-// Wire name of the index; renamed with the 3.3 migration.
-const INDEX_PATH = 'attachments/.moliwarden-attachment-index.v1.json';
+// Which attachment files a destination has, so each is uploaded once.
+export const INDEX_PATH = 'attachments/.moliwarden-attachment-index.v1.json';
 
 export type Trigger = 'manual' | 'scheduled';
 

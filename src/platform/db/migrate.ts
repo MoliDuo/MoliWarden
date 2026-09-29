@@ -46,10 +46,15 @@ class MigrationDialect extends PostgresDialect {
 // A handle for applyMigrations. Not to be destroyed: that would end the pool.
 export const migrationDb = (pool: pg.Pool): Kysely<any> => new Kysely({ dialect: new MigrationDialect({ pool }) });
 
+// Held until the transaction ends; schema changes take it first.
+export async function lockSchema(trx: Transaction<any>): Promise<void> {
+  await sql`SELECT pg_advisory_xact_lock(${LOCK_ID})`.execute(trx);
+}
+
 // Applies what is missing inside `trx`, which must come from migrationDb.
 // Concurrent callers wait for the lock and then find nothing left to do.
 export async function applyMigrations(trx: Transaction<any>): Promise<string[]> {
-  await sql`SELECT pg_advisory_xact_lock(${LOCK_ID})`.execute(trx);
+  await lockSchema(trx);
   const migrator = new Migrator({ db: trx, provider: { getMigrations: async () => MIGRATIONS } });
   const { error, results = [] } = await migrator.migrateToLatest();
   if (error) {

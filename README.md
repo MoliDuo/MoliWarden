@@ -46,6 +46,40 @@ A Bitwarden-compatible server for **Vercel**, with its own web vault.
 
 Downloads above 4 MB redirect to presigned S3 URLs; to download those from the web vault or browser extension, allow `GET` from your site origin (and `chrome-extension://*`) in the bucket's CORS rules.
 
+## Upgrading from an earlier version
+
+Releases before the storage rewrite kept their data in other tables. The new version does not convert them on its own: until you run the migration it answers every request with `503` and a pointer to this section. The earlier version must not keep writing during the upgrade, and deploying the new one stops it.
+
+1. **Back up.** In the old web vault, export an instance backup with attachments (Admin → Backups), and take a snapshot of the database: a Neon branch, or `pg_dump`.
+2. **Deploy.** Keep `JWT_SECRET` as it is, add `ENCRYPTION_KEY`, and deploy the new version.
+3. **Migrate.** From a checkout of this repository, against the production database. Use a direct connection, not a pooled one; the script prefers `DATABASE_URL_UNPOOLED` (set by the Neon integration) over `DATABASE_URL`. `JWT_SECRET` must be the one the earlier version ran with, since it opens the stored backup settings:
+
+   ```bash
+   DATABASE_URL='<direct url>' JWT_SECRET='<current>' ENCRYPTION_KEY='<new>' npm run db:migrate-legacy -- --dry-run
+   ```
+
+   The dry run converts and checks everything, then undoes it. It prints the rows read and written, the rows it had to leave out and why, and what users need to do. When the output looks right, run the same command without `--dry-run`. The whole migration is a single transaction.
+4. **Check.** Reload the site and sign in. The web vault asks everyone to sign in once, because its browser storage was renamed. The official apps, the browser extension and `bw` stay signed in, and TOTP, security keys, passkeys, remembered devices and API keys keep working. The exception is an API key the earlier version stored only as a hash: it has to be issued again, and the report names these users. Sync, open an attachment, and run a backup.
+5. **Backup destinations (optional).** A destination keeps an index of the attachment files it already holds, and that index was renamed. Copy it so the first backup does not upload every attachment again:
+
+   ```bash
+   DATABASE_URL='<direct url>' ENCRYPTION_KEY='<new>' npm run db:migrate-legacy -- --migrate-remote-index
+   ```
+
+   Archives the earlier version wrote keep their old names. Retention does not prune them; delete them by hand when you no longer need them.
+
+**Rolling back.** As long as nothing has been written since the migration, `npm run db:migrate-legacy -- --rollback` moves the earlier tables back. Then redeploy the earlier version (Vercel → Deployments → Instant Rollback). Once there are new writes it refuses, because they would be lost; restore the snapshot from step 1 instead.
+
+**Cleaning up.** The migration keeps the earlier tables in a schema named `legacy`. When you are sure you will not roll back, drop it: `DROP SCHEMA legacy CASCADE;`.
+
+**Old backup archives.** The new version does not restore archives of the earlier version directly. Convert one first:
+
+```bash
+npm run backup:convert-v1 -- old-backup.zip
+```
+
+This writes a `moliwarden_backup_*.zip` next to the input, which you import as usual (Admin → Backups). For files above the 4.4 MB upload limit, put the converted archive into a backup destination and restore it from there. Exports of the web vault's own JSON format from the earlier version import without their attachments; export again after upgrading.
+
 ## Development and tests
 
 ```bash

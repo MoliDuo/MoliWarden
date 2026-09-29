@@ -26,6 +26,10 @@
     "shared/**/*",
     "scripts/dev-server.ts",
     "scripts/build-vercel.ts",
+    "scripts/db-migrate.ts",
+    "scripts/migrate-legacy.ts",
+    "scripts/convert-backup-v1.ts",
+    "scripts/legacy/**/*",
     "vercel/**/*",
     "tests/**/*"
   ],

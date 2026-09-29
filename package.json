@@ -22,6 +22,8 @@
     "test:official-cli": "tsx --test tests/official-cli.test.ts",
     "check:css-colors": "node scripts/check-css-colors.mjs",
     "db:migrate": "tsx scripts/db-migrate.ts",
+    "db:migrate-legacy": "tsx scripts/migrate-legacy.ts",
+    "backup:convert-v1": "tsx scripts/convert-backup-v1.ts",
     "test:smoke": "npm run build:vercel && tsx --test tests/vercel-output.smoke.test.ts",
     "typecheck:web": "tsc --noEmit -p webapp",
     "test:ui": "bash scripts/test-ui.sh",

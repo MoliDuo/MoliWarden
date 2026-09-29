@@ -92,7 +92,79 @@
 - 页面显示密钥配置提示，或请求报 `JWT_SECRET is not set or too weak` / `ENCRYPTION_KEY is not set or too weak`：设置对应变量（至少 32 位）后重新部署。
 - 报错 `a stored secret cannot be decrypted. Was ENCRYPTION_KEY changed?`：`ENCRYPTION_KEY` 与写入数据时的不一致，改回原来的值。
 - 上传附件提示 `File storage is not configured`：缺少 `S3_*` 变量。
+- 所有请求返回 503 并提示 `db:migrate-legacy`：数据库里还是旧版本的数据，见下方“从旧版本升级”。
 - 修改环境变量后需要在 Vercel 里 **Redeploy** 才会生效。
+
+---
+
+## 从旧版本升级
+
+存储层重写之前的版本把数据放在另一套表里。新版本不会自动转换这些表：迁移完成之前，所有请求都返回 `503`，并提示查看本节。升级期间旧版本不能继续写入，部署新版本后它自然就停止了。
+
+### 1. 备份
+
+在旧版 Web 密码库的“管理 → 备份”里导出一份**包含附件**的实例备份，同时给数据库做一个快照（Neon 分支或 `pg_dump`）。
+
+### 2. 部署
+
+`JWT_SECRET` 保持不变，新增 `ENCRYPTION_KEY`，然后部署新版本。
+
+### 3. 迁移
+
+在本仓库的本地检出目录里，对生产数据库执行迁移。要求如下：
+
+- 使用**直连**地址，不要用连接池地址。脚本会优先读取 `DATABASE_URL_UNPOOLED`（Neon 集成会自动设置），没有时才用 `DATABASE_URL`。
+- `JWT_SECRET` 必须是旧版本正在使用的那个，因为它用来解开已保存的备份设置。
+
+```bash
+DATABASE_URL='<直连地址>' JWT_SECRET='<现有值>' ENCRYPTION_KEY='<新值>' npm run db:migrate-legacy -- --dry-run
+```
+
+`--dry-run` 会完整执行转换和校验，最后全部撤销。它会输出：
+
+- 读取和写入的行数；
+- 被跳过的行及原因；
+- 需要用户自行处理的事项。
+
+确认无误后，去掉 `--dry-run` 再执行一次。整个迁移在同一个事务里完成。
+
+### 4. 验证
+
+刷新站点并登录，然后同步一次、打开一个附件、执行一次备份。
+
+- **Web 密码库**：浏览器端的存储已改名，所有人需要重新登录一次。
+- **官方 App、浏览器扩展和 `bw`**：保持登录状态。TOTP、安全密钥、Passkey、记住的设备和 API Key 都继续可用。
+- **例外**：旧版本只保存了哈希的 API Key 需要重新生成，迁移报告会列出这些用户。
+
+### 5. 备份目的地（可选）
+
+每个备份目的地都保存着一份附件索引，记录它已有哪些附件。索引文件已改名，复制一份过去，首次备份就不必重新上传全部附件：
+
+```bash
+DATABASE_URL='<直连地址>' ENCRYPTION_KEY='<新值>' npm run db:migrate-legacy -- --migrate-remote-index
+```
+
+旧版本写入的备份文件保留原来的文件名，不参与保留份数的清理，不再需要时请手动删除。
+
+### 回滚
+
+迁移之后如果还没有产生任何新写入，可以执行 `npm run db:migrate-legacy -- --rollback` 把旧表移回原位，再重新部署旧版本（Vercel → Deployments → Instant Rollback）。一旦有了新写入，脚本会拒绝回滚，因为这些数据会丢失；这时请恢复第 1 步的快照。
+
+### 清理
+
+迁移后旧表保存在名为 `legacy` 的 schema 中。确认不再回滚后，执行 `DROP SCHEMA legacy CASCADE;` 删除。
+
+### 旧版本的备份文件
+
+新版本不能直接恢复旧版本的备份文件，需要先转换：
+
+```bash
+npm run backup:convert-v1 -- old-backup.zip
+```
+
+转换结果是输入文件旁边的一个 `moliwarden_backup_*.zip`，按平常的方式在“管理 → 备份”里导入即可。超过 4.4 MB 上传上限的文件，可以先放到某个备份目的地，再从那里远程恢复。
+
+旧版本 Web 密码库自有 JSON 格式的导出文件仍然可以导入，但不含附件；请在升级后重新导出一次。
 
 ---
 
