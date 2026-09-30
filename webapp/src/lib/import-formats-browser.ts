@@ -6,18 +6,18 @@ type BitwardenCsvFieldLine = {
   value: string;
 };
 
-const NODEWARDEN_CSV_TYPE_FIELD = 'nodewardenType';
-const NODEWARDEN_CSV_PREFIX_TYPES: Record<string, number> = {
+const MOLIWARDEN_CSV_TYPE_FIELD = 'moliwardenType';
+const MOLIWARDEN_CSV_PREFIX_TYPES: Record<string, number> = {
   card: 3,
   identity: 4,
   sshkey: 5,
 };
-const NODEWARDEN_CSV_TYPE_PREFIXES: Record<number, 'card' | 'identity' | 'sshKey'> = {
+const MOLIWARDEN_CSV_TYPE_PREFIXES: Record<number, 'card' | 'identity' | 'sshKey'> = {
   3: 'card',
   4: 'identity',
   5: 'sshKey',
 };
-const NODEWARDEN_CSV_OBJECT_FIELDS: Record<'card' | 'identity' | 'sshKey', readonly string[]> = {
+const MOLIWARDEN_CSV_OBJECT_FIELDS: Record<'card' | 'identity' | 'sshKey', readonly string[]> = {
   card: ['cardholderName', 'brand', 'number', 'expMonth', 'expYear', 'code'],
   identity: [
     'title',
@@ -69,12 +69,12 @@ function parseBitwardenCsvFieldLines(rawFields: unknown): BitwardenCsvFieldLine[
     }, []);
 }
 
-function getNodeWardenCsvType(lines: BitwardenCsvFieldLine[]): number | null {
-  const typeLine = lines.find((line) => line.key === NODEWARDEN_CSV_TYPE_FIELD);
+function getMoliWardenCsvType(lines: BitwardenCsvFieldLine[]): number | null {
+  const typeLine = lines.find((line) => line.key === MOLIWARDEN_CSV_TYPE_FIELD);
   const normalized = txt(typeLine?.value).toLowerCase().replace(/[\s_-]+/g, '');
-  const type = NODEWARDEN_CSV_PREFIX_TYPES[normalized] ?? null;
+  const type = MOLIWARDEN_CSV_PREFIX_TYPES[normalized] ?? null;
   if (!type) return null;
-  const prefix = NODEWARDEN_CSV_TYPE_PREFIXES[type];
+  const prefix = MOLIWARDEN_CSV_TYPE_PREFIXES[type];
   return lines.some((line) => line.key.startsWith(`${prefix}.`)) ? type : null;
 }
 
@@ -84,10 +84,10 @@ function applyBitwardenCustomFields(cipher: Record<string, unknown>, lines: Bitw
   }
 }
 
-function restoreNodeWardenObject(lines: BitwardenCsvFieldLine[], prefix: 'card' | 'identity' | 'sshKey'): Record<string, unknown> {
+function restoreMoliWardenObject(lines: BitwardenCsvFieldLine[], prefix: 'card' | 'identity' | 'sshKey'): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   const fieldPrefix = `${prefix}.`;
-  const allowedKeys = new Set(NODEWARDEN_CSV_OBJECT_FIELDS[prefix]);
+  const allowedKeys = new Set(MOLIWARDEN_CSV_OBJECT_FIELDS[prefix]);
   for (const line of lines) {
     if (!line.key.startsWith(fieldPrefix)) continue;
     const key = line.key.slice(fieldPrefix.length);
@@ -97,11 +97,11 @@ function restoreNodeWardenObject(lines: BitwardenCsvFieldLine[], prefix: 'card' 
   return out;
 }
 
-function nodeWardenMetadataLines(lines: BitwardenCsvFieldLine[]): Set<BitwardenCsvFieldLine> {
+function moliWardenMetadataLines(lines: BitwardenCsvFieldLine[]): Set<BitwardenCsvFieldLine> {
   return new Set(
     lines.filter(
       (line) =>
-        line.key === NODEWARDEN_CSV_TYPE_FIELD ||
+        line.key === MOLIWARDEN_CSV_TYPE_FIELD ||
         line.key.startsWith('card.') ||
         line.key.startsWith('identity.') ||
         line.key.startsWith('sshKey.')
@@ -173,24 +173,24 @@ export function parseBitwardenCsv(textRaw: string): CiphersImportPayload {
   for (const row of rows) {
     const type = txt(row.type).toLowerCase() || 'login';
     const fieldLines = parseBitwardenCsvFieldLines(row.fields);
-    const restoredNodeWardenType = type === 'note' ? getNodeWardenCsvType(fieldLines) : null;
-    if (restoredNodeWardenType === 3 || restoredNodeWardenType === 4 || restoredNodeWardenType === 5) {
-      const metadataLines = nodeWardenMetadataLines(fieldLines);
+    const restoredMoliWardenType = type === 'note' ? getMoliWardenCsvType(fieldLines) : null;
+    if (restoredMoliWardenType === 3 || restoredMoliWardenType === 4 || restoredMoliWardenType === 5) {
+      const metadataLines = moliWardenMetadataLines(fieldLines);
       const customLines = fieldLines.filter((line) => !metadataLines.has(line));
       const cipher: Record<string, unknown> = {
-        type: restoredNodeWardenType,
+        type: restoredMoliWardenType,
         name: val(row.name, '--'),
         notes: val(row.notes),
         favorite: txt(row.favorite) === '1',
         reprompt: Number(row.reprompt ?? 0) || 0,
         key: null,
         login: null,
-        card: restoredNodeWardenType === 3 ? restoreNodeWardenObject(fieldLines, 'card') : null,
-        identity: restoredNodeWardenType === 4 ? restoreNodeWardenObject(fieldLines, 'identity') : null,
+        card: restoredMoliWardenType === 3 ? restoreMoliWardenObject(fieldLines, 'card') : null,
+        identity: restoredMoliWardenType === 4 ? restoreMoliWardenObject(fieldLines, 'identity') : null,
         secureNote: null,
         fields: [],
         passwordHistory: null,
-        sshKey: restoredNodeWardenType === 5 ? restoreNodeWardenObject(fieldLines, 'sshKey') : null,
+        sshKey: restoredMoliWardenType === 5 ? restoreMoliWardenObject(fieldLines, 'sshKey') : null,
       };
       applyBitwardenCustomFields(cipher, customLines);
       const idx = result.ciphers.push(cipher) - 1;

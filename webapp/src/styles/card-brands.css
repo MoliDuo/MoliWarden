@@ -1,0 +1,74 @@
+/*
+ * Payment card brand chips. Like website icons, these are content rather than
+ * interface chrome, so they keep brand colours and a white face in both themes.
+ * This file is exempt from scripts/check-css-colors.mjs.
+ */
+.card-brand-icon {
+  @apply inline-grid h-6 w-9 shrink-0 place-items-center rounded border text-[7px] font-black uppercase leading-none;
+  letter-spacing: 0;
+  color: #1f2937;
+  background: #ffffff;
+  border-color: var(--line);
+}
+
+.card-brand-icon span {
+  @apply block max-w-full overflow-hidden text-ellipsis whitespace-nowrap px-0.5;
+}
+
+.card-brand-icon img {
+  @apply block h-full w-full object-contain;
+}
+
+.card-brand-icon svg {
+  @apply h-[18px] w-[18px];
+}
+
+.card-brand-icon:has(img) {
+  color: inherit;
+}
+
+.card-brand-visa {
+  color: #1a4db3;
+}
+
+.card-brand-mastercard {
+  color: #111827;
+  background:
+    radial-gradient(circle at 38% 50%, rgba(235, 0, 27, 0.88) 0 24%, transparent 25%),
+    radial-gradient(circle at 62% 50%, rgba(247, 158, 27, 0.88) 0 24%, transparent 25%),
+    #ffffff;
+}
+
+.card-brand-american-express {
+  color: #ffffff;
+  background: #2e77bb;
+  border-color: #2e77bb;
+}
+
+.card-brand-discover {
+  color: #172554;
+  background:
+    radial-gradient(circle at 72% 50%, rgba(245, 130, 32, 0.9) 0 26%, transparent 27%),
+    #ffffff;
+}
+
+.card-brand-diners-club {
+  color: #0f5fa8;
+}
+
+.card-brand-jcb,
+.card-brand-unionpay {
+  color: #0f766e;
+}
+
+.card-brand-maestro {
+  color: #1e40af;
+  background:
+    radial-gradient(circle at 38% 50%, rgba(0, 85, 164, 0.86) 0 24%, transparent 25%),
+    radial-gradient(circle at 62% 50%, rgba(237, 28, 36, 0.82) 0 24%, transparent 25%),
+    #ffffff;
+}
+
+.card-brand-rupay {
+  color: #1e3a8a;
+}

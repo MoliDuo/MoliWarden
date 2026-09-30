@@ -15,18 +15,37 @@
     base-uri 'self';
   " />
 
-    <link rel="icon" type="image/svg+xml" href="/nodewarden-logo-bg.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="alternate icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" content="#0a0a0a" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="NodeWarden" />
+    <meta name="apple-mobile-web-app-title" content="MoliWarden" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-    <title>NodeWarden</title>
+    <title>MoliWarden</title>
     <style>
+      :root {
+        color-scheme: light dark;
+        --boot-bg: #fafafa;
+        --boot-panel: #ffffff;
+        --boot-line: #e5e5e5;
+        --boot-bar: #ebebeb;
+        --boot-text: #0a0a0a;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --boot-bg: #0a0a0a;
+          --boot-panel: #141414;
+          --boot-line: #262626;
+          --boot-bar: #262626;
+          --boot-text: #fafafa;
+        }
+      }
+
       html,
       body,
       #root {
@@ -35,8 +54,8 @@
 
       body {
         margin: 0;
-        background: #eef4ff;
-        color: #0f172a;
+        background: var(--boot-bg);
+        color: var(--boot-text);
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
@@ -49,47 +68,46 @@
       }
 
       .boot-card {
-        width: min(420px, 100%);
+        width: min(360px, 100%);
         display: grid;
         gap: 14px;
         justify-items: center;
         padding: 28px;
-        border: 1px solid rgba(148, 163, 184, 0.35);
-        border-radius: 22px;
-        background: rgba(255, 255, 255, 0.82);
-        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.10);
+        box-sizing: border-box;
+        border: 1px solid var(--boot-line);
+        border-radius: 10px;
+        background: var(--boot-panel);
       }
 
       .boot-logo {
-        width: 74px;
-        height: 58px;
-        object-fit: contain;
+        width: 32px;
+        height: 32px;
+        margin-bottom: 4px;
+        color: var(--boot-text);
       }
 
       .boot-line {
         width: 72%;
-        height: 12px;
+        height: 10px;
         border-radius: 999px;
-        background: linear-gradient(90deg, #dbeafe, #bfdbfe, #dbeafe);
-        background-size: 180% 100%;
-        animation: boot-shimmer 1.2s ease-in-out infinite;
+        background: var(--boot-bar);
+        animation: boot-pulse 1.2s ease-in-out infinite;
       }
 
       .boot-line.short {
         width: 46%;
       }
 
-      @keyframes boot-shimmer {
-        0% { background-position: 180% 0; }
-        100% { background-position: -180% 0; }
+      @keyframes boot-pulse {
+        50% { opacity: 0.45; }
       }
     </style>
   </head>
   <body>
     <div id="root">
       <div class="boot-screen">
-        <div class="boot-card" aria-label="Loading NodeWarden">
-          <img class="boot-logo" src="/nodewarden-logo.svg" alt="" />
+        <div class="boot-card" aria-label="Loading MoliWarden">
+          <img class="boot-logo" src="/logo.svg" alt="" />
           <div class="boot-line"></div>
           <div class="boot-line short"></div>
         </div>

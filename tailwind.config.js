@@ -5,7 +5,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        canvas: 'var(--bg-accent)',
+        canvas: 'var(--bg)',
         panel: 'var(--panel)',
         'panel-soft': 'var(--panel-soft)',
         'panel-muted': 'var(--panel-muted)',
@@ -14,10 +14,20 @@ export default {
         ink: 'var(--text)',
         muted: 'var(--muted)',
         'muted-strong': 'var(--muted-strong)',
+        faint: 'var(--faint)',
+        'line-strong': 'var(--line-strong)',
         brand: 'var(--primary)',
-        'brand-hover': 'var(--primary-hover)',
-        'brand-strong': 'var(--primary-strong)',
+        'brand-fg': 'var(--primary-fg)',
         danger: 'var(--danger)',
+        'danger-soft': 'var(--danger-soft)',
+      },
+      borderRadius: {
+        DEFAULT: 'var(--radius-sm)',
+        sm: 'var(--radius-sm)',
+        md: 'var(--radius-md)',
+        lg: 'var(--radius-lg)',
+        xl: 'var(--radius-xl)',
+        '2xl': 'var(--radius-2xl)',
       },
       boxShadow: {
         soft: 'var(--shadow-sm)',
@@ -25,7 +35,8 @@ export default {
         elevated: 'var(--shadow-lg)',
       },
       fontFamily: {
-        sans: ['Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'sans-serif'],
+        sans: 'var(--font-sans)',
+        mono: 'var(--font-mono)',
       },
     },
   },

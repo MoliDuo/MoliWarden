@@ -1,37 +1,26 @@
 .dialog-mask {
   @apply fixed inset-0 grid h-dvh w-screen place-items-center p-5 opacity-0;
-  background: rgba(15, 23, 42, 0.5);
+  background: var(--overlay);
   z-index: 1200;
   animation: fade-in var(--dur-medium) var(--ease-smooth) both;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .dialog-card {
-  @apply rounded-[20px] border bg-white p-5 text-center;
+  @apply border bg-panel p-5 text-center;
   width: min(500px, 100%);
   border: 1px solid var(--line);
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
+  box-shadow: var(--shadow-lg);
   transform-origin: 50% 30%;
   animation: dialog-in 240ms var(--ease-out-strong) both;
-}
-
-.dialog-mask.warning {
-  background:
-    radial-gradient(circle at top, rgba(255, 237, 213, 0.32), transparent 34%),
-    linear-gradient(180deg, rgba(127, 29, 29, 0.36), rgba(15, 23, 42, 0.72));
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  border-radius: var(--radius-lg);
 }
 
 .dialog-card.warning {
   width: min(520px, 100%);
-  border: 1px solid rgba(220, 38, 38, 0.22);
-  background:
-    linear-gradient(180deg, rgba(255, 246, 246, 0.98), rgba(255, 255, 255, 0.99));
-  box-shadow:
-    0 36px 90px rgba(69, 10, 10, 0.28),
-    0 0 0 1px rgba(255, 255, 255, 0.7) inset;
+  border: 1px solid var(--danger-line);
+  background: var(--panel);
 }
 
 .dialog-warning-head {
@@ -39,17 +28,18 @@
 }
 
 .dialog-warning-badge {
-  @apply inline-flex h-12 w-12 items-center justify-center rounded-2xl;
-  background: linear-gradient(180deg, #fff1f2, #ffe4e6);
-  color: #dc2626;
-  box-shadow:
-    0 12px 30px rgba(220, 38, 38, 0.18),
-    0 0 0 1px rgba(220, 38, 38, 0.08) inset;
+  @apply inline-flex h-12 w-12 items-center justify-center;
+  border-radius: var(--radius-lg);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .dialog-warning-kicker {
-  @apply text-xs font-extrabold uppercase tracking-[0.16em];
-  color: #b91c1c;
+  @apply text-xs;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--danger);
+  text-transform: none;
 }
 
 .dialog-mask.closing {
@@ -74,20 +64,20 @@
 
 .dialog-message {
   @apply mb-2.5;
-  color: #475467;
+  color: var(--muted-strong);
 }
 
 .dialog-card.warning .dialog-title {
   @apply mb-2.5;
-  color: #7f1d1d;
+  color: var(--danger);
 }
 
 .dialog-message.warning {
-  @apply mb-4 rounded-2xl px-4 py-3.5 leading-[1.65];
-  border: 1px solid rgba(220, 38, 38, 0.16);
-  background: linear-gradient(180deg, rgba(255, 241, 242, 0.94), rgba(255, 247, 237, 0.9));
-  color: #7a2832;
-  box-shadow: 0 10px 28px rgba(248, 113, 113, 0.08) inset;
+  @apply mb-4 px-4 py-3.5 leading-[1.65];
+  border: 1px solid var(--danger-line);
+  border-radius: var(--radius-md);
+  background: var(--danger-soft);
+  color: var(--text);
 }
 
 .dialog-btn {
@@ -108,9 +98,10 @@
 }
 
 .two-factor-method-list {
-  @apply grid gap-2 rounded-lg border p-2;
+  @apply grid gap-2 border p-2;
+  border-radius: var(--radius-md);
   border-color: var(--line);
-  background: color-mix(in srgb, var(--panel) 92%, var(--surface));
+  background: var(--panel-soft);
 }
 
 .two-factor-method-label {
@@ -127,15 +118,16 @@
 }
 
 .import-summary-close {
-  @apply absolute right-2.5 top-2.5 cursor-pointer border-0 bg-transparent text-2xl leading-none text-slate-500;
+  @apply absolute right-2.5 top-2.5 cursor-pointer border-0 bg-transparent text-2xl leading-none text-muted;
 }
 
 .import-summary-close:hover {
-  color: #0f172a;
+  color: var(--text);
 }
 
 .import-summary-table-wrap {
-  @apply mt-2 overflow-hidden rounded-[10px];
+  @apply mt-2 overflow-hidden;
+  border-radius: var(--radius-md);
   border: 1px solid var(--line);
 }
 
@@ -151,8 +143,8 @@
 }
 
 .import-summary-table th {
-  @apply bg-slate-50 text-left;
-  color: #475467;
+  @apply bg-panel-soft text-left;
+  color: var(--muted-strong);
 }
 
 .import-summary-table td:last-child,
@@ -165,10 +157,11 @@
 }
 
 .import-summary-failed-list {
-  @apply mt-2.5 rounded-[10px] px-3 py-2.5 text-[13px];
-  border: 1px solid #fecaca;
-  background: #fef2f2;
-  color: #991b1b;
+  @apply mt-2.5 px-3 py-2.5 text-[13px];
+  border-radius: var(--radius-md);
+  border: 1px solid var(--danger-line);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .import-summary-failed-title {
@@ -189,8 +182,9 @@
 }
 
 .settings-subcard {
-  @apply rounded-xl bg-white p-3;
+  @apply bg-panel p-3;
   border: 1px solid var(--line);
+  border-radius: var(--radius-md);
 }
 
 .settings-subcard h3 {
@@ -207,24 +201,22 @@
 }
 
 .toast-item {
-  @apply relative flex items-center justify-between overflow-hidden rounded-[10px] px-3.5 py-3;
-  border: 1px solid #bbdfc6;
-  background: #dff4e5;
-  color: #0f5132;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  @apply relative flex items-center justify-between overflow-hidden px-3.5 py-3;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
   animation: toast-in 240ms var(--ease-out-strong) both;
 }
 
 .toast-item.error {
-  border-color: #f2b8c1;
-  background: #fde7eb;
-  color: #9f1239;
+  border-color: var(--danger-line);
+  color: var(--danger);
 }
 
 .toast-item.warning {
-  border-color: #f2b8c1;
-  background: #fde7eb;
-  color: #9f1239;
+  border-color: var(--line-strong);
 }
 
 .toast-text {
@@ -236,7 +228,7 @@
   flex-shrink: 0;
   width: 36px;
   height: 36px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: inherit;
   -webkit-tap-highlight-color: transparent;
@@ -244,21 +236,16 @@
 }
 
 .toast-close:hover {
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--hover);
 }
 
 .toast-close:active {
-  background: rgba(0, 0, 0, 0.14);
-}
-
-.toast-close:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: -2px;
-  border-radius: 8px;
+  background: var(--selected);
 }
 
 .toast-progress {
   @apply absolute bottom-0 left-0 h-[3px] w-full;
-  background: rgba(15, 23, 42, 0.2);
+  background: currentColor;
+  opacity: 0.2;
   animation: toast-life 4.5s linear forwards;
 }

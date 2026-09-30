@@ -93,21 +93,8 @@ function randomBase32Secret(length: number): string {
 }
 
 function buildOtpUri(email: string, secret: string): string {
-  const issuer = 'NodeWarden';
+  const issuer = 'MoliWarden';
   return `otpauth://totp/${encodeURIComponent(`${issuer}:${email}`)}?secret=${encodeURIComponent(secret)}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
-}
-
-function clearLegacyTotpSetupSecrets(): void {
-  if (typeof window === 'undefined') return;
-  const prefix = 'nodewarden.totp.secret.';
-  const keys: string[] = [];
-  for (let index = 0; index < window.localStorage.length; index += 1) {
-    const key = window.localStorage.key(index);
-    if (key?.startsWith(prefix)) keys.push(key);
-  }
-  for (const key of keys) {
-    window.localStorage.removeItem(key);
-  }
 }
 
 function formatDateTime(value: string | null | undefined): string {
@@ -164,10 +151,6 @@ export default function SettingsPage(props: SettingsPageProps) {
   const [masterPasswordPromptSubmitting, setMasterPasswordPromptSubmitting] = useState(false);
   const [selectedLocale, setSelectedLocale] = useState<Locale>(() => getLocale());
   const [activeSection, setActiveSection] = useState<SettingsSection>('appearance');
-
-  useEffect(() => {
-    clearLegacyTotpSetupSecrets();
-  }, []);
 
   useEffect(() => {
     if (!props.totpEnabled) {

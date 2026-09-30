@@ -26,9 +26,10 @@ import {
   saveOfflineUnlockRecord,
   unlockOfflineVaultWithMasterKey,
 } from '@/lib/offline-auth';
-import { probeNodeWardenService } from '@/lib/network-status';
+import { probeServer } from '@/lib/network-status';
+import { serverErrorText } from '@/lib/api/shared';
 import { setWebsiteIconsEnabled } from '@/lib/website-icon-settings';
-import type { AccountPasskeyPrfOption, AppPhase, Profile, SessionState, TokenSuccess, WebBootstrapResponse } from '@/lib/types';
+import type { AccountPasskeyPrfOption, AppPhase, Profile, SecretWarning, SessionState, TokenSuccess, WebBootstrapResponse } from '@/lib/types';
 
 export interface PendingTotp {
   email: string;
@@ -47,13 +48,12 @@ export interface PendingPasskeyPassword {
   kdfIterations: number;
 }
 
-export type JwtUnsafeReason = 'missing' | 'too_short';
-
 export interface BootstrapAppResult {
   defaultKdfIterations: number;
   registrationInviteRequired?: boolean;
   websiteIconsEnabled: boolean;
-  jwtWarning: { reason: JwtUnsafeReason; minLength: number } | null;
+  passwordHintEnabled: boolean;
+  secretWarning: SecretWarning | null;
   session: SessionState | null;
   profile: Profile | null;
   phase: AppPhase;
@@ -64,7 +64,8 @@ export interface InitialAppBootstrapState {
   defaultKdfIterations: number;
   registrationInviteRequired?: boolean;
   websiteIconsEnabled: boolean;
-  jwtWarning: { reason: JwtUnsafeReason; minLength: number } | null;
+  passwordHintEnabled: boolean;
+  secretWarning: SecretWarning | null;
   session: SessionState | null;
   phase: AppPhase;
 }
@@ -245,28 +246,24 @@ function browserReportsOffline(): boolean {
 
 function readWindowBootstrap(): WebBootstrapResponse {
   if (typeof window === 'undefined') return {};
-  const raw = (window as Window & { __NW_BOOT__?: WebBootstrapResponse }).__NW_BOOT__;
+  const raw = (window as Window & { __APP_BOOT__?: WebBootstrapResponse }).__APP_BOOT__;
   return raw && typeof raw === 'object' ? raw : {};
 }
 
-function normalizeBootstrapResponse(boot: WebBootstrapResponse): Pick<InitialAppBootstrapState, 'defaultKdfIterations' | 'registrationInviteRequired' | 'websiteIconsEnabled' | 'jwtWarning'> {
+function normalizeBootstrapResponse(boot: WebBootstrapResponse): Pick<InitialAppBootstrapState, 'defaultKdfIterations' | 'registrationInviteRequired' | 'websiteIconsEnabled' | 'passwordHintEnabled' | 'secretWarning'> {
   const defaultKdfIterations = Number(boot.defaultKdfIterations || 600000);
   const registrationInviteRequired =
     typeof boot.registrationInviteRequired === 'boolean' ? boot.registrationInviteRequired : undefined;
   const websiteIconsEnabled = boot.websiteIconsEnabled !== false;
-  const jwtUnsafeReason = boot.jwtUnsafeReason || null;
-  const jwtWarning = jwtUnsafeReason
-    ? {
-        reason: jwtUnsafeReason,
-        minLength: Number(boot.jwtSecretMinLength || 32),
-      }
-    : null;
+  const passwordHintEnabled = boot.passwordHintEnabled === true;
+  const secretWarning = boot.secretProblem ? { ...boot.secretProblem, minLength: Number(boot.secretMinLength || 32) } : null;
 
   return {
     defaultKdfIterations,
     registrationInviteRequired,
     websiteIconsEnabled,
-    jwtWarning,
+    passwordHintEnabled,
+    secretWarning,
   };
 }
 
@@ -326,7 +323,7 @@ function resolveUnauthenticatedPhase(registrationInviteRequired: boolean | undef
 }
 
 export function readInitialAppBootstrapState(): InitialAppBootstrapState {
-  const { defaultKdfIterations, registrationInviteRequired, websiteIconsEnabled, jwtWarning } = normalizeBootstrapResponse(readWindowBootstrap());
+  const { defaultKdfIterations, registrationInviteRequired, websiteIconsEnabled, passwordHintEnabled, secretWarning } = normalizeBootstrapResponse(readWindowBootstrap());
   setWebsiteIconsEnabled(websiteIconsEnabled);
   const session = loadSession();
   const hasInviteCode = !!readInviteCodeFromUrl();
@@ -336,9 +333,10 @@ export function readInitialAppBootstrapState(): InitialAppBootstrapState {
     defaultKdfIterations,
     registrationInviteRequired,
     websiteIconsEnabled,
-    jwtWarning,
+    passwordHintEnabled,
+    secretWarning,
     session,
-    phase: jwtWarning ? 'login' : session ? 'locked' : resolveUnauthenticatedPhase(registrationInviteRequired, unauthenticatedPhase),
+    phase: secretWarning ? 'login' : session ? 'locked' : resolveUnauthenticatedPhase(registrationInviteRequired, unauthenticatedPhase),
   };
 }
 
@@ -348,15 +346,17 @@ export async function bootstrapAppSession(initial: InitialAppBootstrapState = re
   const defaultKdfIterations = normalizedBoot.defaultKdfIterations || initial.defaultKdfIterations;
   const registrationInviteRequired = normalizedBoot.registrationInviteRequired ?? initial.registrationInviteRequired;
   const websiteIconsEnabled = normalizedBoot.websiteIconsEnabled !== false;
+  const { passwordHintEnabled } = normalizedBoot;
   setWebsiteIconsEnabled(websiteIconsEnabled);
-  const jwtWarning = normalizedBoot.jwtWarning ?? initial.jwtWarning;
+  const secretWarning = normalizedBoot.secretWarning ?? initial.secretWarning;
 
-  if (jwtWarning) {
+  if (secretWarning) {
     return {
       defaultKdfIterations,
       registrationInviteRequired,
       websiteIconsEnabled,
-      jwtWarning,
+      passwordHintEnabled,
+      secretWarning,
       session: null,
       profile: null,
       phase: 'login',
@@ -369,7 +369,8 @@ export async function bootstrapAppSession(initial: InitialAppBootstrapState = re
       defaultKdfIterations,
       registrationInviteRequired,
       websiteIconsEnabled,
-      jwtWarning: null,
+      passwordHintEnabled,
+      secretWarning: null,
       session: null,
       profile: null,
       phase: resolveUnauthenticatedPhase(registrationInviteRequired, initial.phase),
@@ -382,7 +383,8 @@ export async function bootstrapAppSession(initial: InitialAppBootstrapState = re
       defaultKdfIterations,
       registrationInviteRequired,
       websiteIconsEnabled,
-      jwtWarning: null,
+      passwordHintEnabled,
+      secretWarning: null,
       session: loaded,
       profile: cachedProfile,
       phase: 'locked',
@@ -394,7 +396,8 @@ export async function bootstrapAppSession(initial: InitialAppBootstrapState = re
     defaultKdfIterations,
     registrationInviteRequired,
     websiteIconsEnabled,
-    jwtWarning: null,
+    passwordHintEnabled,
+    secretWarning: null,
     session: loaded,
     profile: null,
     phase: 'locked',
@@ -424,7 +427,7 @@ export async function hydrateLockedSession(
     return { kind: 'expired', session: null, profile: null };
   }
   if (refreshOutcome.kind === 'transient') {
-    if (hasOfflineUnlock && (browserReportsOffline() || !(await probeNodeWardenService()))) {
+    if (hasOfflineUnlock && (browserReportsOffline() || !(await probeServer()))) {
       return {
         kind: 'ready',
         session,
@@ -579,7 +582,7 @@ export async function performPasswordLogin(
 
   return {
     kind: 'error',
-    message: translateServerError(tokenError.error_description || tokenError.error, t('txt_login_failed')),
+    message: translateServerError(serverErrorText(tokenError), t('txt_login_failed')),
   };
 }
 
@@ -593,7 +596,7 @@ export async function performPasskeyLogin(fallbackIterations: number, expectedEm
       const tokenError = token as { error_description?: string; error?: string };
       return {
         kind: 'error',
-        message: translateServerError(tokenError.error_description || tokenError.error, t('txt_login_failed')),
+        message: translateServerError(serverErrorText(tokenError), t('txt_login_failed')),
       };
     }
 
@@ -656,7 +659,7 @@ export async function performTotpLogin(
   const fallback = pendingTotp.providerType === TWO_FACTOR_PROVIDER_WEBAUTHN
     ? t('txt_passkey_verification_failed')
     : t('txt_totp_verify_failed');
-  throw new Error(translateServerError(tokenError.error_description || tokenError.error, fallback));
+  throw new Error(translateServerError(serverErrorText(tokenError), fallback));
 }
 
 export async function performRecoverTwoFactorLogin(
@@ -742,7 +745,7 @@ export async function performUnlock(
       useRememberToken: true,
     });
   } catch {
-    if (hasOfflineUnlock && (browserReportsOffline() || !(await probeNodeWardenService()))) {
+    if (hasOfflineUnlock && (browserReportsOffline() || !(await probeServer()))) {
       return unlockOffline();
     }
     return {
@@ -781,7 +784,7 @@ export async function performUnlock(
 
   return {
     kind: 'error',
-    message: translateServerError(tokenError.error_description || tokenError.error, t('txt_unlock_failed')),
+    message: translateServerError(serverErrorText(tokenError), t('txt_unlock_failed')),
   };
 }
 

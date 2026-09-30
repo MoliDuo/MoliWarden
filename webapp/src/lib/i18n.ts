@@ -18,7 +18,7 @@ export type Locale =
   | 'sv';
 
 import enMessages from './i18n/locales/en';
-const LOCALE_STORAGE_KEY = 'nodewarden.locale';
+const LOCALE_STORAGE_KEY = 'moliwarden.locale';
 
 type MessageTable = Record<string, string>;
 
@@ -238,7 +238,7 @@ export function translateServerError(message: string | null | undefined, fallbac
     'WebDAV server URL is required': 'txt_backup_error_webdav_url_required',
     'WebDAV server URL must start with http:// or https://': 'txt_backup_error_webdav_url_protocol',
     'WebDAV username is required': 'txt_backup_error_webdav_username_required',
-    'Secure browser cryptography is unavailable. Open NodeWarden over HTTPS in a supported browser.': 'txt_web_crypto_unavailable',
+    'Secure browser cryptography is unavailable. Open MoliWarden over HTTPS in a supported browser.': 'txt_web_crypto_unavailable',
     'masterPasswordHash is required': 'txt_server_error_master_password_hash_required',
     'masterPasswordHash or userVerificationToken is required': 'txt_server_error_master_password_or_verification_required',
   }[normalized];

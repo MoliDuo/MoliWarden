@@ -4,7 +4,7 @@ import { t } from '@/lib/i18n';
 import {
   browserReportsOffline,
   getCurrentNetworkStatus,
-  probeNodeWardenService,
+  probeServer,
   setCurrentNetworkStatus,
   subscribeNetworkStatus,
   type NetworkStatus,
@@ -30,7 +30,7 @@ export default function NetworkStatusBadge() {
         setCurrentNetworkStatus('offline');
         return;
       }
-      await probeNodeWardenService();
+      await probeServer();
     };
 
     const scheduleNextCheck = () => {

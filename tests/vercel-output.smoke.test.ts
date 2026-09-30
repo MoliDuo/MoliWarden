@@ -12,6 +12,7 @@ import {
   Client,
   cipherPayload,
   ensureBucket,
+  removeBucket,
   fakeEncString,
   resetDatabase,
   testServerEnv,
@@ -28,6 +29,8 @@ let vercel: VercelEmulator;
 let client: Client;
 let alice: Session;
 
+const bucket = `mw-smoke-${process.pid}`;
+
 before(async () => {
   try {
     await stat(join(OUTPUT_DIR, 'config.json'));
@@ -37,7 +40,6 @@ before(async () => {
   workDir = await mkdtemp(join(tmpdir(), 'moliwarden-smoke-'));
   await cp(OUTPUT_DIR, workDir, { recursive: true });
 
-  const bucket = `mw-smoke-${process.pid}`;
   await resetDatabase();
   await ensureBucket(bucket);
   vercel = await startVercelEmulator(workDir, {
@@ -50,6 +52,7 @@ before(async () => {
 
 after(async () => {
   await vercel?.close();
+  await removeBucket(bucket).catch(() => undefined);
   if (workDir) await rm(workDir, { recursive: true, force: true });
   // The bundled function owns its own pg pool; nothing else keeps the loop alive.
   setTimeout(() => process.exit(process.exitCode ?? 0), 100).unref();
@@ -157,7 +160,7 @@ test('API routes reach the function with path, query and CORS intact', async () 
   assert.equal(preflight.headers.get('access-control-allow-origin'), 'chrome-extension://nngceckbapebfimnlniiiahkandclblb');
 
   const unknown = await get('/api/definitely-not-a-route');
-  assert.equal(unknown.status, 401);
+  assert.equal(unknown.status, 404);
   assert.match(unknown.headers.get('content-type') || '', /json/);
 });
 
@@ -213,7 +216,7 @@ test('attachments: inline download, presigned S3 redirect above 4 MB, oversize r
   // the item never shows a broken attachment.
   const { cipherId, response } = await createAttachment(6 * 1024 * 1024);
   assert.equal(response.status, 400);
-  assert.match((await response.json()).ErrorModel.Message, /too large/i);
+  assert.match((await response.json()).message, /too large/i);
   const cipher = await alice.json(`/api/ciphers/${cipherId}`);
   assert.equal((cipher.attachments || []).length, 0);
 

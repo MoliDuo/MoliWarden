@@ -174,8 +174,8 @@ export default function PublicSendPage(props: PublicSendPageProps) {
     setError('');
     try {
       if (IS_DEMO_MODE) {
-        const bytes = new TextEncoder().encode('NodeWarden demo file Send.\nThis download is generated locally in demo mode.\n');
-        downloadBytesAsFile(bytes, sendData.decFileName || sendData.file?.fileName || 'nodewarden-demo-send.txt', 'application/octet-stream');
+        const bytes = new TextEncoder().encode('MoliWarden demo file Send.\nThis download is generated locally in demo mode.\n');
+        downloadBytesAsFile(bytes, sendData.decFileName || sendData.file?.fileName || 'moliwarden-demo-send.txt', 'application/octet-stream');
         return;
       }
       const url = await accessPublicSendFile(sendData.id, sendData.file.id, props.keyPart, password || undefined);
@@ -231,8 +231,8 @@ export default function PublicSendPage(props: PublicSendPageProps) {
   return (
     <div className="auth-page public-send-page">
       <StandalonePageFrame
-        title={sendData ? (sendData.decName || t('txt_no_name')) : t('txt_nodewarden_send')}
-        eyebrow={sendData ? t('txt_nodewarden_send') : undefined}
+        title={sendData ? (sendData.decName || t('txt_no_name')) : t('txt_moliwarden_send')}
+        eyebrow={sendData ? t('txt_moliwarden_send') : undefined}
       >
         {loading && <p className="muted">{t('txt_loading')}</p>}
 

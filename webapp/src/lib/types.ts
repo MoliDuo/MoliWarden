@@ -442,13 +442,24 @@ export interface ListResponse<T> {
   continuationToken?: string | null;
 }
 
+// A server secret the operator still has to set.
+export interface SecretProblem {
+  name: 'JWT_SECRET' | 'ENCRYPTION_KEY';
+  reason: 'missing' | 'too_short';
+}
+
+export interface SecretWarning extends SecretProblem {
+  minLength: number;
+}
+
 export interface WebBootstrapResponse {
   defaultKdfIterations?: number;
-  jwtUnsafeReason?: 'missing' | 'too_short' | null;
-  jwtSecretMinLength?: number;
+  secretProblem?: SecretProblem | null;
+  secretMinLength?: number;
   registrationInviteRequired?: boolean;
   webAuthnAllowedOrigins?: string[];
   websiteIconsEnabled?: boolean;
+  passwordHintEnabled?: boolean;
 }
 
 export interface YubiKeyOtpSettings {
@@ -490,7 +501,10 @@ export interface TokenSuccess {
   };
 }
 
+// Error bodies: Bitwarden's ErrorResponseModel (`message`), or the OAuth
+// shape (`error`, `error_description`) from the token endpoint.
 export interface TokenError {
+  message?: string;
   error?: string;
   error_description?: string;
   TwoFactorProviders?: unknown;

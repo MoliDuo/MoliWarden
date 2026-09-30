@@ -33,6 +33,7 @@ interface AuthViewsProps {
   passkeyPassword: string;
   registerValues: RegisterValues;
   registrationInviteRequired?: boolean;
+  passwordHintEnabled?: boolean;
   unlockPassword: string;
   emailForLock: string;
   loginHintLoading: boolean;
@@ -336,19 +337,21 @@ export default function AuthViews(props: AuthViewsProps) {
             placeholder={props.authPlaceholder}
             onInput={(v) => props.onChangeLogin({ ...props.loginValues, password: v })}
           />
-          <div className="auth-support-row">
-            <span />
-            <button
-              type="button"
-              className="auth-link-btn"
-              onClick={props.onTogglePasswordHint}
-              disabled={loginBusy || props.loginHintLoading || !props.loginValues.email.trim()}
-            >
-              {props.loginHintLoading
-                ? t('txt_loading_password_hint')
-                : t('txt_show_password_hint')}
-            </button>
-          </div>
+          {props.passwordHintEnabled && (
+            <div className="auth-support-row">
+              <span />
+              <button
+                type="button"
+                className="auth-link-btn"
+                onClick={props.onTogglePasswordHint}
+                disabled={loginBusy || props.loginHintLoading || !props.loginValues.email.trim()}
+              >
+                {props.loginHintLoading
+                  ? t('txt_loading_password_hint')
+                  : t('txt_show_password_hint')}
+              </button>
+            </div>
+          )}
           <button type="submit" className="btn btn-primary full" disabled={loginBusy || passkeyBusy}>
             <LogIn size={16} className="btn-icon" />
             {loginBusy ? t('txt_logging_in') : t('txt_log_in')}

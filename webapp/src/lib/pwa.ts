@@ -1,4 +1,4 @@
-export function registerNodeWardenServiceWorker(): void {
+export function registerServiceWorker(): void {
   if (typeof window === 'undefined') return;
   if (!('serviceWorker' in navigator)) return;
   if (import.meta.env.DEV) return;

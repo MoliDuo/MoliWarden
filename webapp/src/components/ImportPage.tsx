@@ -75,7 +75,7 @@ const COMMON_IMPORT_SOURCE_IDS: ImportSourceId[] = [
   'bitwarden_json',
   'bitwarden_csv',
   'bitwarden_zip',
-  'nodewarden_json',
+  'moliwarden_json',
   'onepassword_1pux',
   'onepassword_1pif',
   'onepassword_mac_csv',
@@ -284,7 +284,7 @@ async function readImportText(file: File, source: ImportSourceId): Promise<strin
 
 interface PendingPasswordImportContext {
   parsed: BitwardenPasswordProtectedInput;
-  source: 'bitwarden_json' | 'nodewarden_json' | 'bitwarden_zip';
+  source: 'bitwarden_json' | 'moliwarden_json' | 'bitwarden_zip';
   attachments: ImportAttachmentFile[];
 }
 
@@ -394,7 +394,7 @@ async function readBitwardenZipPayload(
   }
 }
 
-function parseNodeWardenAttachmentArray(raw: unknown): ImportAttachmentFile[] {
+function parseMoliWardenAttachmentArray(raw: unknown): ImportAttachmentFile[] {
   if (!Array.isArray(raw)) return [];
   const out: ImportAttachmentFile[] = [];
   for (const entry of raw) {
@@ -482,12 +482,12 @@ export default function ImportPage({ onImport, onImportEncryptedRaw, accountKeys
     );
   }
 
-  async function extractNodeWardenAttachments(parsed: unknown): Promise<ImportAttachmentFile[]> {
+  async function extractMoliWardenAttachments(parsed: unknown): Promise<ImportAttachmentFile[]> {
     if (!isRecord(parsed)) return [];
-    const direct = parseNodeWardenAttachmentArray(parsed.nodewardenAttachments);
+    const direct = parseMoliWardenAttachmentArray(parsed.moliwardenAttachments);
     if (direct.length) return direct;
 
-    const encryptedPayload = String(parsed.nodewardenAttachmentsEnc || '').trim();
+    const encryptedPayload = String(parsed.moliwardenAttachmentsEnc || '').trim();
     if (!encryptedPayload) return [];
     if (!accountKeys?.encB64 || !accountKeys?.macB64) {
       throw new Error(t('txt_vault_key_unavailable'));
@@ -496,18 +496,18 @@ export default function ImportPage({ onImport, onImportEncryptedRaw, accountKeys
     const accountMac = base64ToBytes(accountKeys.macB64);
     const plain = await decryptStr(encryptedPayload, accountEnc, accountMac);
     const unpacked = JSON.parse(plain) as Record<string, unknown>;
-    return parseNodeWardenAttachmentArray(unpacked.nodewardenAttachments);
+    return parseMoliWardenAttachmentArray(unpacked.moliwardenAttachments);
   }
 
-  async function runNodeWardenJsonImport(parsed: unknown, extraAttachments: ImportAttachmentFile[] = []): Promise<ImportResultSummary> {
-    const bundled = await extractNodeWardenAttachments(parsed);
+  async function runMoliWardenJsonImport(parsed: unknown, extraAttachments: ImportAttachmentFile[] = []): Promise<ImportResultSummary> {
+    const bundled = await extractMoliWardenAttachments(parsed);
     return runBitwardenJsonImport(parsed, [...bundled, ...extraAttachments]);
   }
 
   async function processPasswordProtectedImport(ctx: PendingPasswordImportContext): Promise<ImportResultSummary> {
     const parsed = await decryptPasswordProtectedExport(ctx.parsed, importPassword);
-    if (ctx.source === 'nodewarden_json') {
-      return runNodeWardenJsonImport(parsed, ctx.attachments);
+    if (ctx.source === 'moliwarden_json') {
+      return runMoliWardenJsonImport(parsed, ctx.attachments);
     }
     return runBitwardenJsonImport(parsed, ctx.attachments);
   }
@@ -555,7 +555,7 @@ export default function ImportPage({ onImport, onImportEncryptedRaw, accountKeys
       }
 
       const text = await readImportText(file, source);
-      if (source === 'bitwarden_json' || source === 'nodewarden_json') {
+      if (source === 'bitwarden_json' || source === 'moliwarden_json') {
         let parsed: unknown;
         try {
           parsed = JSON.parse(text);
@@ -573,8 +573,8 @@ export default function ImportPage({ onImport, onImportEncryptedRaw, accountKeys
           return;
         }
         const summary =
-          source === 'nodewarden_json'
-            ? await runNodeWardenJsonImport(parsed)
+          source === 'moliwarden_json'
+            ? await runMoliWardenJsonImport(parsed)
             : await runBitwardenJsonImport(parsed);
         setImportSummary(summary);
       } else {
@@ -659,7 +659,7 @@ export default function ImportPage({ onImport, onImportEncryptedRaw, accountKeys
   const exportNeedsMode =
     exportFormat === 'bitwarden_encrypted_json' ||
     exportFormat === 'bitwarden_encrypted_json_zip' ||
-    exportFormat === 'nodewarden_encrypted_json';
+    exportFormat === 'moliwarden_encrypted_json';
   const exportNeedsFilePassword = exportNeedsMode && encryptedJsonMode === 'password';
   const exportIsZip = exportFormat === 'bitwarden_json_zip' || exportFormat === 'bitwarden_encrypted_json_zip';
 

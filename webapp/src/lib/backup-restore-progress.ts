@@ -1,3 +1,5 @@
+// Progress of a backup export, which runs in the browser, for the backup
+// page to show.
 export type BackupProgressOperation = 'backup-restore' | 'backup-export' | 'backup-remote-run';
 
 export interface BackupProgressDetail {
@@ -11,17 +13,11 @@ export interface BackupProgressDetail {
   done?: boolean;
   ok?: boolean;
   error?: string | null;
-  Date?: string;
 }
 
-export type BackupRestoreProgressDetail = BackupProgressDetail;
-
-export const BACKUP_PROGRESS_EVENT = 'nodewarden:backup-progress';
-export const BACKUP_RESTORE_PROGRESS_EVENT = BACKUP_PROGRESS_EVENT;
+export const BACKUP_PROGRESS_EVENT = 'moliwarden:backup-progress';
 
 export function dispatchBackupProgress(detail: BackupProgressDetail): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent<BackupProgressDetail>(BACKUP_PROGRESS_EVENT, { detail }));
 }
-
-export const dispatchBackupRestoreProgress = dispatchBackupProgress;

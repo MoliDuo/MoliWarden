@@ -1,0 +1,1689 @@
+{
+  "formatVersion": 1,
+  "description": "Legacy (v1) MoliWarden fixture. See README.md.",
+  "generatedAt": "2026-09-29T11:48:12.980Z",
+  "generatedWith": "88604b648f17a5fda1c9c9713654c0a9822dec5f",
+  "server": {
+    "jwtSecret": "test-secret-test-secret-test-secret-0123456789",
+    "webauthnRpId": "127.0.0.1",
+    "webauthnRpName": "MoliWarden Legacy Fixture",
+    "yubico": {
+      "clientId": "424242",
+      "secretKey": "bGVnYWN5LWZpeHR1cmUteXViaWM="
+    },
+    "s3Bucket": "mw-legacy-fixture",
+    "env": {
+      "SHOW_PASSWORD_HINT": "1"
+    },
+    "note": "Start the server with JWT_SECRET above, YUBICO_VALIDATION_URLS pointing at a mock that uses the yubico secret above (common.ts startFixedYubicoMock) and reach it via http://127.0.0.1:<port> (passkeys are bound to RP id 127.0.0.1)."
+  },
+  "accounts": {
+    "admin": {
+      "email": "admin@fixture.example",
+      "passwordString": "hash-admin@fixture.example",
+      "masterPasswordHash": "aGFzaC1hZG1pbkBmaXh0dXJlLmV4YW1wbGU=",
+      "kdf": {
+        "type": 0,
+        "iterations": 600000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktYWRtaW4=|Y3QtdXNlci1rZXktYWRtaW4=|bWFjLXVzZXIta2V5LWFkbWlu",
+      "publicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA79KaNl7UgUkc9cIY/RqZqqGgV3H5lXkdGt8UiKrFGu9z9Vrpijmv4wp5zu4uaFjN/HnaKX4A3e9NWERvrM/lvBo0830zdxl0BduMj5I9bpdqwLF4yWBKZdh1aG9nE8jURefreLzQJT6vTqeI5zTd5cbmK2/bTgD/N+MoiOtycKchiVahAnCiHEkJ8iVWivCzUb0X04kbUWdnbmDFBcmWVxaqdI1WnW8wKdaKkoUy9gnIwAK4SpI+IFYabMjsf6Yo7x5bLef+L1Z0GTCEuPy1SXC7lQ/fPHmOYp3DftdTJbS8wJXM+YyYi1BBjaMbX9Hug1rDn0ffkhQ5MDmA/l8hsQIDAQAB",
+      "userId": "42ee4466-c20c-44ec-b8d2-4c4b82d60fe4",
+      "role": "admin",
+      "covers": [
+        "instance admin (first user)",
+        "real RSA public key -> backup settings portable wraps",
+        "yubico API config",
+        "audit log settings",
+        "invites",
+        "backup settings",
+        "org owner"
+      ],
+      "rsaPrivateKeyPkcs8": "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDv0po2XtSBSRz1whj9GpmqoaBXcfmVeR0a3xSIqsUa73P1WumKOa/jCnnO7i5oWM38edopfgDd701YRG+sz+W8GjTzfTN3GXQF24yPkj1ul2rAsXjJYEpl2HVob2cTyNRF5+t4vNAlPq9Op4jnNN3lxuYrb9tOAP834yiI63JwpyGJVqECcKIcSQnyJVaK8LNRvRfTiRtRZ2duYMUFyZZXFqp0jVadbzAp1oqShTL2CcjAArhKkj4gVhpsyOx/pijvHlst5/4vVnQZMIS4/LVJcLuVD988eY5incN+11MltLzAlcz5jJiLUEGNoxtf0e6DWsOfR9+SFDkwOYD+XyGxAgMBAAECggEAZrGwroqSBeCogYZBjBR5a+s1DWz1Wq/XqjuPf+xcZenWpmBtM+765caFHXq5rZ4larFFHdJijaac4KjBh2co8ZDpTsC0qpHgMGfwu0P8gWBearA0UEsm4JC9yeA2a+7qExs6JmP335MFn7E2+waU5IF063HFH5RmtWhU4bissxbSGfxvJhu1psJbqnYDzDgsxjhpIw0KoFlA5j1RZg9b0yGJ1GUmqDIU9uQrdWoHs4coRVexzcxMXY8NP4AywlOgssGlxs7sH5JHdBNX2N+LH5nGvGxqRuvFWwmLFLOunL6eUUwBtWO9RGlLErwrExC4Z+cof08JJm4WgvtIDQkFhwKBgQD6kltiBjoV8Kny1baJJVOzy9OuXjCcoerZlrPJ/rJWgfub0i4LMLzyXYoAYpyNAxnXDD870VEa/qHlB+iewh4ny4IQilbz7c/ic+hmTEIfpU1xdiJTi+jUDN3syjQVu0kAh94t8yqLOeNT8KMMJNLhw8bIuLjGKGw1DV11S6qDKwKBgQD1BKHm+7ZwH+Pnb4noED5jOrdOH8hc67ioZILKDnM3Lh7+ZbzDs6j1SBcUqAZprs4aTOgrcQVQA5eobuk7Xjp6vkTo9YqHB2/DZjaABVWpVH48B6DmPOQoHhGN04zfwSb+m+GkdUgdw5NBTxXoqOgYGF9mmzt8X/iQwPeFeLlwkwKBgGPby/tmy+NOhAw4y4QgkhkHVBcbhngFt1h7zK7liCEdsC5LNvpStBpK2OKKaiVwZO3k/ZZTNuVxMQfbfQM4DViCrBT3bOvNjJmM48NRBNEjyZc8IzX0fhd0AUWK1/MJLnC9tPfO/td5fHVJY1FFo51BrojzxP+DwIvsBaDnRM79AoGBAIHrvencKSYVUuTCmS6rhllZph9P7Q+Qkq7/9PYtaVymIRsmWUywdHPzkQGMAzKA1ZrOkwGOAZInBYDzpsqrMXkqcSHSKW1mPRYwmc+ShJSwT+uG5AOR4C2BnC9HMNjo88NoZuKsqdvWe7vSsrxW7BLywYuH3qgZv5UKLXXhyPrvAoGAZRIWZ8r8QEvWLTGYzdQ9Rt1RsfLZsRy0pOzX1v5/qoWgbGD3XwWjDBPcQ71MHqsGVE0A++qSKHkWlD0jDcOKU0asYxy7wPkw2vq2Hg/tqgXuWOg38si6mkSEBoxEnx5xgNz9uXvv6ZvNMvpBbBVoZPb1Yofiw1y0KA7TkSB0dhc=",
+      "devices": {
+        "cli": {
+          "identifier": "90f4a140-2c18-42cd-8412-30e2c355befc",
+          "type": 25,
+          "clientId": "cli"
+        }
+      }
+    },
+    "vault": {
+      "email": "vault@fixture.example",
+      "passwordString": "hash-vault@fixture.example",
+      "masterPasswordHash": "aGFzaC12YXVsdEBmaXh0dXJlLmV4YW1wbGU=",
+      "kdf": {
+        "type": 0,
+        "iterations": 350000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktdmF1bHQ=|Y3QtdXNlci1rZXktdmF1bHQ=|bWFjLXVzZXIta2V5LXZhdWx0",
+      "publicKey": "cHVibGljLWtleS12YXVsdEBmaXh0dXJlLmV4YW1wbGU=",
+      "masterPasswordHint": "the usual one",
+      "inviteCode": "e5ff6ced57c7ff4414a979284247b539af767da0",
+      "userId": "b47224e1-7541-4fed-8262-51a236e3f206",
+      "devices": {
+        "cli": {
+          "identifier": "c51d72e8-0110-4bde-84b5-1938c8649ab7",
+          "type": 25,
+          "clientId": "cli"
+        },
+        "android": {
+          "identifier": "98cbc6ce-0bf3-4f1b-8437-cfe4d28ab8f8",
+          "type": 0,
+          "clientId": "mobile",
+          "pushToken": "fixture-fcm-push-token-0001",
+          "refreshToken": "21rQ098bVqkLWmCCMBYa6GVYZ5kwgFOj1qHpKravbxs"
+        },
+        "web": {
+          "identifier": "d765ae6c-f4b8-4246-8fbe-bea276f17d8f",
+          "type": 9,
+          "clientId": "web",
+          "refreshTokenCookie": "3jEc7Q2kX45TaVz7ICIPkaz8b3N_ZIG06iRow-2NT5o"
+        },
+        "extension": {
+          "identifier": "fbfb5e63-dc64-4c5c-80c6-0eea840e0880",
+          "type": 2,
+          "clientId": "browser",
+          "refreshToken": "FC3BXV8DOgzt4rxcLamdcN-uD-wqMG_D74-XKH9WbSM"
+        },
+        "desktop": {
+          "identifier": "dc32bea1-1f41-4c00-8bc3-903c7c6f1e81",
+          "type": 6,
+          "clientId": "desktop",
+          "trustedDeviceKeys": true,
+          "deviceNote": "Work laptop",
+          "refreshToken": "zCNTGKw709jmJzxehaahH0-ow8NW04UttUenCm9Fdcs"
+        },
+        "sdk": {
+          "identifier": "afe5ecf0-f170-4a80-8afe-3887d3779241",
+          "type": 21,
+          "clientId": "user.b47224e1-7541-4fed-8262-51a236e3f206",
+          "via": "client_credentials"
+        }
+      },
+      "covers": [
+        "PBKDF2 350000 + master password hint",
+        "personal vault: folders, cipher types 1-8, favorite/archived/deleted/reprompt/cipher key/key-added marker",
+        "attachments",
+        "sends (all variants)",
+        "equivalent domains",
+        "personal API key (rotated)",
+        "devices of several types, push token, device keys, device note",
+        "web (cookie) and mobile refresh tokens",
+        "auth requests",
+        "org user member"
+      ],
+      "refreshTokens": {
+        "mobile": "21rQ098bVqkLWmCCMBYa6GVYZ5kwgFOj1qHpKravbxs",
+        "web": "3jEc7Q2kX45TaVz7ICIPkaz8b3N_ZIG06iRow-2NT5o",
+        "cli": "tApBDMMNCAUwOm9r3-VVsPR0Q4J3KfxrBfkTEpp9EvU"
+      },
+      "apiKey": {
+        "clientId": "user.b47224e1-7541-4fed-8262-51a236e3f206",
+        "clientSecret": "aaG5rU7J3Sk87q2NPFVBqv7MHgdqG2",
+        "storedFormat": "plaintext (current)"
+      }
+    },
+    "argon": {
+      "email": "argon@fixture.example",
+      "passwordString": "hash-argon@fixture.example",
+      "masterPasswordHash": "aGFzaC1hcmdvbkBmaXh0dXJlLmV4YW1wbGU=",
+      "kdf": {
+        "type": 1,
+        "iterations": 3,
+        "memory": 64,
+        "parallelism": 4
+      },
+      "userKey": "2.aXYtdXNlci1rZXktYXJnb24=|Y3QtdXNlci1rZXktYXJnb24=|bWFjLXVzZXIta2V5LWFyZ29u",
+      "publicKey": "cHVibGljLWtleS1hcmdvbkBmaXh0dXJlLmV4YW1wbGU=",
+      "inviteCode": "14a40368ca384e3514ad225273f94f83285433b0",
+      "userId": "19290199-ab15-4919-823c-38b084e4e827",
+      "devices": {
+        "cli": {
+          "identifier": "c678062c-9a40-46ed-81d5-ddfa34f8be13",
+          "type": 25,
+          "clientId": "cli"
+        }
+      },
+      "covers": [
+        "Argon2id kdf (3 iterations, 64 MiB, parallelism 4)",
+        "org admin (accessAll)",
+        "owner of a second organization"
+      ]
+    },
+    "totp": {
+      "email": "totp@fixture.example",
+      "passwordString": "hash-totp@fixture.example",
+      "masterPasswordHash": "aGFzaC10b3RwQGZpeHR1cmUuZXhhbXBsZQ==",
+      "kdf": {
+        "type": 0,
+        "iterations": 600000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktdG90cA==|Y3QtdXNlci1rZXktdG90cA==|bWFjLXVzZXIta2V5LXRvdHA=",
+      "publicKey": "cHVibGljLWtleS10b3RwQGZpeHR1cmUuZXhhbXBsZQ==",
+      "inviteCode": "564afb40fc325fea126d2d9a65efc0ede0ac9575",
+      "userId": "f175fcfb-4094-43d5-9e98-b98725c0283a",
+      "devices": {
+        "cli": {
+          "identifier": "37c1227c-4767-4178-8052-1d23f3b6faf7",
+          "type": 25,
+          "clientId": "cli"
+        },
+        "remembered": {
+          "identifier": "d16c15e2-a6c0-460a-896e-2257b6931070",
+          "type": 25,
+          "clientId": "cli",
+          "rememberToken": "StN41S_dcE4I7SF_Cxy0XOihpNCibON3NwCWGpUPhxs"
+        }
+      },
+      "covers": [
+        "TOTP (provider 0) with fixed secret",
+        "recovery code",
+        "trusted remember-me device token (provider 5)",
+        "org user: read-only + hide-passwords collection grant",
+        "per-user folder/favorite on an org item"
+      ],
+      "twoFactor": {
+        "providers": [
+          0
+        ],
+        "totpSecret": "JBSWY3DPEHPK3PXPMOLIWARDENFIXTR",
+        "recoveryCode": "2YTD L3XA ZE6B KXEO MXGO TXV5 NPFV BI3K"
+      },
+      "rememberToken": {
+        "deviceIdentifier": "d16c15e2-a6c0-460a-896e-2257b6931070",
+        "token": "StN41S_dcE4I7SF_Cxy0XOihpNCibON3NwCWGpUPhxs"
+      }
+    },
+    "yubikey": {
+      "email": "yubikey@fixture.example",
+      "passwordString": "hash-yubikey@fixture.example",
+      "masterPasswordHash": "aGFzaC15dWJpa2V5QGZpeHR1cmUuZXhhbXBsZQ==",
+      "kdf": {
+        "type": 0,
+        "iterations": 600000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXkteXViaWtleQ==|Y3QtdXNlci1rZXkteXViaWtleQ==|bWFjLXVzZXIta2V5LXl1YmlrZXk=",
+      "publicKey": "cHVibGljLWtleS15dWJpa2V5QGZpeHR1cmUuZXhhbXBsZQ==",
+      "inviteCode": "5bd205308b94bde7481f0654d94832d88a8334a8",
+      "userId": "d65ed8ce-595f-4e68-b9dc-9c54f036a177",
+      "devices": {
+        "cli": {
+          "identifier": "a68f14aa-6f05-4b23-878d-23b68e79e4d7",
+          "type": 25,
+          "clientId": "cli"
+        }
+      },
+      "covers": [
+        "YubiKey OTP (provider 3), NFC on",
+        "org member in state invited (0)"
+      ],
+      "twoFactor": {
+        "providers": [
+          3
+        ],
+        "yubikeyPublicId": "cccccbhjklnr",
+        "nfc": true
+      }
+    },
+    "webauthn2fa": {
+      "email": "webauthn2fa@fixture.example",
+      "passwordString": "hash-webauthn2fa@fixture.example",
+      "masterPasswordHash": "aGFzaC13ZWJhdXRobjJmYUBmaXh0dXJlLmV4YW1wbGU=",
+      "kdf": {
+        "type": 0,
+        "iterations": 600000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktd2ViYXV0aG4yZmE=|Y3QtdXNlci1rZXktd2ViYXV0aG4yZmE=|bWFjLXVzZXIta2V5LXdlYmF1dGhuMmZh",
+      "publicKey": "cHVibGljLWtleS13ZWJhdXRobjJmYUBmaXh0dXJlLmV4YW1wbGU=",
+      "inviteCode": "69e41a7d4565f38c21f7bdf26cdd16295de962bc",
+      "userId": "689390e4-7017-4751-b384-b34c8ef41116",
+      "devices": {
+        "cli": {
+          "identifier": "86340e12-b069-4d87-8974-1f48770cf529",
+          "type": 25,
+          "clientId": "cli"
+        }
+      },
+      "covers": [
+        "WebAuthn security key as 2FA (provider 7)",
+        "trusted remember-me device token",
+        "org member in state accepted (1)"
+      ],
+      "twoFactor": {
+        "providers": [
+          7
+        ],
+        "webauthnKeys": [
+          {
+            "name": "Fixture security key",
+            "credentialId": "MM3JP9259bm26-ARe9AqRscvDp0GVgH2p4WTYL1vM_s",
+            "rpId": "127.0.0.1",
+            "userHandle": "5JCTaBdwUUezhLNMjvQRFg",
+            "privateKeyPkcs8": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgmjSpSJOLKKlXaaSpS7uU9n1TdTuoca8J+u0a10uzosGhRANCAAQM8XeC+2NTvYe0oaOcS1MBV67SuouaG+HzvCepQ/G5qeqKcB1ZOPkkHb5i9sArwsIjmaIHLhquCeS3sYUiR+4J",
+            "privateKeyJwk": {
+              "kty": "EC",
+              "x": "DPF3gvtjU72HtKGjnEtTAVeu0rqLmhvh87wnqUPxuak",
+              "y": "6opwHVk4-SQdvmL2wCvCwiOZogcuGq4J5LexhSJH7gk",
+              "crv": "P-256",
+              "d": "mjSpSJOLKKlXaaSpS7uU9n1TdTuoca8J-u0a10uzosE"
+            },
+            "prfSeed": "VDvnHbWIPz6GEfdxMe0z5ozAHhw2krpyzASNHJFZkX4=",
+            "counter": 1
+          }
+        ]
+      },
+      "rememberToken": {
+        "deviceIdentifier": "483d1b5b-3004-42e7-8f27-f84aa8234728",
+        "token": "20_9m5D2NCHG0Jg5QFkPcldaGzyKeI7eamtj_FN59ec"
+      }
+    },
+    "passkey": {
+      "email": "passkey@fixture.example",
+      "passwordString": "hash-passkey@fixture.example",
+      "masterPasswordHash": "aGFzaC1wYXNza2V5QGZpeHR1cmUuZXhhbXBsZQ==",
+      "kdf": {
+        "type": 0,
+        "iterations": 600000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktcGFzc2tleQ==|Y3QtdXNlci1rZXktcGFzc2tleQ==|bWFjLXVzZXIta2V5LXBhc3NrZXk=",
+      "publicKey": "cHVibGljLWtleS1wYXNza2V5QGZpeHR1cmUuZXhhbXBsZQ==",
+      "inviteCode": "1615e7381faabd8f4ca26a69e82e0407098bae7b",
+      "userId": "032772a9-e7c1-4305-a14e-2ed1b3fef953",
+      "devices": {
+        "cli": {
+          "identifier": "57183f3d-291b-4716-8d4e-e14e18c70c81",
+          "type": 25,
+          "clientId": "cli"
+        }
+      },
+      "covers": [
+        "3 account passkeys: PRF with key set (prfStatus 0), PRF supported without key set (1), no PRF (2)",
+        "org member confirmed then revoked (-1)"
+      ],
+      "passkeys": [
+        {
+          "label": "prf-with-key-set",
+          "id": "af717776-95e4-4e1b-a350-26cf8bcd4b6d",
+          "name": "Laptop passkey",
+          "prfStatus": 0,
+          "credentialId": "695uXT3Cg5_pRdLiNvjliwIZjB2XXzW7KxVZ-TkPHlc",
+          "rpId": "127.0.0.1",
+          "userHandle": "qXInA8HnBUOhTi7Rs_75Uw",
+          "privateKeyPkcs8": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgq/NrGSvDk9lHPOldKBuVpZ69ZvAavwOaAyet028l9c+hRANCAAQJNGuwC7SJubE8OeTaMsX4KTFJcO7th2na8AVVV+bxNPTOmsWwxsF8gBUiyaVC5fWDHygaedmJ7qmZtmR64kmZ",
+          "privateKeyJwk": {
+            "kty": "EC",
+            "x": "CTRrsAu0ibmxPDnk2jLF-CkxSXDu7Ydp2vAFVVfm8TQ",
+            "y": "9M6axbDGwXyAFSLJpULl9YMfKBp52YnuqZm2ZHriSZk",
+            "crv": "P-256",
+            "d": "q_NrGSvDk9lHPOldKBuVpZ69ZvAavwOaAyet028l9c8"
+          },
+          "prfSeed": "Z0ofsq+kolUv9RYfJ4Y1MgMDyvBcUYSpFrAd8UdbRso=",
+          "counter": 1,
+          "keySet": {
+            "encryptedUserKey": "4.cnNhLXByZi11c2VyLWtleQ==",
+            "encryptedPublicKey": "2.aXYtcHJmLXB1YmxpYy1rZXk=|Y3QtcHJmLXB1YmxpYy1rZXk=|bWFjLXByZi1wdWJsaWMta2V5",
+            "encryptedPrivateKey": "2.aXYtcHJmLXByaXZhdGUta2V5|Y3QtcHJmLXByaXZhdGUta2V5|bWFjLXByZi1wcml2YXRlLWtleQ=="
+          }
+        },
+        {
+          "label": "prf-supported-no-key-set",
+          "id": "e80f2687-447b-40c8-a7c1-83a1de1ba6d8",
+          "name": "Phone passkey",
+          "prfStatus": 1,
+          "credentialId": "1uwWIStYi_26wKKjL4dOtzEJinNJE8uZJNUyIolA_iA",
+          "rpId": "127.0.0.1",
+          "userHandle": "qXInA8HnBUOhTi7Rs_75Uw",
+          "privateKeyPkcs8": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgFq8gNn905B//sJOSSeUaDDE3zC0RVgIyVOolSJAWpJqhRANCAAR4BDhheh9OSoN1qv3l+bkH90hZQ9K3m+prfT1z+1J9oyf5za/Rlg/eeAIi8Sg/VlPZb9PcI3lVcDfFyqFjCVSl",
+          "privateKeyJwk": {
+            "kty": "EC",
+            "x": "eAQ4YXofTkqDdar95fm5B_dIWUPSt5vqa309c_tSfaM",
+            "y": "J_nNr9GWD954AiLxKD9WU9lv09wjeVVwN8XKoWMJVKU",
+            "crv": "P-256",
+            "d": "Fq8gNn905B__sJOSSeUaDDE3zC0RVgIyVOolSJAWpJo"
+          },
+          "prfSeed": "eLxL1UFvFy9vu0lv/jvKbEeWmRuPllKIGu3tTxdY+58=",
+          "counter": 0,
+          "keySet": null
+        },
+        {
+          "label": "no-prf",
+          "id": "ef284549-a046-4e28-87a5-2fcd84ae4349",
+          "name": "Account passkey",
+          "prfStatus": 2,
+          "credentialId": "jSJnZ7LAeoST5nTgNI2jqwTrUGEV0gt7dPiKrgKu2x0",
+          "rpId": "127.0.0.1",
+          "userHandle": "qXInA8HnBUOhTi7Rs_75Uw",
+          "privateKeyPkcs8": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgOh5W1Rqex3fcAAcyIZoh/5XiAWzG0DGBbL8pinAHxjmhRANCAATLW5bz19sVXg/PA2vFA7suo149+p2qRzCneia6+P6beC+tj6+viucrB8KdwzWmTzEMthoxB6ooYPRRjqPli7tW",
+          "privateKeyJwk": {
+            "kty": "EC",
+            "x": "y1uW89fbFV4PzwNrxQO7LqNePfqdqkcwp3omuvj-m3g",
+            "y": "L62Pr6-K5ysHwp3DNaZPMQy2GjEHqihg9FGOo-WLu1Y",
+            "crv": "P-256",
+            "d": "Oh5W1Rqex3fcAAcyIZoh_5XiAWzG0DGBbL8pinAHxjk"
+          },
+          "prfSeed": "fkZuOKUII+GnWXKbZ1qySlfwA6wJLrQVTlE8xTiwBV4=",
+          "counter": 0,
+          "keySet": null
+        }
+      ],
+      "expectedUserHandle": "qXInA8HnBUOhTi7Rs_75Uw"
+    },
+    "manager": {
+      "email": "manager@fixture.example",
+      "passwordString": "hash-manager@fixture.example",
+      "masterPasswordHash": "aGFzaC1tYW5hZ2VyQGZpeHR1cmUuZXhhbXBsZQ==",
+      "kdf": {
+        "type": 0,
+        "iterations": 600000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktbWFuYWdlcg==|Y3QtdXNlci1rZXktbWFuYWdlcg==|bWFjLXVzZXIta2V5LW1hbmFnZXI=",
+      "publicKey": "cHVibGljLWtleS1tYW5hZ2VyQGZpeHR1cmUuZXhhbXBsZQ==",
+      "inviteCode": "a1d221dec08845060c482853d16f2ab065ee5794",
+      "userId": "9c97c610-d3f5-428b-b495-99d5d3a4d84c",
+      "devices": {
+        "cli": {
+          "identifier": "96b43e06-536e-46c9-8b56-84c5c0e2406b",
+          "type": 25,
+          "clientId": "cli"
+        }
+      },
+      "covers": [
+        "org member with legacy Manager role (type 3, no access_all)"
+      ]
+    },
+    "custom": {
+      "email": "custom@fixture.example",
+      "passwordString": "hash-custom@fixture.example",
+      "masterPasswordHash": "aGFzaC1jdXN0b21AZml4dHVyZS5leGFtcGxl",
+      "kdf": {
+        "type": 0,
+        "iterations": 600000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktY3VzdG9t|Y3QtdXNlci1rZXktY3VzdG9t|bWFjLXVzZXIta2V5LWN1c3RvbQ==",
+      "publicKey": "cHVibGljLWtleS1jdXN0b21AZml4dHVyZS5leGFtcGxl",
+      "inviteCode": "3092b3bcb0a19fc79626fbe311c30a7ca85c5ec2",
+      "userId": "e8b33f72-5185-4c6e-8c46-36d84d0fa7cf",
+      "devices": {
+        "cli": {
+          "identifier": "40051e25-1a91-4de1-815d-3371a44f1a54",
+          "type": 25,
+          "clientId": "cli"
+        }
+      },
+      "covers": [
+        "org member invited as Custom with all collection permissions (stored type 3 + access_all)"
+      ]
+    },
+    "banned": {
+      "email": "banned@fixture.example",
+      "passwordString": "hash-banned@fixture.example",
+      "masterPasswordHash": "aGFzaC1iYW5uZWRAZml4dHVyZS5leGFtcGxl",
+      "kdf": {
+        "type": 0,
+        "iterations": 600000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktYmFubmVk|Y3QtdXNlci1rZXktYmFubmVk|bWFjLXVzZXIta2V5LWJhbm5lZA==",
+      "publicKey": "cHVibGljLWtleS1iYW5uZWRAZml4dHVyZS5leGFtcGxl",
+      "inviteCode": "684c1d38c285d41b24f78836f31c3bd44012caa0",
+      "userId": "8ac1796d-04aa-41bd-a31b-cb96118b4703",
+      "devices": {
+        "cli": {
+          "identifier": "14de3d3f-e3f6-4649-89a0-b32e132e7e2c",
+          "type": 25,
+          "clientId": "cli"
+        }
+      },
+      "status": "banned",
+      "covers": [
+        "banned by the admin: login must be refused"
+      ]
+    },
+    "legacyRawHash": {
+      "email": "legacy-rawhash@fixture.example",
+      "passwordString": "hash-legacy-rawhash@fixture.example",
+      "masterPasswordHash": "aGFzaC1sZWdhY3ktcmF3aGFzaEBmaXh0dXJlLmV4YW1wbGU=",
+      "kdf": {
+        "type": 0,
+        "iterations": 600000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktbGVnYWN5UmF3SGFzaA==|Y3QtdXNlci1rZXktbGVnYWN5UmF3SGFzaA==|bWFjLXVzZXIta2V5LWxlZ2FjeVJhd0hhc2g=",
+      "publicKey": "cHVibGljLWtleS1sZWdhY3ktcmF3aGFzaEBmaXh0dXJlLmV4YW1wbGU=",
+      "inviteCode": "ccf7d11fd909e456f15dbbca89f612004d0b8e0c",
+      "userId": "502e2390-384d-40f3-83b7-53bfc6ee882c",
+      "devices": {
+        "cli": {
+          "identifier": "5a09e91f-fc23-477f-8e5a-a05f346f905d",
+          "type": 25,
+          "clientId": "cli"
+        }
+      },
+      "covers": [
+        "legacy variant users.master_password_hash:raw-client-hash"
+      ]
+    },
+    "legacyApiKey": {
+      "email": "legacy-apikey@fixture.example",
+      "passwordString": "hash-legacy-apikey@fixture.example",
+      "masterPasswordHash": "aGFzaC1sZWdhY3ktYXBpa2V5QGZpeHR1cmUuZXhhbXBsZQ==",
+      "kdf": {
+        "type": 0,
+        "iterations": 600000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktbGVnYWN5QXBpS2V5|Y3QtdXNlci1rZXktbGVnYWN5QXBpS2V5|bWFjLXVzZXIta2V5LWxlZ2FjeUFwaUtleQ==",
+      "publicKey": "cHVibGljLWtleS1sZWdhY3ktYXBpa2V5QGZpeHR1cmUuZXhhbXBsZQ==",
+      "inviteCode": "d208e3de77bf1bf6331882b25fa8efd9c40126ae",
+      "userId": "9fab75a7-a33b-412e-9dda-f934a392b545",
+      "devices": {
+        "cli": {
+          "identifier": "4a506dd0-c5ac-4ba4-8748-ab39c7154af8",
+          "type": 25,
+          "clientId": "cli"
+        }
+      },
+      "apiKey": {
+        "clientId": "user.9fab75a7-a33b-412e-9dda-f934a392b545",
+        "clientSecret": "LegacyFixtureApiKeySecret0001",
+        "storedFormat": "sha256:<hex> (legacy)"
+      },
+      "covers": [
+        "legacy variant users.api_key:sha256-hash"
+      ]
+    },
+    "legacyDomains": {
+      "email": "legacy-domains@fixture.example",
+      "passwordString": "hash-legacy-domains@fixture.example",
+      "masterPasswordHash": "aGFzaC1sZWdhY3ktZG9tYWluc0BmaXh0dXJlLmV4YW1wbGU=",
+      "kdf": {
+        "type": 0,
+        "iterations": 600000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktbGVnYWN5RG9tYWlucw==|Y3QtdXNlci1rZXktbGVnYWN5RG9tYWlucw==|bWFjLXVzZXIta2V5LWxlZ2FjeURvbWFpbnM=",
+      "publicKey": "cHVibGljLWtleS1sZWdhY3ktZG9tYWluc0BmaXh0dXJlLmV4YW1wbGU=",
+      "inviteCode": "00744f1a988515fad0bcc93c20565c39c56fe0f8",
+      "userId": "2f27b21a-74ea-4b1c-b826-824b5ef88fb6",
+      "devices": {
+        "cli": {
+          "identifier": "ff8b4f9a-0fe2-4234-838d-49127e3c2cc9",
+          "type": 25,
+          "clientId": "cli"
+        }
+      },
+      "covers": [
+        "legacy variant domain_settings:equivalent_domains-only"
+      ]
+    },
+    "legacyTotp": {
+      "email": "legacy-totp@fixture.example",
+      "passwordString": "hash-legacy-totp@fixture.example",
+      "masterPasswordHash": "aGFzaC1sZWdhY3ktdG90cEBmaXh0dXJlLmV4YW1wbGU=",
+      "kdf": {
+        "type": 0,
+        "iterations": 600000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktbGVnYWN5VG90cA==|Y3QtdXNlci1rZXktbGVnYWN5VG90cA==|bWFjLXVzZXIta2V5LWxlZ2FjeVRvdHA=",
+      "publicKey": "cHVibGljLWtleS1sZWdhY3ktdG90cEBmaXh0dXJlLmV4YW1wbGU=",
+      "inviteCode": "1c66a24a7800b716a8eb1673cc906b443a1d0768",
+      "userId": "ed0a4b85-9e53-4fe7-a547-f1c8c245df48",
+      "devices": {
+        "cli": {
+          "identifier": "474f8111-04de-451d-84e6-c71d61e157f2",
+          "type": 25,
+          "clientId": "cli"
+        }
+      },
+      "twoFactor": {
+        "providers": [
+          0
+        ],
+        "totpSecret": "JBSWY3DPEHPK3PXPMOLIWARDENLEGACY",
+        "totpSecretStored": "jbsw y3dp-ehpk 3pxp-moli ward-enle gacy==",
+        "recoveryCode": "ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567"
+      },
+      "covers": [
+        "legacy variant users.totp_secret+totp_recovery_code:unnormalized"
+      ]
+    },
+    "legacyYubikey": {
+      "email": "legacy-yubikey@fixture.example",
+      "passwordString": "hash-legacy-yubikey@fixture.example",
+      "masterPasswordHash": "aGFzaC1sZWdhY3kteXViaWtleUBmaXh0dXJlLmV4YW1wbGU=",
+      "kdf": {
+        "type": 0,
+        "iterations": 600000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktbGVnYWN5WXViaWtleQ==|Y3QtdXNlci1rZXktbGVnYWN5WXViaWtleQ==|bWFjLXVzZXIta2V5LWxlZ2FjeVl1YmlrZXk=",
+      "publicKey": "cHVibGljLWtleS1sZWdhY3kteXViaWtleUBmaXh0dXJlLmV4YW1wbGU=",
+      "inviteCode": "bba188364de7ee392a38edf94a0c8884803392d5",
+      "userId": "39af72eb-5f25-4b45-8504-2e4d6c39bccd",
+      "devices": {
+        "cli": {
+          "identifier": "1397c8e4-4edb-4f7e-89ed-a829f3e696f3",
+          "type": 25,
+          "clientId": "cli"
+        }
+      },
+      "twoFactor": {
+        "providers": [
+          3
+        ],
+        "yubikeyPublicId": "cccccbhjklnv",
+        "yubikeyStored": "  CCCCCBHJKLNV ",
+        "nfc": false
+      },
+      "covers": [
+        "legacy variant users.yubikey_key1:unnormalized-public-id"
+      ]
+    },
+    "legacyKdf": {
+      "email": "legacy-kdf@fixture.example",
+      "passwordString": "hash-legacy-kdf@fixture.example",
+      "masterPasswordHash": "aGFzaC1sZWdhY3kta2RmQGZpeHR1cmUuZXhhbXBsZQ==",
+      "kdf": {
+        "type": 0,
+        "iterations": 5000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktbGVnYWN5S2Rm|Y3QtdXNlci1rZXktbGVnYWN5S2Rm|bWFjLXVzZXIta2V5LWxlZ2FjeUtkZg==",
+      "publicKey": "cHVibGljLWtleS1sZWdhY3kta2RmQGZpeHR1cmUuZXhhbXBsZQ==",
+      "inviteCode": "e504cdfb253c4f187e503983b69f33bddc8b2fcc",
+      "userId": "e730e934-1006-4550-a443-c12680cb0719",
+      "devices": {
+        "cli": {
+          "identifier": "a17a767e-6909-414a-8c39-7eff67e55c79",
+          "type": 25,
+          "clientId": "cli"
+        }
+      },
+      "covers": [
+        "legacy variant users.kdf_iterations:below-minimum"
+      ]
+    },
+    "legacyStatus": {
+      "email": "legacy-status@fixture.example",
+      "passwordString": "hash-legacy-status@fixture.example",
+      "masterPasswordHash": "aGFzaC1sZWdhY3ktc3RhdHVzQGZpeHR1cmUuZXhhbXBsZQ==",
+      "kdf": {
+        "type": 0,
+        "iterations": 600000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktbGVnYWN5U3RhdHVz|Y3QtdXNlci1rZXktbGVnYWN5U3RhdHVz|bWFjLXVzZXIta2V5LWxlZ2FjeVN0YXR1cw==",
+      "publicKey": "cHVibGljLWtleS1sZWdhY3ktc3RhdHVzQGZpeHR1cmUuZXhhbXBsZQ==",
+      "inviteCode": "7fa2ba8ba57ee2cd78779e459b1ab3cf6d5213ed",
+      "userId": "205c22e9-ce26-4b35-8f23-ea29fa42d9f5",
+      "devices": {
+        "cli": {
+          "identifier": "a9214f0e-2628-4236-88d4-7e076a09b160",
+          "type": 25,
+          "clientId": "cli"
+        }
+      },
+      "covers": [
+        "legacy variant users.status+role:non-canonical"
+      ]
+    },
+    "legacySession": {
+      "email": "legacy-session@fixture.example",
+      "passwordString": "hash-legacy-session@fixture.example",
+      "masterPasswordHash": "aGFzaC1sZWdhY3ktc2Vzc2lvbkBmaXh0dXJlLmV4YW1wbGU=",
+      "kdf": {
+        "type": 0,
+        "iterations": 600000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktbGVnYWN5U2Vzc2lvbg==|Y3QtdXNlci1rZXktbGVnYWN5U2Vzc2lvbg==|bWFjLXVzZXIta2V5LWxlZ2FjeVNlc3Npb24=",
+      "publicKey": "cHVibGljLWtleS1sZWdhY3ktc2Vzc2lvbkBmaXh0dXJlLmV4YW1wbGU=",
+      "inviteCode": "d49e18f2b6e059d500e04f53fe84bfdb4b17d1ce",
+      "userId": "d26f24e9-e3ad-4228-a191-c250c7423afd",
+      "devices": {
+        "cli": {
+          "identifier": "14e2c52a-f0de-4ae5-81e7-d65826905eab",
+          "type": 25,
+          "clientId": "cli"
+        }
+      },
+      "legacyRefreshToken": "legacy-fixture-unbound-refresh-token-0001",
+      "covers": [
+        "legacy variant refresh_tokens:unbound-null-columns"
+      ]
+    },
+    "legacyCipher": {
+      "email": "legacy-cipher@fixture.example",
+      "passwordString": "hash-legacy-cipher@fixture.example",
+      "masterPasswordHash": "aGFzaC1sZWdhY3ktY2lwaGVyQGZpeHR1cmUuZXhhbXBsZQ==",
+      "kdf": {
+        "type": 0,
+        "iterations": 600000,
+        "memory": null,
+        "parallelism": null
+      },
+      "userKey": "2.aXYtdXNlci1rZXktbGVnYWN5Q2lwaGVy|Y3QtdXNlci1rZXktbGVnYWN5Q2lwaGVy|bWFjLXVzZXIta2V5LWxlZ2FjeUNpcGhlcg==",
+      "publicKey": "cHVibGljLWtleS1sZWdhY3ktY2lwaGVyQGZpeHR1cmUuZXhhbXBsZQ==",
+      "inviteCode": "23ae762a5bd3eccb79e5df08de6f35ebec762f4f",
+      "userId": "1e7bbf40-54d5-49f3-812e-6336f876a0cd",
+      "devices": {
+        "cli": {
+          "identifier": "fdbc82df-e8b9-47bd-82ad-08d88c0ddf56",
+          "type": 25,
+          "clientId": "cli"
+        }
+      },
+      "legacyCiphers": {
+        "allInData": "c2a66bb4-d4ea-4e15-90b1-fe8783eb52e6",
+        "pascalKeys": "910c82d8-9833-453c-97c2-da58b5a1f7a4",
+        "sshAlias": "71d6478d-0340-4461-8790-7e87e7c28c1c",
+        "folderId": "a2656d34-484f-4062-97fc-f1facabea164"
+      },
+      "covers": [
+        "legacy variant ciphers:scalars-only-in-data",
+        "legacy variant ciphers:pascal-case-server-keys-in-data",
+        "legacy variant ciphers:ssh-key-fingerprint-alias-only"
+      ]
+    }
+  },
+  "organizations": {
+    "fixture": {
+      "id": "4978de20-9a02-4877-a193-048eaa0d30ce",
+      "name": "Fixture Org",
+      "owner": "admin",
+      "collections": {
+        "engineering": "65f638b4-5ad5-4c87-806c-72fc40783e50",
+        "finance": "724d5b62-0182-4db1-a2c8-76df76dd973e",
+        "operations": "c63a69e7-d1f1-42ca-b327-929249b11dc2"
+      },
+      "members": {
+        "argon": {
+          "memberId": "66fdeb57-88dd-46d2-b003-253c43aa3f46",
+          "invitedType": 1,
+          "grants": {},
+          "expected": {
+            "type": 1,
+            "status": 2,
+            "accessAll": true
+          }
+        },
+        "vault": {
+          "memberId": "71e73581-d6b4-4f1f-a056-2d5cc59fabc4",
+          "invitedType": 2,
+          "grants": {
+            "engineering": {},
+            "operations": {
+              "manage": true
+            }
+          },
+          "expected": {
+            "type": 2,
+            "status": 2
+          }
+        },
+        "totp": {
+          "memberId": "c04561f1-e4f6-4593-8934-22d7184f1590",
+          "invitedType": 2,
+          "grants": {
+            "engineering": {
+              "readOnly": true,
+              "hidePasswords": true
+            },
+            "finance": {
+              "readOnly": true
+            }
+          },
+          "expected": {
+            "type": 2,
+            "status": 2
+          }
+        },
+        "manager": {
+          "memberId": "a528efc7-6194-4ace-a74c-bbc0d1b9aa56",
+          "invitedType": 3,
+          "grants": {
+            "finance": {}
+          },
+          "expected": {
+            "type": 3,
+            "status": 2,
+            "accessAll": false,
+            "note": "legacy Manager role, exposed to clients as Custom (4)"
+          }
+        },
+        "custom": {
+          "memberId": "b4ec4c6d-f1fe-443f-8d32-db46cdd3e714",
+          "invitedType": 4,
+          "grants": {},
+          "expected": {
+            "type": 3,
+            "status": 2,
+            "accessAll": true,
+            "note": "invited as Custom (4) with all collection permissions; stored as Manager + access_all"
+          }
+        },
+        "yubikey": {
+          "memberId": "f63f83a8-a800-497a-9cec-a6ef434748c3",
+          "invitedType": 2,
+          "grants": {
+            "engineering": {}
+          },
+          "expected": {
+            "type": 2,
+            "status": 0
+          }
+        },
+        "webauthn2fa": {
+          "memberId": "15c8746d-6e66-4f6e-8515-aaab77516f4d",
+          "invitedType": 2,
+          "grants": {
+            "finance": {
+              "hidePasswords": true
+            }
+          },
+          "expected": {
+            "type": 2,
+            "status": 1
+          }
+        },
+        "passkey": {
+          "memberId": "d92349eb-d8a5-4289-9adb-cd3ca7c03173",
+          "invitedType": 2,
+          "grants": {
+            "operations": {}
+          },
+          "expected": {
+            "type": 2,
+            "status": -1,
+            "revokedStatus": 2
+          }
+        }
+      },
+      "ciphers": {
+        "login-engineering": "8f9adda7-74ef-4e10-841f-ebf53114c410",
+        "login-shared": "4bf69434-1697-471d-bb4b-67e24583adae",
+        "note-finance-operations": "0150dd6c-29ee-42eb-a635-3824faedf319",
+        "card-operations": "16435347-0775-45fc-88af-c3b433258053",
+        "deleted": "1b1b67ae-4b3d-430f-b264-8debe2d401b1",
+        "shared-from-personal": "1c18c69f-2cf7-46ec-b4d6-1eea37a1ac31"
+      }
+    },
+    "argon": {
+      "id": "844847a4-f6fd-4267-9990-b8eba5516b49",
+      "name": "Argon Org",
+      "owner": "argon",
+      "collections": {
+        "default": "1d56ca17-87b5-43e0-b85e-4675ce18f783"
+      },
+      "ciphers": {
+        "login": "44a372b1-cf15-4040-a2bf-9389972d48a9"
+      },
+      "note": "created without an org key pair"
+    }
+  },
+  "features": {
+    "auditLogSettings": {
+      "expected": {
+        "retentionDays": 365,
+        "maxEntries": null
+      }
+    },
+    "invites": {
+      "unused": "92a69ff0eb8a03a0431a1d181e3f8f31f206d8a3",
+      "expired": "799d07a40d800a8aa8a6a0dd8af03f3168a0c804",
+      "deletedAndGone": "42f55c20b538ebcbcc1ad0490f65c3c12a8c20fb"
+    },
+    "sends": {
+      "owner": "vault",
+      "sends": {
+        "text-accessed": {
+          "id": "67108e1a-7854-4cb8-8de8-0e6dc4375161",
+          "accessId": "ZxCOGnhUTLiN6A5txDdRYQ",
+          "expected": {
+            "type": 0,
+            "accessCount": 2,
+            "maxAccessCount": 10,
+            "authType": 2
+          }
+        },
+        "text-password": {
+          "id": "7978b4c8-a6c5-447e-a11d-6677f3f0bd7a",
+          "accessId": "eXi0yKbFRH6hHWZ38_C9eg",
+          "expected": {
+            "type": 0,
+            "authType": 1,
+            "passwordHashB64": "c2VuZC1wYXNzd29yZCMjIyMjIyMjIyMjIyMjIyMjIyM=",
+            "storedFormat": "client hash as sent, no salt"
+          }
+        },
+        "text-password-server-hashed": {
+          "id": "38c3b624-c979-40d9-a3e7-fe3a59fa505c",
+          "accessId": "OMO2JMl5QNmj5_46WfpQXA",
+          "expected": {
+            "type": 0,
+            "authType": 1,
+            "password": "fixture send password",
+            "storedFormat": "server PBKDF2 with salt + iterations"
+          }
+        },
+        "text-hidden-hide-email-expiring": {
+          "id": "4f14072f-c634-4326-852c-4322d624947a",
+          "accessId": "TxQHL8Y0QyaFLEMi1iSUeg",
+          "expected": {
+            "type": 0,
+            "hideEmail": true,
+            "hidden": true,
+            "hasExpirationDate": true
+          }
+        },
+        "text-disabled": {
+          "id": "2cb5b7a4-5a64-47ac-b1c7-007cbad7b490",
+          "accessId": "LLW3pFpkR6yxxwB8ute0kA",
+          "expected": {
+            "type": 0,
+            "disabled": true
+          }
+        },
+        "text-max-access-reached": {
+          "id": "f8a5f3c0-c962-456d-a10e-ce5c147fbd03",
+          "accessId": "-KXzwMliRW2hDs5cFH-9Aw",
+          "expected": {
+            "type": 0,
+            "accessCount": 1,
+            "maxAccessCount": 1,
+            "accessible": false
+          }
+        },
+        "file": {
+          "id": "a0b4052e-3530-44e9-8342-d992a3b7c119",
+          "accessId": "oLQFLjUwROmDQtmSo7fBGQ",
+          "fileId": "c376f82c-82e0-4e5f-bb66-7a23b0a7bee7",
+          "objectKey": "sends/a0b4052e-3530-44e9-8342-d992a3b7c119/c376f82c-82e0-4e5f-bb66-7a23b0a7bee7",
+          "size": 520,
+          "sha256": "c59222108c7996928dd29256860d33e4b8960d9e538c046f899a5f1b42084f49",
+          "expected": {
+            "type": 1,
+            "accessCount": 1,
+            "maxAccessCount": 5
+          }
+        }
+      }
+    },
+    "equivalentDomains": {
+      "owner": "vault",
+      "expected": {
+        "equivalentDomains": [
+          [
+            "fixture-mirror.example",
+            "fixture.example"
+          ]
+        ],
+        "customEquivalentDomains": [
+          {
+            "id": "custom:fixture-mirror.example|fixture.example:0",
+            "domains": [
+              "fixture.example",
+              "fixture-mirror.example"
+            ],
+            "excluded": false
+          },
+          {
+            "id": "custom:paused-mirror.example|paused.example:1",
+            "domains": [
+              "paused.example",
+              "paused-mirror.example"
+            ],
+            "excluded": true
+          }
+        ],
+        "excludedGlobalTypes": [
+          2,
+          3
+        ]
+      }
+    },
+    "authRequests": {
+      "owner": "vault",
+      "requests": {
+        "pending": {
+          "id": "d5cf2a1a-46ff-49e3-b4a8-0504eba406bd",
+          "deviceIdentifier": "df733cf1-c2a8-442a-8740-7bc10ced7b9d",
+          "accessCode": "code62a2fed3d6e08c44835fc",
+          "expected": {
+            "state": "pending"
+          }
+        },
+        "approved": {
+          "id": "eb01d13a-22d5-4f91-a185-490e534382b7",
+          "deviceIdentifier": "ee693330-283d-46ec-86dc-de60d9d36337",
+          "accessCode": "code2687f86ed6784b8a5fca3",
+          "expected": {
+            "state": "approved, not yet used"
+          }
+        },
+        "denied": {
+          "id": "a6a0387f-dacb-4a29-a581-e2cbafc2973f",
+          "deviceIdentifier": "6bcd0967-5431-4947-8255-c8430d054d57",
+          "accessCode": "code62d6c2330036f64bcf71b",
+          "expected": {
+            "state": "denied"
+          }
+        },
+        "used": {
+          "id": "611bebbf-7e1f-4154-857d-4880c7ef8680",
+          "deviceIdentifier": "17992036-4808-42fe-881f-76735d1b4447",
+          "accessCode": "codef839161355091fcd9e33f",
+          "expected": {
+            "state": "approved and redeemed (authentication_date set)"
+          }
+        }
+      },
+      "note": "Auth requests expire 15 minutes after creation; their timestamps are left as generated."
+    },
+    "ciphers": {
+      "owner": "vault",
+      "folders": {
+        "personal": "72b3055f-729c-45b7-8fc2-9f053d8a37fa",
+        "work": "36b2d31c-e6dc-4382-91b6-1c34359e23c0",
+        "empty": "c721c7f4-8bea-4d6d-9fae-c62b80a7a20b"
+      },
+      "ciphers": {
+        "login": "5fe98dcb-b6a0-4238-a48d-eb35fa237f20",
+        "note": "620fe39b-4de1-4b3f-a180-00f8fb91f1bd",
+        "card": "58a250b2-77e9-4f91-8005-eb397ad57bbb",
+        "identity": "71a3bb4b-4bf6-4bde-b7af-d2b4d2b6be90",
+        "ssh-key": "46969ace-fb38-4c56-a7de-b7c9330b00ac",
+        "bank-account": "b34e5318-7760-4003-8120-758e8b98f1f5",
+        "drivers-license": "b5a9593a-55fb-4e7f-8fa4-f0de7fa22662",
+        "passport": "d864233b-48c6-48b9-888a-13f727aae34f",
+        "key-added": "cdf52ff2-f10a-4093-94a6-e1ec53c5b98d",
+        "admin-personal": "254ad6b2-e022-4be5-b164-0cb07dd3b202"
+      },
+      "notes": {
+        "login": "type 1, favorite, folder, uris (match 0/3/null, uriChecksum), fido2Credentials, totp, fields (text/hidden/boolean/linked), passwordHistory, passwordRevisionDate; 2 attachments",
+        "note": "type 2 in folder \"work\"; 1 attachment",
+        "card": "type 3, reprompt 1",
+        "identity": "type 4, cipher-level key",
+        "ssh-key": "type 5, archived",
+        "bank-account": "type 6, soft-deleted (trash)",
+        "drivers-license": "type 7",
+        "passport": "type 8",
+        "key-added": "type 1 updated with a new cipher key: ciphers.data carries keyAddedFromRevision",
+        "admin-personal": "owned by admin"
+      }
+    },
+    "attachments": {
+      "login-text": {
+        "cipherId": "5fe98dcb-b6a0-4238-a48d-eb35fa237f20",
+        "attachmentId": "653ecd8b-ffab-41c6-9c3f-25c136c7acb6",
+        "objectKey": "5fe98dcb-b6a0-4238-a48d-eb35fa237f20/653ecd8b-ffab-41c6-9c3f-25c136c7acb6",
+        "size": 304,
+        "sha256": "0c253bd93bc0ffe9015f42aadf00957265df4fdccacdcb3fd47d4915130d5924",
+        "owner": "vault"
+      },
+      "login-binary": {
+        "cipherId": "5fe98dcb-b6a0-4238-a48d-eb35fa237f20",
+        "attachmentId": "c16d244a-a288-424d-8f96-7681f442ba98",
+        "objectKey": "5fe98dcb-b6a0-4238-a48d-eb35fa237f20/c16d244a-a288-424d-8f96-7681f442ba98",
+        "size": 512,
+        "sha256": "08ac48e649b513d133de8324a7c75f166f3347490afcbe447e8df6debf09208b",
+        "owner": "vault"
+      },
+      "note": {
+        "cipherId": "620fe39b-4de1-4b3f-a180-00f8fb91f1bd",
+        "attachmentId": "bddd2745-23ec-4ea7-ab8e-173c052d27cf",
+        "objectKey": "620fe39b-4de1-4b3f-a180-00f8fb91f1bd/bddd2745-23ec-4ea7-ab8e-173c052d27cf",
+        "size": 31,
+        "sha256": "929c60eb8f6e9c712e814ef99b4ba2318f07ad5f0be963d3d6c41814336ec1f7",
+        "owner": "vault"
+      },
+      "org-card": {
+        "cipherId": "16435347-0775-45fc-88af-c3b433258053",
+        "attachmentId": "7fa3a7a0-7c57-4b67-ae98-593607f4869f",
+        "objectKey": "16435347-0775-45fc-88af-c3b433258053/7fa3a7a0-7c57-4b67-ae98-593607f4869f",
+        "size": 35,
+        "sha256": "2bf533d2526f1fd8b4560d8bcd27ae31e2b1f62eb2bd38ba905ef8ea011a6fd8",
+        "owner": "admin"
+      }
+    },
+    "perUserOrgState": {
+      "totpFavoriteAndFolder": {
+        "user": "totp",
+        "cipher": "8f9adda7-74ef-4e10-841f-ebf53114c410",
+        "folderId": "33773829-d164-4936-a21f-47246739c775",
+        "favorite": true
+      },
+      "vaultArchived": {
+        "user": "vault",
+        "cipher": "16435347-0775-45fc-88af-c3b433258053",
+        "archived": true
+      }
+    },
+    "backupSettings": {
+      "configKey": "backup.settings.v1",
+      "storedFormat": "envelope v2: runtime AES-GCM (key from JWT_SECRET) + portable AES-GCM with the DEK RSA-OAEP(SHA-1)-wrapped for each active admin with a valid SPKI public key",
+      "expected": {
+        "destinations": [
+          {
+            "id": "fixture-s3-destination",
+            "type": "s3",
+            "secretAccessKey": "fixture-s3-secret-access-key",
+            "accessKeyId": "FIXTUREACCESSKEY",
+            "schedule": {
+              "enabled": true,
+              "intervalHours": 12,
+              "startTime": "02:30",
+              "timezone": "Europe/Berlin",
+              "retentionCount": 14
+            }
+          },
+          {
+            "id": "fixture-webdav-destination",
+            "type": "webdav",
+            "password": "fixture-dav-password",
+            "username": "fixture-dav-user",
+            "schedule": {
+              "enabled": false,
+              "intervalHours": 24,
+              "startTime": "03:00",
+              "timezone": "UTC",
+              "retentionCount": null
+            }
+          }
+        ],
+        "portableWrapUserIds": [
+          "42ee4466-c20c-44ec-b8d2-4c4b82d60fe4"
+        ]
+      }
+    },
+    "backupExport": {
+      "file": "v1-backup.zip",
+      "serverFileName": "nodewarden_backup_20260929_114833_71a69.zip",
+      "webVaultFileName": "nodewarden_backup_20260929_114833_e746e.zip",
+      "entries": [
+        "attachments/16435347-0775-45fc-88af-c3b433258053/7fa3a7a0-7c57-4b67-ae98-593607f4869f.bin",
+        "attachments/5fe98dcb-b6a0-4238-a48d-eb35fa237f20/653ecd8b-ffab-41c6-9c3f-25c136c7acb6.bin",
+        "attachments/5fe98dcb-b6a0-4238-a48d-eb35fa237f20/c16d244a-a288-424d-8f96-7681f442ba98.bin",
+        "attachments/620fe39b-4de1-4b3f-a180-00f8fb91f1bd/bddd2745-23ec-4ea7-ab8e-173c052d27cf.bin",
+        "db.json",
+        "manifest.json"
+      ],
+      "tableCounts": {
+        "config": 7,
+        "users": 19,
+        "domain_settings": 2,
+        "user_revisions": 18,
+        "folders": 5,
+        "ciphers": 20,
+        "attachments": 4,
+        "webauthn_credentials": 4,
+        "organizations": 2,
+        "org_memberships": 10,
+        "collections": 4,
+        "collection_members": 8,
+        "cipher_collections": 9,
+        "cipher_user_state": 9
+      },
+      "note": "Built like the web vault export: server zip + attachments/<cipherId>/<attachmentId>.bin fetched via /api/admin/backup/blob, re-zipped with level 0. Sends, devices, refresh tokens, invites, audit logs and auth requests are not part of backup archives."
+    }
+  },
+  "legacyVariants": [
+    {
+      "account": "legacyRawHash",
+      "id": "users.master_password_hash:raw-client-hash",
+      "table": "users",
+      "column": "master_password_hash",
+      "stored": "the base64 client master password hash itself, without the \"$s$\" server-hash prefix",
+      "currentWrite": "\"$s$\" + base64(PBKDF2-SHA256(client hash, email)) (src/services/auth.ts hashPasswordServer)",
+      "readBy": "src/services/auth.ts:160-167 verifyPassword (constant-time compare when the prefix is missing; never re-hashed)",
+      "expected": "password login with the manifest masterPasswordHash succeeds"
+    },
+    {
+      "account": "legacyApiKey",
+      "id": "users.api_key:sha256-hash",
+      "table": "users",
+      "column": "api_key",
+      "stored": "sha256:e2de8b66ed18100f4fa2d011aea2776d6580f892a19ed0511a42934ff871a857",
+      "currentWrite": "plaintext 30-char alphanumeric secret",
+      "readBy": "src/utils/api-key.ts:30-42 verifyApiKey; src/handlers/accounts.ts:1603-1610 answers 409 to POST /api/accounts/api-key until rotated",
+      "expected": "client_credentials with the manifest clientSecret succeeds; POST /api/accounts/api-key answers 409"
+    },
+    {
+      "account": "legacyDomains",
+      "id": "domain_settings:equivalent_domains-only",
+      "table": "domain_settings",
+      "column": "equivalent_domains / custom_equivalent_domains",
+      "stored": "equivalent_domains=[[\"legacy.example\",\"legacy-mirror.example\"]], custom_equivalent_domains=[]",
+      "currentWrite": "custom_equivalent_domains holds the rules; equivalent_domains the derived active groups",
+      "readBy": "src/services/storage-domain-rules-repo.ts:30-37 getUserDomainSettings (derives custom rules from equivalent_domains)",
+      "expected": "GET /api/settings/domains lists one active custom rule [legacy.example, legacy-mirror.example]"
+    },
+    {
+      "account": "legacyTotp",
+      "id": "users.totp_secret+totp_recovery_code:unnormalized",
+      "table": "users",
+      "column": "totp_secret, totp_recovery_code",
+      "stored": "totp_secret=\"jbsw y3dp-ehpk 3pxp-moli ward-enle gacy==\", totp_recovery_code=\"abcdefghijklmnopqrstuvwxyz234567\"",
+      "currentWrite": "upper-case base32 without separators/padding; recovery code as 8 upper-case groups of 4",
+      "readBy": "src/utils/totp.ts:5-16 normalizeBase32; src/utils/recovery-code.ts:5-7,26 recoveryCodeEquals",
+      "expected": "TOTP codes for the normalized secret log in; the recovery code (any grouping/case) is accepted as provider 8"
+    },
+    {
+      "account": "legacyYubikey",
+      "id": "users.yubikey_key1:unnormalized-public-id",
+      "table": "users",
+      "column": "yubikey_key1",
+      "stored": "\"  CCCCCBHJKLNV \"",
+      "currentWrite": "lower-case 12-char modhex public id",
+      "readBy": "src/utils/yubico-otp.ts:37-49 userYubiKeyPublicIds (trim + lower-case)",
+      "expected": "login challenge offers provider 3; an OTP from cccccbhjklnv is accepted"
+    },
+    {
+      "account": "legacyKdf",
+      "id": "users.kdf_iterations:below-minimum",
+      "table": "users",
+      "column": "kdf_iterations",
+      "stored": "5000 (PBKDF2)",
+      "currentWrite": "registration requires >= 100000; /api/accounts/kdf is not supported",
+      "readBy": "src/handlers/identity.ts:1067-1093 prelogin (echoes stored values)",
+      "expected": "prelogin answers kdf 0 / kdfIterations 5000; login works"
+    },
+    {
+      "account": "legacyStatus",
+      "id": "users.status+role:non-canonical",
+      "table": "users",
+      "column": "status, role",
+      "stored": "status='disabled', role='member'",
+      "currentWrite": "status 'active'|'banned', role 'admin'|'user'",
+      "readBy": "src/services/storage-user-repo.ts:24-25 (anything but 'banned' is active, anything but 'admin' is user)",
+      "expected": "login succeeds; the admin user list shows the user as an active non-admin"
+    },
+    {
+      "account": "legacySession",
+      "id": "refresh_tokens:unbound-null-columns",
+      "table": "refresh_tokens",
+      "column": "device_identifier, device_session_stamp, security_stamp, created_at, last_used_at, absolute_expires_at, client_type",
+      "stored": "all NULL (token key is sha256:<hex> of the manifest legacyRefreshToken, expires_at 2099-01-01)",
+      "currentWrite": "every column set at issue time",
+      "readBy": "src/services/storage-refresh-token-repo.ts:74-88 getRefreshTokenRecord; src/services/auth.ts:270-298 (binds stamps on first use, absolute expiry defaults to now + max)",
+      "expected": "grant_type=refresh_token with the manifest legacyRefreshToken succeeds (and binds the stamps on first use)"
+    },
+    {
+      "account": "legacyCipher",
+      "id": "ciphers:scalars-only-in-data",
+      "table": "ciphers",
+      "row": "c2a66bb4-d4ea-4e15-90b1-fe8783eb52e6",
+      "stored": "name/notes/key/reprompt/folder_id columns NULL; the values live in the data JSON (name, notes, key, reprompt, folderId)",
+      "currentWrite": "scalar columns filled and stripped from data (src/services/storage-cipher-repo.ts:97-109 buildCipherData)",
+      "readBy": "src/services/storage-cipher-repo.ts:111-133 parseCipherRow (column ?? data fallback)",
+      "expected": "sync returns the cipher with its name, notes, key, reprompt 1 and folderId"
+    },
+    {
+      "account": "legacyCipher",
+      "id": "ciphers:pascal-case-server-keys-in-data",
+      "table": "ciphers",
+      "row": "910c82d8-9833-453c-97c2-da58b5a1f7a4",
+      "stored": "data JSON carries client copies of server-owned keys: Id, Edit, ViewPassword, OrganizationUseTotp, RevisionDate, Object",
+      "currentWrite": "server-owned keys stripped case-insensitively",
+      "readBy": "src/handlers/ciphers.ts:823-829 cipherToResponse (drops them from responses)",
+      "expected": "sync returns the cipher with its real id and no PascalCase Id/Edit/ViewPassword/OrganizationUseTotp/RevisionDate keys"
+    },
+    {
+      "account": "legacyCipher",
+      "id": "ciphers:ssh-key-fingerprint-alias-only",
+      "table": "ciphers",
+      "row": "71d6478d-0340-4461-8790-7e87e7c28c1c",
+      "stored": "data.sshKey has \"fingerprint\" but no \"keyFingerprint\"",
+      "currentWrite": "both keyFingerprint and fingerprint",
+      "readBy": "src/handlers/ciphers.ts:534-560 normalizeCipherSshKeyForCompatibility",
+      "expected": "sync returns sshKey.keyFingerprint equal to the stored fingerprint"
+    }
+  ],
+  "clockAdjustments": [
+    {
+      "label": "refresh tokens never expire",
+      "sql": "UPDATE refresh_tokens SET expires_at = $1",
+      "params": [
+        4070908800000
+      ],
+      "rows": 31
+    },
+    {
+      "label": "refresh tokens hit their absolute limit far in the future (NULL stays NULL)",
+      "sql": "UPDATE refresh_tokens SET absolute_expires_at = $1 WHERE absolute_expires_at IS NOT NULL",
+      "params": [
+        4070908800000
+      ],
+      "rows": 30
+    },
+    {
+      "label": "trusted 2FA remember tokens never expire",
+      "sql": "UPDATE trusted_two_factor_device_tokens SET expires_at = $1",
+      "params": [
+        4070908800000
+      ],
+      "rows": 2
+    },
+    {
+      "label": "sends are deleted far in the future (ISO text)",
+      "sql": "UPDATE sends SET deletion_date = $1",
+      "params": [
+        "2099-01-01T00:00:00.000Z"
+      ],
+      "rows": 7
+    },
+    {
+      "label": "expiring send expires far in the future (ISO text)",
+      "sql": "UPDATE sends SET expiration_date = $1 WHERE expiration_date IS NOT NULL",
+      "params": [
+        "2098-12-31T00:00:00.000Z"
+      ],
+      "rows": 1
+    },
+    {
+      "label": "unused invite expires far in the future",
+      "sql": "UPDATE invites SET expires_at = $1 WHERE code = $2",
+      "params": [
+        "2099-01-01T00:00:00.000Z",
+        "92a69ff0eb8a03a0431a1d181e3f8f31f206d8a3"
+      ],
+      "rows": 1
+    },
+    {
+      "label": "\"expired\" invite is expired",
+      "sql": "UPDATE invites SET expires_at = $1 WHERE code = $2",
+      "params": [
+        "2020-01-01T00:00:00.000Z",
+        "799d07a40d800a8aa8a6a0dd8af03f3168a0c804"
+      ],
+      "rows": 1
+    }
+  ],
+  "expectations": {
+    "admin": {
+      "sync": {
+        "ciphers": 7,
+        "deletedCiphers": 1,
+        "archivedCiphers": 0,
+        "orgCiphers": 6,
+        "folders": 0,
+        "collections": 3,
+        "sends": 0,
+        "organizations": 1,
+        "attachments": 1
+      },
+      "cipherIds": [
+        "0150dd6c-29ee-42eb-a635-3824faedf319",
+        "16435347-0775-45fc-88af-c3b433258053",
+        "1b1b67ae-4b3d-430f-b264-8debe2d401b1",
+        "1c18c69f-2cf7-46ec-b4d6-1eea37a1ac31",
+        "254ad6b2-e022-4be5-b164-0cb07dd3b202",
+        "4bf69434-1697-471d-bb4b-67e24583adae",
+        "8f9adda7-74ef-4e10-841f-ebf53114c410"
+      ]
+    },
+    "vault": {
+      "sync": {
+        "ciphers": 15,
+        "deletedCiphers": 2,
+        "archivedCiphers": 2,
+        "orgCiphers": 6,
+        "folders": 3,
+        "collections": 2,
+        "sends": 7,
+        "organizations": 1,
+        "attachments": 4
+      },
+      "cipherIds": [
+        "0150dd6c-29ee-42eb-a635-3824faedf319",
+        "16435347-0775-45fc-88af-c3b433258053",
+        "1b1b67ae-4b3d-430f-b264-8debe2d401b1",
+        "1c18c69f-2cf7-46ec-b4d6-1eea37a1ac31",
+        "46969ace-fb38-4c56-a7de-b7c9330b00ac",
+        "4bf69434-1697-471d-bb4b-67e24583adae",
+        "58a250b2-77e9-4f91-8005-eb397ad57bbb",
+        "5fe98dcb-b6a0-4238-a48d-eb35fa237f20",
+        "620fe39b-4de1-4b3f-a180-00f8fb91f1bd",
+        "71a3bb4b-4bf6-4bde-b7af-d2b4d2b6be90",
+        "8f9adda7-74ef-4e10-841f-ebf53114c410",
+        "b34e5318-7760-4003-8120-758e8b98f1f5",
+        "b5a9593a-55fb-4e7f-8fa4-f0de7fa22662",
+        "cdf52ff2-f10a-4093-94a6-e1ec53c5b98d",
+        "d864233b-48c6-48b9-888a-13f727aae34f"
+      ]
+    },
+    "argon": {
+      "sync": {
+        "ciphers": 7,
+        "deletedCiphers": 1,
+        "archivedCiphers": 0,
+        "orgCiphers": 7,
+        "folders": 0,
+        "collections": 4,
+        "sends": 0,
+        "organizations": 2,
+        "attachments": 1
+      },
+      "cipherIds": [
+        "0150dd6c-29ee-42eb-a635-3824faedf319",
+        "16435347-0775-45fc-88af-c3b433258053",
+        "1b1b67ae-4b3d-430f-b264-8debe2d401b1",
+        "1c18c69f-2cf7-46ec-b4d6-1eea37a1ac31",
+        "44a372b1-cf15-4040-a2bf-9389972d48a9",
+        "4bf69434-1697-471d-bb4b-67e24583adae",
+        "8f9adda7-74ef-4e10-841f-ebf53114c410"
+      ]
+    },
+    "totp": {
+      "sync": {
+        "ciphers": 4,
+        "deletedCiphers": 1,
+        "archivedCiphers": 0,
+        "orgCiphers": 4,
+        "folders": 1,
+        "collections": 2,
+        "sends": 0,
+        "organizations": 1,
+        "attachments": 0
+      },
+      "cipherIds": [
+        "0150dd6c-29ee-42eb-a635-3824faedf319",
+        "1b1b67ae-4b3d-430f-b264-8debe2d401b1",
+        "4bf69434-1697-471d-bb4b-67e24583adae",
+        "8f9adda7-74ef-4e10-841f-ebf53114c410"
+      ]
+    },
+    "yubikey": {
+      "sync": {
+        "ciphers": 0,
+        "deletedCiphers": 0,
+        "archivedCiphers": 0,
+        "orgCiphers": 0,
+        "folders": 0,
+        "collections": 0,
+        "sends": 0,
+        "organizations": 0,
+        "attachments": 0
+      },
+      "cipherIds": []
+    },
+    "webauthn2fa": {
+      "sync": {
+        "ciphers": 0,
+        "deletedCiphers": 0,
+        "archivedCiphers": 0,
+        "orgCiphers": 0,
+        "folders": 0,
+        "collections": 0,
+        "sends": 0,
+        "organizations": 0,
+        "attachments": 0
+      },
+      "cipherIds": []
+    },
+    "passkey": {
+      "sync": {
+        "ciphers": 0,
+        "deletedCiphers": 0,
+        "archivedCiphers": 0,
+        "orgCiphers": 0,
+        "folders": 0,
+        "collections": 0,
+        "sends": 0,
+        "organizations": 0,
+        "attachments": 0
+      },
+      "cipherIds": []
+    },
+    "manager": {
+      "sync": {
+        "ciphers": 2,
+        "deletedCiphers": 0,
+        "archivedCiphers": 0,
+        "orgCiphers": 2,
+        "folders": 0,
+        "collections": 1,
+        "sends": 0,
+        "organizations": 1,
+        "attachments": 0
+      },
+      "cipherIds": [
+        "0150dd6c-29ee-42eb-a635-3824faedf319",
+        "4bf69434-1697-471d-bb4b-67e24583adae"
+      ]
+    },
+    "custom": {
+      "sync": {
+        "ciphers": 6,
+        "deletedCiphers": 1,
+        "archivedCiphers": 0,
+        "orgCiphers": 6,
+        "folders": 0,
+        "collections": 3,
+        "sends": 0,
+        "organizations": 1,
+        "attachments": 1
+      },
+      "cipherIds": [
+        "0150dd6c-29ee-42eb-a635-3824faedf319",
+        "16435347-0775-45fc-88af-c3b433258053",
+        "1b1b67ae-4b3d-430f-b264-8debe2d401b1",
+        "1c18c69f-2cf7-46ec-b4d6-1eea37a1ac31",
+        "4bf69434-1697-471d-bb4b-67e24583adae",
+        "8f9adda7-74ef-4e10-841f-ebf53114c410"
+      ]
+    },
+    "legacyRawHash": {
+      "sync": {
+        "ciphers": 0,
+        "deletedCiphers": 0,
+        "archivedCiphers": 0,
+        "orgCiphers": 0,
+        "folders": 0,
+        "collections": 0,
+        "sends": 0,
+        "organizations": 0,
+        "attachments": 0
+      },
+      "cipherIds": []
+    },
+    "legacyApiKey": {
+      "sync": {
+        "ciphers": 0,
+        "deletedCiphers": 0,
+        "archivedCiphers": 0,
+        "orgCiphers": 0,
+        "folders": 0,
+        "collections": 0,
+        "sends": 0,
+        "organizations": 0,
+        "attachments": 0
+      },
+      "cipherIds": []
+    },
+    "legacyDomains": {
+      "sync": {
+        "ciphers": 0,
+        "deletedCiphers": 0,
+        "archivedCiphers": 0,
+        "orgCiphers": 0,
+        "folders": 0,
+        "collections": 0,
+        "sends": 0,
+        "organizations": 0,
+        "attachments": 0
+      },
+      "cipherIds": []
+    },
+    "legacyTotp": {
+      "sync": {
+        "ciphers": 0,
+        "deletedCiphers": 0,
+        "archivedCiphers": 0,
+        "orgCiphers": 0,
+        "folders": 0,
+        "collections": 0,
+        "sends": 0,
+        "organizations": 0,
+        "attachments": 0
+      },
+      "cipherIds": []
+    },
+    "legacyYubikey": {
+      "sync": {
+        "ciphers": 0,
+        "deletedCiphers": 0,
+        "archivedCiphers": 0,
+        "orgCiphers": 0,
+        "folders": 0,
+        "collections": 0,
+        "sends": 0,
+        "organizations": 0,
+        "attachments": 0
+      },
+      "cipherIds": []
+    },
+    "legacyKdf": {
+      "sync": {
+        "ciphers": 0,
+        "deletedCiphers": 0,
+        "archivedCiphers": 0,
+        "orgCiphers": 0,
+        "folders": 0,
+        "collections": 0,
+        "sends": 0,
+        "organizations": 0,
+        "attachments": 0
+      },
+      "cipherIds": []
+    },
+    "legacyStatus": {
+      "sync": {
+        "ciphers": 0,
+        "deletedCiphers": 0,
+        "archivedCiphers": 0,
+        "orgCiphers": 0,
+        "folders": 0,
+        "collections": 0,
+        "sends": 0,
+        "organizations": 0,
+        "attachments": 0
+      },
+      "cipherIds": []
+    },
+    "legacySession": {
+      "sync": {
+        "ciphers": 0,
+        "deletedCiphers": 0,
+        "archivedCiphers": 0,
+        "orgCiphers": 0,
+        "folders": 0,
+        "collections": 0,
+        "sends": 0,
+        "organizations": 0,
+        "attachments": 0
+      },
+      "cipherIds": []
+    },
+    "legacyCipher": {
+      "sync": {
+        "ciphers": 3,
+        "deletedCiphers": 0,
+        "archivedCiphers": 0,
+        "orgCiphers": 0,
+        "folders": 1,
+        "collections": 0,
+        "sends": 0,
+        "organizations": 0,
+        "attachments": 0
+      },
+      "cipherIds": [
+        "71d6478d-0340-4461-8790-7e87e7c28c1c",
+        "910c82d8-9833-453c-97c2-da58b5a1f7a4",
+        "c2a66bb4-d4ea-4e15-90b1-fe8783eb52e6"
+      ]
+    }
+  },
+  "tableCounts": {
+    "attachments": 4,
+    "audit_logs": 93,
+    "auth_requests": 4,
+    "cipher_collections": 9,
+    "cipher_user_state": 9,
+    "ciphers": 20,
+    "collection_members": 8,
+    "collections": 4,
+    "config": 7,
+    "devices": 35,
+    "domain_settings": 2,
+    "folders": 5,
+    "invites": 20,
+    "login_attempts_ip": 0,
+    "org_memberships": 10,
+    "organizations": 2,
+    "rate_limit_buckets": 0,
+    "refresh_tokens": 31,
+    "sends": 7,
+    "totp_login_replays": 3,
+    "trusted_two_factor_device_tokens": 2,
+    "used_attachment_download_tokens": 1,
+    "user_revisions": 18,
+    "users": 19,
+    "webauthn_challenges": 1,
+    "webauthn_credentials": 4
+  },
+  "truncatedTransientTables": [
+    "rate_limit_buckets",
+    "login_attempts_ip"
+  ],
+  "configKeys": [
+    "audit.logs.settings.v1",
+    "backup.runtime.v1",
+    "backup.settings.v1",
+    "globalSettings__yubico__clientId",
+    "globalSettings__yubico__key",
+    "registered",
+    "schema.version"
+  ],
+  "blobs": {
+    "count": 5,
+    "keys": [
+      "16435347-0775-45fc-88af-c3b433258053/7fa3a7a0-7c57-4b67-ae98-593607f4869f",
+      "5fe98dcb-b6a0-4238-a48d-eb35fa237f20/653ecd8b-ffab-41c6-9c3f-25c136c7acb6",
+      "5fe98dcb-b6a0-4238-a48d-eb35fa237f20/c16d244a-a288-424d-8f96-7681f442ba98",
+      "620fe39b-4de1-4b3f-a180-00f8fb91f1bd/bddd2745-23ec-4ea7-ab8e-173c052d27cf",
+      "sends/a0b4052e-3530-44e9-8342-d992a3b7c119/c376f82c-82e0-4e5f-bb66-7a23b0a7bee7"
+    ],
+    "layout": {
+      "attachment": "<cipherId>/<attachmentId>",
+      "sendFile": "sends/<sendId>/<fileId>"
+    }
+  }
+}

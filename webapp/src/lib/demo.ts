@@ -20,7 +20,6 @@ import type {
   VaultDraft,
 } from '@/lib/types';
 import { t } from '@/lib/i18n';
-import { dispatchBackupProgress } from '@/lib/backup-restore-progress';
 
 type Notify = (type: 'success' | 'error' | 'warning', text: string) => void;
 type StateSetter<T> = (next: T[] | ((prev: T[]) => T[])) => void;
@@ -43,15 +42,15 @@ interface DemoRouteState {
   setBackupSettings: BackupSettingsSetter;
 }
 
-export const IS_DEMO_MODE = __NODEWARDEN_DEMO__;
+export const IS_DEMO_MODE = __DEMO__;
 
 const DEMO_USER_ID = 'demo-user-001';
 const DEMO_NOW = '2026-05-04T08:00:00.000Z';
 
 export const DEMO_PROFILE: Profile = {
   id: DEMO_USER_ID,
-  email: 'demo@nodewarden.app',
-  name: 'NodeWarden Demo',
+  email: 'demo@moliwarden.example',
+  name: 'MoliWarden Demo',
   key: 'demo-profile-key',
   masterPasswordHint: 'In demo mode, any input unlocks the vault.',
   privateKey: null,
@@ -90,17 +89,17 @@ export const DEMO_CIPHERS: Cipher[] = [
     creationDate: '2026-04-12T09:20:00.000Z',
     revisionDate: '2026-05-01T10:15:00.000Z',
     login: {
-      username: 'demo@nodewarden.app',
+      username: 'demo@moliwarden.example',
       password: 'correct-horse-battery-staple',
-      totp: 'otpauth://totp/GitHub:demo%40nodewarden.app?secret=JBSWY3DPEHPK3PXP&issuer=GitHub',
-      decUsername: 'demo@nodewarden.app',
+      totp: 'otpauth://totp/GitHub:demo%40moliwarden.example?secret=JBSWY3DPEHPK3PXP&issuer=GitHub',
+      decUsername: 'demo@moliwarden.example',
       decPassword: 'correct-horse-battery-staple',
-      decTotp: 'otpauth://totp/GitHub:demo%40nodewarden.app?secret=JBSWY3DPEHPK3PXP&issuer=GitHub',
+      decTotp: 'otpauth://totp/GitHub:demo%40moliwarden.example?secret=JBSWY3DPEHPK3PXP&issuer=GitHub',
       uris: [{ uri: 'https://github.com', decUri: 'https://github.com', match: null }],
       fido2Credentials: [{ creationDate: '2026-04-14T08:10:00.000Z', rpId: 'github.com' }],
     },
     fields: [
-      { type: 0, name: 'Recovery email', value: 'ops@nodewarden.app', decName: 'Recovery email', decValue: 'ops@nodewarden.app' },
+      { type: 0, name: 'Recovery email', value: 'ops@moliwarden.example', decName: 'Recovery email', decValue: 'ops@moliwarden.example' },
       { type: 1, name: 'Backup code', value: 'NW-DEMO-2026', decName: 'Backup code', decValue: 'NW-DEMO-2026' },
     ],
     passwordHistory: [
@@ -123,12 +122,12 @@ export const DEMO_CIPHERS: Cipher[] = [
     creationDate: '2026-04-18T10:45:00.000Z',
     revisionDate: '2026-05-02T14:00:00.000Z',
     login: {
-      username: 'admin@nodewarden.app',
+      username: 'admin@moliwarden.example',
       password: 'demo-cloudflare-password',
-      totp: 'otpauth://totp/Cloudflare:admin%40nodewarden.app?secret=JBSWY3DPEHPK3PXP&issuer=Cloudflare',
-      decUsername: 'admin@nodewarden.app',
+      totp: 'otpauth://totp/Cloudflare:admin%40moliwarden.example?secret=JBSWY3DPEHPK3PXP&issuer=Cloudflare',
+      decUsername: 'admin@moliwarden.example',
       decPassword: 'demo-cloudflare-password',
-      decTotp: 'otpauth://totp/Cloudflare:admin%40nodewarden.app?secret=JBSWY3DPEHPK3PXP&issuer=Cloudflare',
+      decTotp: 'otpauth://totp/Cloudflare:admin%40moliwarden.example?secret=JBSWY3DPEHPK3PXP&issuer=Cloudflare',
       uris: [{ uri: 'https://dash.cloudflare.com', decUri: 'https://dash.cloudflare.com', match: null }],
     },
   },
@@ -145,18 +144,18 @@ export const DEMO_CIPHERS: Cipher[] = [
     creationDate: '2026-04-19T09:30:00.000Z',
     revisionDate: '2026-05-03T09:30:00.000Z',
     login: {
-      username: 'workspace.admin@nodewarden.app',
+      username: 'workspace.admin@moliwarden.example',
       password: 'demo-google-password-2026',
-      totp: 'otpauth://totp/Google:workspace.admin%40nodewarden.app?secret=JBSWY3DPEHPK3PXP&issuer=Google',
-      decUsername: 'workspace.admin@nodewarden.app',
+      totp: 'otpauth://totp/Google:workspace.admin%40moliwarden.example?secret=JBSWY3DPEHPK3PXP&issuer=Google',
+      decUsername: 'workspace.admin@moliwarden.example',
       decPassword: 'demo-google-password-2026',
-      decTotp: 'otpauth://totp/Google:workspace.admin%40nodewarden.app?secret=JBSWY3DPEHPK3PXP&issuer=Google',
+      decTotp: 'otpauth://totp/Google:workspace.admin%40moliwarden.example?secret=JBSWY3DPEHPK3PXP&issuer=Google',
       uris: [{ uri: 'https://accounts.google.com', decUri: 'https://accounts.google.com', match: null }],
       fido2Credentials: [{ creationDate: '2026-04-20T07:00:00.000Z', rpId: 'google.com' }],
       passwordRevisionDate: '2026-05-03T09:30:00.000Z',
     },
     fields: [
-      { type: 0, name: 'Recovery email', value: 'recovery@nodewarden.app', decName: 'Recovery email', decValue: 'recovery@nodewarden.app' },
+      { type: 0, name: 'Recovery email', value: 'recovery@moliwarden.example', decName: 'Recovery email', decValue: 'recovery@moliwarden.example' },
       { type: 1, name: 'Backup code', value: 'GOOG-NW-2026-01', decName: 'Backup code', decValue: 'GOOG-NW-2026-01' },
       { type: 2, name: 'Admin console', value: 'true', decName: 'Admin console', decValue: 'true' },
     ],
@@ -177,12 +176,12 @@ export const DEMO_CIPHERS: Cipher[] = [
     creationDate: '2026-04-20T09:30:00.000Z',
     revisionDate: '2026-05-03T10:30:00.000Z',
     login: {
-      username: 'admin@nodewarden.onmicrosoft.com',
+      username: 'admin@moliwarden.onmicrosoft.com',
       password: 'demo-microsoft-password-2026',
-      totp: 'otpauth://totp/Microsoft:admin%40nodewarden.onmicrosoft.com?secret=JBSWY3DPEHPK3PXP&issuer=Microsoft',
-      decUsername: 'admin@nodewarden.onmicrosoft.com',
+      totp: 'otpauth://totp/Microsoft:admin%40moliwarden.onmicrosoft.com?secret=JBSWY3DPEHPK3PXP&issuer=Microsoft',
+      decUsername: 'admin@moliwarden.onmicrosoft.com',
       decPassword: 'demo-microsoft-password-2026',
-      decTotp: 'otpauth://totp/Microsoft:admin%40nodewarden.onmicrosoft.com?secret=JBSWY3DPEHPK3PXP&issuer=Microsoft',
+      decTotp: 'otpauth://totp/Microsoft:admin%40moliwarden.onmicrosoft.com?secret=JBSWY3DPEHPK3PXP&issuer=Microsoft',
       uris: [{ uri: 'https://login.microsoftonline.com', decUri: 'https://login.microsoftonline.com', match: null }],
       fido2Credentials: [{ creationDate: '2026-04-21T07:00:00.000Z', rpId: 'login.microsoftonline.com' }],
       passwordRevisionDate: '2026-05-03T10:30:00.000Z',
@@ -206,12 +205,12 @@ export const DEMO_CIPHERS: Cipher[] = [
     creationDate: '2026-04-21T09:30:00.000Z',
     revisionDate: '2026-05-03T11:30:00.000Z',
     login: {
-      username: 'demo@nodewarden.app',
+      username: 'demo@moliwarden.example',
       password: 'demo-amazon-password-2026',
-      totp: 'otpauth://totp/Amazon:demo%40nodewarden.app?secret=JBSWY3DPEHPK3PXP&issuer=Amazon',
-      decUsername: 'demo@nodewarden.app',
+      totp: 'otpauth://totp/Amazon:demo%40moliwarden.example?secret=JBSWY3DPEHPK3PXP&issuer=Amazon',
+      decUsername: 'demo@moliwarden.example',
       decPassword: 'demo-amazon-password-2026',
-      decTotp: 'otpauth://totp/Amazon:demo%40nodewarden.app?secret=JBSWY3DPEHPK3PXP&issuer=Amazon',
+      decTotp: 'otpauth://totp/Amazon:demo%40moliwarden.example?secret=JBSWY3DPEHPK3PXP&issuer=Amazon',
       uris: [{ uri: 'https://www.amazon.com', decUri: 'https://www.amazon.com', match: null }],
       passwordRevisionDate: '2026-05-03T11:30:00.000Z',
     },
@@ -233,12 +232,12 @@ export const DEMO_CIPHERS: Cipher[] = [
     creationDate: '2026-04-22T09:30:00.000Z',
     revisionDate: '2026-05-03T12:30:00.000Z',
     login: {
-      username: 'family@nodewarden.app',
+      username: 'family@moliwarden.example',
       password: 'demo-netflix-password-2026',
-      totp: 'otpauth://totp/Netflix:family%40nodewarden.app?secret=JBSWY3DPEHPK3PXP&issuer=Netflix',
-      decUsername: 'family@nodewarden.app',
+      totp: 'otpauth://totp/Netflix:family%40moliwarden.example?secret=JBSWY3DPEHPK3PXP&issuer=Netflix',
+      decUsername: 'family@moliwarden.example',
       decPassword: 'demo-netflix-password-2026',
-      decTotp: 'otpauth://totp/Netflix:family%40nodewarden.app?secret=JBSWY3DPEHPK3PXP&issuer=Netflix',
+      decTotp: 'otpauth://totp/Netflix:family%40moliwarden.example?secret=JBSWY3DPEHPK3PXP&issuer=Netflix',
       uris: [{ uri: 'https://www.netflix.com', decUri: 'https://www.netflix.com', match: null }],
       passwordRevisionDate: '2026-05-03T12:30:00.000Z',
     },
@@ -260,12 +259,12 @@ export const DEMO_CIPHERS: Cipher[] = [
     creationDate: '2026-04-23T09:30:00.000Z',
     revisionDate: '2026-05-03T13:30:00.000Z',
     login: {
-      username: 'billing@nodewarden.app',
+      username: 'billing@moliwarden.example',
       password: 'demo-paypal-password-2026',
-      totp: 'otpauth://totp/PayPal:billing%40nodewarden.app?secret=JBSWY3DPEHPK3PXP&issuer=PayPal',
-      decUsername: 'billing@nodewarden.app',
+      totp: 'otpauth://totp/PayPal:billing%40moliwarden.example?secret=JBSWY3DPEHPK3PXP&issuer=PayPal',
+      decUsername: 'billing@moliwarden.example',
       decPassword: 'demo-paypal-password-2026',
-      decTotp: 'otpauth://totp/PayPal:billing%40nodewarden.app?secret=JBSWY3DPEHPK3PXP&issuer=PayPal',
+      decTotp: 'otpauth://totp/PayPal:billing%40moliwarden.example?secret=JBSWY3DPEHPK3PXP&issuer=PayPal',
       uris: [{ uri: 'https://www.paypal.com', decUri: 'https://www.paypal.com', match: null }],
       fido2Credentials: [{ creationDate: '2026-04-24T07:00:00.000Z', rpId: 'paypal.com' }],
       passwordRevisionDate: '2026-05-03T13:30:00.000Z',
@@ -288,13 +287,13 @@ export const DEMO_CIPHERS: Cipher[] = [
     creationDate: '2026-03-22T09:00:00.000Z',
     revisionDate: DEMO_NOW,
     card: {
-      cardholderName: 'NodeWarden Demo',
+      cardholderName: 'MoliWarden Demo',
       number: '4111 1111 1111 1111',
       brand: 'Visa',
       expMonth: '12',
       expYear: '2030',
       code: '123',
-      decCardholderName: 'NodeWarden Demo',
+      decCardholderName: 'MoliWarden Demo',
       decNumber: '4111 1111 1111 1111',
       decBrand: 'Visa',
       decExpMonth: '12',
@@ -318,7 +317,7 @@ export const DEMO_CIPHERS: Cipher[] = [
       middleName: 'Morgan',
       lastName: 'Chen',
       username: 'alex.demo',
-      company: 'NodeWarden Labs',
+      company: 'MoliWarden Labs',
       ssn: '123-45-6789',
       passportNumber: 'X12345678',
       licenseNumber: 'D1234567',
@@ -336,7 +335,7 @@ export const DEMO_CIPHERS: Cipher[] = [
       decMiddleName: 'Morgan',
       decLastName: 'Chen',
       decUsername: 'alex.demo',
-      decCompany: 'NodeWarden Labs',
+      decCompany: 'MoliWarden Labs',
       decSsn: '123-45-6789',
       decPassportNumber: 'X12345678',
       decLicenseNumber: 'D1234567',
@@ -377,11 +376,11 @@ export const DEMO_CIPHERS: Cipher[] = [
     revisionDate: DEMO_NOW,
     sshKey: {
       privateKey: '-----BEGIN OPENSSH PRIVATE KEY-----\nDEMO-PRIVATE-KEY\n-----END OPENSSH PRIVATE KEY-----',
-      publicKey: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDemoNodeWardenKey demo@nodewarden',
-      keyFingerprint: 'SHA256:demoNodeWardenFingerprint',
+      publicKey: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDemoMoliWardenKey demo@moliwarden',
+      keyFingerprint: 'SHA256:demoMoliWardenFingerprint',
       decPrivateKey: '-----BEGIN OPENSSH PRIVATE KEY-----\nDEMO-PRIVATE-KEY\n-----END OPENSSH PRIVATE KEY-----',
-      decPublicKey: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDemoNodeWardenKey demo@nodewarden',
-      decFingerprint: 'SHA256:demoNodeWardenFingerprint',
+      decPublicKey: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDemoMoliWardenKey demo@moliwarden',
+      decFingerprint: 'SHA256:demoMoliWardenFingerprint',
     },
   },
   // --- Duplicate detection demo pairs (exact, login-site, login-credentials, password) ---
@@ -552,8 +551,8 @@ export const DEMO_SENDS: Send[] = [
     decName: 'Onboarding note',
     notes: 'Text Send preview.',
     decNotes: 'Text Send preview.',
-    text: { text: 'Welcome to NodeWarden demo mode.', hidden: false },
-    decText: 'Welcome to NodeWarden demo mode.',
+    text: { text: 'Welcome to MoliWarden demo mode.', hidden: false },
+    decText: 'Welcome to MoliWarden demo mode.',
     accessCount: 3,
     maxAccessCount: 10,
     disabled: false,
@@ -601,7 +600,7 @@ export function getDemoPublicSend(accessId: string): {
       id: 'send-demo-note',
       type: 0,
       decName: 'Onboarding note',
-      decText: 'Welcome to NodeWarden demo mode. This public Send page is served entirely from demo data.',
+      decText: 'Welcome to MoliWarden demo mode. This public Send page is served entirely from demo data.',
       expirationDate: '2026-05-18T08:00:00.000Z',
       file: null,
     };
@@ -687,10 +686,10 @@ export const DEMO_BACKUP_SETTINGS: AdminBackupSettings = {
       type: 'webdav',
       includeAttachments: true,
       destination: {
-        baseUrl: 'https://dav.example.com/nodewarden',
+        baseUrl: 'https://dav.example.com/moliwarden',
         username: 'demo-backup',
         password: 'demo-password',
-        remotePath: 'nodewarden',
+        remotePath: 'moliwarden',
       },
       schedule: {
         enabled: true,
@@ -705,7 +704,7 @@ export const DEMO_BACKUP_SETTINGS: AdminBackupSettings = {
         lastSuccessAt: '2026-05-04T03:01:12.000Z',
         lastErrorAt: null,
         lastErrorMessage: null,
-        lastUploadedFileName: 'nodewarden_backup_20260504_030112_a1b2c.zip',
+        lastUploadedFileName: 'moliwarden_backup_20260504_030112_a1b2c.zip',
         lastUploadedSizeBytes: 1048576,
         lastUploadedDestination: 'Demo WebDAV',
       },
@@ -864,7 +863,7 @@ export const DEMO_AUDIT_LOGS: AuditLogEntry[] = [
     targetType: null,
     targetId: null,
     targetUserEmail: null,
-    metadata: JSON.stringify({ fileName: 'nodewarden_backup_20260701_030000.zip', size: '1.2 MB', destination: 'Demo WebDAV' }),
+    metadata: JSON.stringify({ fileName: 'moliwarden_backup_20260701_030000.zip', size: '1.2 MB', destination: 'Demo WebDAV' }),
     createdAt: '2026-07-01T03:00:00.000Z',
     object: 'auditLog',
   },
@@ -878,7 +877,7 @@ export const DEMO_AUDIT_LOGS: AuditLogEntry[] = [
     targetType: null,
     targetId: null,
     targetUserEmail: null,
-    metadata: JSON.stringify({ fileName: 'nodewarden_backup_20260628_030000.zip', checksum: 'verified' }),
+    metadata: JSON.stringify({ fileName: 'moliwarden_backup_20260628_030000.zip', checksum: 'verified' }),
     createdAt: '2026-06-30T14:00:00.000Z',
     object: 'auditLog',
   },
@@ -1116,47 +1115,13 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-async function runDemoRemoteRestoreProgress(fileName: string): Promise<void> {
-  const stages = [
-    ['txt_backup_restore_progress_remote_fetch_title', 'txt_backup_restore_progress_remote_fetch_detail'],
-    ['txt_backup_restore_progress_remote_shadow_title', 'txt_backup_restore_progress_remote_shadow_detail'],
-    ['txt_backup_restore_progress_remote_data_title', 'txt_backup_restore_progress_remote_data_detail'],
-    ['txt_backup_restore_progress_remote_files_title', 'txt_backup_restore_progress_remote_files_detail'],
-    ['txt_backup_restore_progress_remote_finalize_title', 'txt_backup_restore_progress_remote_finalize_detail'],
-  ] as const;
-
-  for (let index = 0; index < stages.length; index += 1) {
-    const [stageTitle, stageDetail] = stages[index];
-    dispatchBackupProgress({
-      operation: 'backup-restore',
-      source: 'remote',
-      step: String(index + 1),
-      fileName,
-      stageTitle,
-      stageDetail,
-      done: false,
-    });
-    await sleep(2000);
-  }
-
-  dispatchBackupProgress({
-    operation: 'backup-restore',
-    source: 'remote',
-    step: 'complete',
-    fileName,
-    stageTitle: 'txt_backup_restore_progress_remote_finalize_title',
-    stageDetail: 'txt_backup_restore_progress_remote_finalize_detail',
-    done: true,
-    ok: true,
-  });
-}
-
 export function createDemoInitialBootstrapState(): InitialAppBootstrapState {
   return {
     defaultKdfIterations: 600000,
     registrationInviteRequired: true,
     websiteIconsEnabled: true,
-    jwtWarning: null,
+    passwordHintEnabled: true,
+    secretWarning: null,
     session: null,
     phase: 'login',
   };
@@ -1188,10 +1153,11 @@ function createDemoImportBackupResult(): AdminBackupImportResponse {
   return {
     object: 'instance-backup-import',
     imported: {
-      config: 0,
+      settings: 0,
       users: 0,
-      userRevisions: 0,
+      passkeys: 0,
       folders: 0,
+      organizations: 0,
       ciphers: 0,
       attachments: 0,
       attachmentFiles: 0,
@@ -1214,8 +1180,8 @@ function createDemoRemoteBrowser(destinationId: string, path: string = ''): Remo
     parentPath: path ? '' : null,
     items: [
       {
-        path: 'nodewarden_backup_20260504_030112_a1b2c.zip',
-        name: 'nodewarden_backup_20260504_030112_a1b2c.zip',
+        path: 'moliwarden_backup_20260504_030112_a1b2c.zip',
+        name: 'moliwarden_backup_20260504_030112_a1b2c.zip',
         isDirectory: false,
         size: 1048576,
         modifiedAt: '2026-05-04T03:01:12.000Z',
@@ -1236,10 +1202,10 @@ function createDemoBackupRun(settings: AdminBackupSettings, destinationId: strin
   return {
     object: 'backup-run',
     result: {
-      fileName: 'nodewarden_backup_20260504_030112_a1b2c.zip',
+      fileName: 'moliwarden_backup_20260504_030112_a1b2c.zip',
       fileSize: 1048576,
       provider: destination.type,
-      remotePath: 'nodewarden/nodewarden_backup_20260504_030112_a1b2c.zip',
+      remotePath: 'moliwarden/moliwarden_backup_20260504_030112_a1b2c.zip',
     },
     settings,
   };
@@ -1602,7 +1568,7 @@ export function createDemoMainRoutesProps(base: AppMainRoutesProps, notify: Noti
       object: 'backup-remote-integrity',
       destinationId: _destinationId,
       path,
-      fileName: path.split('/').pop() || 'nodewarden_backup_demo.zip',
+      fileName: path.split('/').pop() || 'moliwarden_backup_demo.zip',
       integrity: {
         hasChecksumPrefix: true,
         expectedPrefix: 'a1b2c',
@@ -1614,13 +1580,13 @@ export function createDemoMainRoutesProps(base: AppMainRoutesProps, notify: Noti
       notify('success', t('txt_backup_remote_delete_success'));
     },
     onRestoreRemoteBackup: async (_masterPassword: string, _destinationId, path) => {
-      await runDemoRemoteRestoreProgress(path.split('/').pop() || path || 'nodewarden_backup_demo.zip');
+      await sleep(3000);
       resetDemoVaultState(state);
       notify('success', t('txt_backup_remote_restore_completed_verified'));
       return createDemoImportBackupResult();
     },
     onRestoreRemoteBackupAllowingChecksumMismatch: async (_masterPassword: string, _destinationId, path) => {
-      await runDemoRemoteRestoreProgress(path.split('/').pop() || path || 'nodewarden_backup_demo.zip');
+      await sleep(3000);
       resetDemoVaultState(state);
       notify('success', t('txt_backup_remote_restore_completed_verified'));
       return createDemoImportBackupResult();

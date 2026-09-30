@@ -7,11 +7,12 @@ body,
 #root {
   @apply m-0 h-full w-full p-0;
   color: var(--text);
-  background: var(--bg-accent);
+  background: var(--bg);
   font-family: var(--font-sans);
   font-size: var(--font-base);
+  font-weight: 400;
   line-height: var(--leading-normal);
-  letter-spacing: var(--tracking-normal);
+  letter-spacing: 0;
   font-feature-settings: 'liga' 1, 'kern' 1, 'calt' 1;
   font-variant-numeric: tabular-nums;
   text-rendering: optimizeLegibility;
@@ -26,11 +27,21 @@ html {
 body {
   @apply relative;
   transition: background-color var(--dur-medium) var(--ease-smooth), color var(--dur-medium) var(--ease-smooth);
+  line-height: 1.5;
+  font-size: var(--font-base);
+  font-weight: 400;
 }
 
 body.dialog-open {
   @apply overflow-hidden;
   overscroll-behavior: contain;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -40,10 +51,10 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0;
 }
 
-h1 { font-size: var(--font-4xl); }
-h2 { font-size: var(--font-3xl); }
-h3 { font-size: var(--font-xl); }
-h4 { font-size: var(--font-lg); }
+h1 { font-size: var(--font-4xl); letter-spacing: 0; }
+h2 { font-size: var(--font-3xl); letter-spacing: 0; }
+h3 { font-size: var(--font-xl); letter-spacing: 0; }
+h4 { font-size: var(--font-lg); letter-spacing: 0; }
 
 p {
   margin: 0;
@@ -56,16 +67,16 @@ small {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--primary) 20%, transparent);
+  background: color-mix(in srgb, var(--text) 16%, transparent);
   color: var(--text);
 }
 
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+  box-shadow: var(--focus-ring);
 }
 
-/* --- custom scrollbar --- */
+/* --- scrollbars --- */
 * {
   scrollbar-color: color-mix(in srgb, var(--muted) 34%, transparent) transparent;
   scrollbar-width: thin;
@@ -89,7 +100,7 @@ small {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--primary) 38%, var(--muted) 22%);
+  background: color-mix(in srgb, var(--muted) 60%, transparent);
   background-clip: content-box;
 }
 

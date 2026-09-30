@@ -8,7 +8,7 @@ import AuthViews from '@/components/AuthViews';
 import NotFoundPage from '@/components/NotFoundPage';
 import PublicSendPage from '@/components/PublicSendPage';
 import RecoverTwoFactorPage from '@/components/RecoverTwoFactorPage';
-import JwtWarningPage from '@/components/JwtWarningPage';
+import SecretWarningPage from '@/components/SecretWarningPage';
 import {
   createAuthedFetch,
   deriveLoginHash,
@@ -33,16 +33,13 @@ import {
 } from '@/lib/api/auth-requests';
 import { clearAuditLogs, getAuditLogSettings, listAdminInvites, listAdminUsers, listAuditLogs, saveAuditLogSettings, type AuditLogFilters } from '@/lib/api/admin';
 import { getDomainRules, saveDomainRules } from '@/lib/api/domains';
-import { getSendById, getSends } from '@/lib/api/send';
-import { getCipherById, getFolderById, repairCipherKeyMismatches, repairCipherUriChecksums, shareCipherToOrganization } from '@/lib/api/vault';
+import { getSends } from '@/lib/api/send';
+import { repairCipherKeyMismatches, repairCipherUriChecksums, shareCipherToOrganization } from '@/lib/api/vault';
 import { updateCipherCollections } from '@/lib/api/organizations';
 import { draftFromCipher } from '@/components/vault/vault-page-helpers';
 import { getCachedVaultCoreSnapshot, invalidateVaultCoreSyncSnapshot, loadVaultCoreSyncSnapshot, saveVaultCoreSyncSnapshot } from '@/lib/api/vault-sync';
 import { silentlyRepairBackupSettingsIfNeeded } from '@/lib/backup-settings-repair';
-import {
-  parseSignalRTextFrames,
-  readInviteCodeFromUrl,
-} from '@/lib/app-support';
+import { readInviteCodeFromUrl } from '@/lib/app-support';
 import { preloadAuthenticatedWorkspace, preloadDemoExperience } from '@/lib/app-preload';
 import {
   bootstrapAppSession,
@@ -56,7 +53,6 @@ import {
   performTotpLogin,
   hydrateLockedSession,
   performUnlock,
-  type JwtUnsafeReason,
   type PendingPasskeyPassword,
   type PendingTotp,
 } from '@/lib/app-auth';
@@ -68,7 +64,6 @@ import useVaultSendActions from '@/hooks/useVaultSendActions';
 import { useToastManager } from '@/hooks/useToastManager';
 import { t } from '@/lib/i18n';
 import { APP_NOTIFY_EVENT, type AppNotifyDetail } from '@/lib/app-notify';
-import { dispatchBackupProgress, type BackupProgressDetail } from '@/lib/backup-restore-progress';
 import { clearOfflineUnlockRecord } from '@/lib/offline-auth';
 import { clearPasswordSecurityCache } from '@/lib/password-security-cache';
 import { decryptSends, decryptVaultCore } from '@/lib/vault-decrypt';
@@ -89,19 +84,8 @@ import {
   createDemoMainRoutesProps,
 } from '@/lib/demo';
 import type { AdminBackupSettings } from '@/lib/api/backup';
-import type { AdminInvite, AdminUser, AppPhase, AuditLogSettings, AuthRequest, AuthorizedDevice, Cipher, CustomEquivalentDomain, DomainRules, Folder as VaultFolder, Profile, Send, SessionState } from '@/lib/types';
+import type { AdminInvite, AdminUser, AppPhase, AuditLogSettings, AuthRequest, AuthorizedDevice, Cipher, CustomEquivalentDomain, DomainRules, Folder as VaultFolder, Profile, SecretWarning, Send, SessionState } from '@/lib/types';
 import type { VaultCoreSnapshot } from '@/lib/vault-cache';
-
-function isBackupProgressDetail(value: unknown): value is BackupProgressDetail {
-  if (!value || typeof value !== 'object') return false;
-  const detail = value as Record<string, unknown>;
-  const operation = detail.operation;
-  return (
-    (operation === 'backup-restore' || operation === 'backup-export' || operation === 'backup-remote-run')
-    && typeof detail.step === 'string'
-    && typeof detail.fileName === 'string'
-  );
-}
 
 const IMPORT_ROUTE = '/backup/import-export';
 const IMPORT_ROUTE_PATHS = [IMPORT_ROUTE, '/tools/import', '/tools/import-export', '/tools/import-data', '/import', '/import-export'] as const;
@@ -143,24 +127,7 @@ function normalizeRoutePath(path: string): string {
   const normalized = pathOnly.startsWith('/') ? pathOnly : `/${pathOnly}`;
   return normalized.length > 1 ? normalized.replace(/\/+$/, '') : '/';
 }
-const THEME_STORAGE_KEY = 'nodewarden.theme.preference.v1';
-const SIGNALR_RECORD_SEPARATOR = String.fromCharCode(0x1e);
-const SIGNALR_UPDATE_TYPE_SYNC_CIPHER_UPDATE = 0;
-const SIGNALR_UPDATE_TYPE_SYNC_CIPHER_CREATE = 1;
-const SIGNALR_UPDATE_TYPE_SYNC_FOLDER_DELETE = 3;
-const SIGNALR_UPDATE_TYPE_SYNC_CIPHERS = 4;
-const SIGNALR_UPDATE_TYPE_SYNC_VAULT = 5;
-const SIGNALR_UPDATE_TYPE_SYNC_FOLDER_CREATE = 7;
-const SIGNALR_UPDATE_TYPE_SYNC_FOLDER_UPDATE = 8;
-const SIGNALR_UPDATE_TYPE_SYNC_CIPHER_DELETE = 9;
-const SIGNALR_UPDATE_TYPE_LOG_OUT = 11;
-const SIGNALR_UPDATE_TYPE_SYNC_SEND_CREATE = 12;
-const SIGNALR_UPDATE_TYPE_SYNC_SEND_UPDATE = 13;
-const SIGNALR_UPDATE_TYPE_SYNC_SEND_DELETE = 14;
-const SIGNALR_UPDATE_TYPE_AUTH_REQUEST = 15;
-const SIGNALR_UPDATE_TYPE_AUTH_REQUEST_RESPONSE = 16;
-const SIGNALR_UPDATE_TYPE_DEVICE_STATUS = 101;
-const SIGNALR_UPDATE_TYPE_BACKUP_RESTORE_PROGRESS = 102;
+const THEME_STORAGE_KEY = 'moliwarden.theme.preference.v1';
 const TWO_FACTOR_PROVIDER_YUBIKEY = 3;
 const TWO_FACTOR_PROVIDER_WEBAUTHN = 7;
 
@@ -168,8 +135,8 @@ type ThemePreference = 'system' | 'light' | 'dark';
 type LockTimeoutMinutes = 0 | 1 | 5 | 15 | 30;
 type SessionTimeoutAction = 'lock' | 'logout';
 
-const LOCK_TIMEOUT_STORAGE_KEY = 'nodewarden.lock.timeout-minutes.v1';
-const SESSION_TIMEOUT_ACTION_STORAGE_KEY = 'nodewarden.session.timeout-action.v1';
+const LOCK_TIMEOUT_STORAGE_KEY = 'moliwarden.lock.timeout-minutes.v1';
+const SESSION_TIMEOUT_ACTION_STORAGE_KEY = 'moliwarden.session.timeout-action.v1';
 const LOCK_TIMEOUT_VALUES = new Set<LockTimeoutMinutes>([0, 1, 5, 15, 30]);
 function readThemePreference(): ThemePreference {
   if (typeof window === 'undefined') return 'system';
@@ -217,7 +184,8 @@ export default function App() {
   const [decryptedCollections, setDecryptedCollections] = useState<VaultCollection[]>([]);
   const [defaultKdfIterations, setDefaultKdfIterations] = useState(initialBootstrap.defaultKdfIterations);
   const [registrationInviteRequired, setRegistrationInviteRequired] = useState(initialBootstrap.registrationInviteRequired);
-  const [jwtWarning, setJwtWarning] = useState<{ reason: JwtUnsafeReason; minLength: number } | null>(initialBootstrap.jwtWarning);
+  const [passwordHintEnabled, setPasswordHintEnabled] = useState(initialBootstrap.passwordHintEnabled);
+  const [secretWarning, setSecretWarning] = useState<SecretWarning | null>(initialBootstrap.secretWarning);
 
   const [loginValues, setLoginValues] = useState({ email: '', password: '' });
   const [registerValues, setRegisterValues] = useState({
@@ -291,7 +259,6 @@ export default function App() {
   const uriChecksumRepairAttemptRef = useRef<string>('');
   const pendingVaultCoreQueryRefreshRef = useRef<Promise<{ data?: VaultCoreSnapshot } | unknown> | null>(null);
   const pendingVaultCoreRefreshRef = useRef<Promise<unknown> | null>(null);
-  const notificationRefreshTimerRef = useRef<number | null>(null);
   const domainRulesSaveSeqRef = useRef(0);
   const loginEmailRef = useRef(loginValues.email);
   const loginHintRequestSeqRef = useRef(0);
@@ -449,14 +416,6 @@ export default function App() {
       ),
     [session]
   );
-  const importAuthedFetch = useMemo(
-    () => async (input: string, init?: RequestInit) => {
-      const headers = new Headers(init?.headers || {});
-      headers.set('X-NodeWarden-Import', '1');
-      return authedFetch(input, { ...init, headers });
-    },
-    [authedFetch]
-  );
   const vaultCacheKey = String(profile?.id || session?.email || '').trim();
   const backupActions = useBackupActions({
     authedFetch,
@@ -481,7 +440,7 @@ export default function App() {
       const isDemoPublicSendRoute = /^send\/[^/]+(?:\/[^/]+)?$/i.test(normalizedCurrentHashPath);
       setDefaultKdfIterations(initialBootstrap.defaultKdfIterations);
       setRegistrationInviteRequired(initialBootstrap.registrationInviteRequired);
-      setJwtWarning(null);
+      setSecretWarning(null);
       setSession(null);
       setProfile(null);
       setPhase('login');
@@ -497,7 +456,8 @@ export default function App() {
       if (sessionRef.current?.symEncKey || sessionRef.current?.symMacKey) return;
       setDefaultKdfIterations(boot.defaultKdfIterations);
       setRegistrationInviteRequired(boot.registrationInviteRequired);
-      setJwtWarning(boot.jwtWarning);
+      setPasswordHintEnabled(boot.passwordHintEnabled);
+      setSecretWarning(boot.secretWarning);
       setSession(boot.session);
       setProfile(boot.profile);
       setPhase(boot.phase);
@@ -1503,27 +1463,6 @@ export default function App() {
     };
   }
 
-  function upsertById<T extends { id: string }>(items: T[], nextItem: T): T[] {
-    const nextId = String(nextItem.id || '').trim();
-    if (!nextId) return items;
-    const index = items.findIndex((item) => String(item.id || '').trim() === nextId);
-    if (index < 0) return [...items, nextItem];
-    const next = items.slice();
-    next[index] = nextItem;
-    return next;
-  }
-
-  function removeById<T extends { id: string }>(items: T[], id: string): T[] {
-    const normalizedId = String(id || '').trim();
-    if (!normalizedId) return items;
-    return items.filter((item) => String(item.id || '').trim() !== normalizedId);
-  }
-
-  function revisionStampFromIso(value: unknown): number | null {
-    const stamp = new Date(String(value || '').trim()).getTime();
-    return Number.isFinite(stamp) && stamp > 0 ? stamp : null;
-  }
-
   function patchVaultCoreSnapshot(
     updater: (snapshot: VaultCoreSnapshot) => VaultCoreSnapshot,
     options?: { revisionStamp?: number | null }
@@ -1554,329 +1493,25 @@ export default function App() {
     }
   }
 
-  function upsertEncryptedCipher(cipher: Cipher, revisionStamp?: number | null): void {
-    patchVaultCoreSnapshot((snapshot) => ({
-      ...snapshot,
-      ciphers: upsertById(snapshot.ciphers, cipher),
-    }), { revisionStamp: revisionStamp ?? revisionStampFromIso(cipher.revisionDate) });
-  }
-
-  function deleteCipherLocally(cipherId: string, revisionStamp?: number | null): void {
-    const id = String(cipherId || '').trim();
-    if (!id) return;
-    patchVaultCoreSnapshot((snapshot) => ({
-      ...snapshot,
-      ciphers: removeById(snapshot.ciphers, id),
-    }), { revisionStamp });
-    setDecryptedCiphers((current) => removeById(current, id));
-  }
-
-  function upsertEncryptedFolder(folder: VaultFolder, revisionStamp?: number | null): void {
-    patchVaultCoreSnapshot((snapshot) => ({
-      ...snapshot,
-      folders: upsertById(snapshot.folders, folder),
-    }), { revisionStamp: revisionStamp ?? revisionStampFromIso(folder.revisionDate) });
-  }
-
-  function deleteFolderLocally(folderId: string, revisionStamp?: number | null): void {
-    const id = String(folderId || '').trim();
-    if (!id) return;
-    patchVaultCoreSnapshot((snapshot) => ({
-      ...snapshot,
-      folders: removeById(snapshot.folders, id),
-      ciphers: snapshot.ciphers.map((cipher) => (
-        String(cipher.folderId || '').trim() === id ? { ...cipher, folderId: null } : cipher
-      )),
-    }), { revisionStamp });
-    setDecryptedFolders((current) => removeById(current, id));
-    setDecryptedCiphers((current) => current.map((cipher) => (
-      String(cipher.folderId || '').trim() === id ? { ...cipher, folderId: null } : cipher
-    )));
-  }
-
-  function upsertEncryptedSend(send: Send, revisionStamp?: number | null): void {
-    patchVaultCoreSnapshot((snapshot) => ({
-      ...snapshot,
-      sends: upsertById(snapshot.sends, send),
-    }), { revisionStamp: revisionStamp ?? revisionStampFromIso(send.revisionDate) });
-    queryClient.setQueryData(sendsQueryKey, (previous?: Send[]) => upsertById(Array.isArray(previous) ? previous : [], send));
-  }
-
-  function deleteSendLocally(sendId: string, revisionStamp?: number | null): void {
-    const id = String(sendId || '').trim();
-    if (!id) return;
-    patchVaultCoreSnapshot((snapshot) => ({
-      ...snapshot,
-      sends: removeById(snapshot.sends, id),
-    }), { revisionStamp });
-    queryClient.setQueryData(sendsQueryKey, (previous?: Send[]) => removeById(Array.isArray(previous) ? previous : [], id));
-    setDecryptedSends((current) => removeById(current, id));
-  }
-
-  async function upsertCipherFromNotification(cipherId: string, revisionStamp?: number | null): Promise<void> {
-    const id = String(cipherId || '').trim();
-    if (!id || !session?.symEncKey || !session?.symMacKey) return;
-    try {
-      const encrypted = await getCipherById(authedFetch, id);
-      upsertEncryptedCipher(encrypted, revisionStamp);
-      const result = await decryptVaultCore({
-        folders: [],
-        ciphers: [encrypted],
-        symEncKeyB64: session.symEncKey,
-        symMacKeyB64: session.symMacKey,
-        orgKeys,
-      });
-      const decrypted = result.ciphers[0];
-      if (decrypted) setDecryptedCiphers((current) => upsertById(current, decrypted));
-    } catch (error) {
-      if ((error as { status?: number }).status === 404) {
-        deleteCipherLocally(id);
-        return;
-      }
-      console.warn('Failed to upsert cipher from notification:', error);
-    }
-  }
-
-  async function upsertFolderFromNotification(folderId: string, revisionStamp?: number | null): Promise<void> {
-    const id = String(folderId || '').trim();
-    if (!id || !session?.symEncKey || !session?.symMacKey) return;
-    try {
-      const encrypted = await getFolderById(authedFetch, id);
-      upsertEncryptedFolder(encrypted, revisionStamp);
-      const result = await decryptVaultCore({
-        folders: [encrypted],
-        ciphers: [],
-        symEncKeyB64: session.symEncKey,
-        symMacKeyB64: session.symMacKey,
-      });
-      const decrypted = result.folders[0];
-      if (decrypted) setDecryptedFolders((current) => upsertById(current, decrypted));
-    } catch (error) {
-      if ((error as { status?: number }).status === 404) {
-        deleteFolderLocally(id);
-        return;
-      }
-      console.warn('Failed to upsert folder from notification:', error);
-    }
-  }
-
-  async function upsertSendFromNotification(sendId: string, revisionStamp?: number | null): Promise<void> {
-    const id = String(sendId || '').trim();
-    if (!id || !session?.symEncKey || !session?.symMacKey) return;
-    try {
-      const encrypted = await getSendById(authedFetch, id);
-      upsertEncryptedSend(encrypted, revisionStamp);
-      const sends = await decryptSends({
-        sends: [encrypted],
-        symEncKeyB64: session.symEncKey,
-        symMacKeyB64: session.symMacKey,
-        origin: window.location.origin,
-      });
-      const decrypted = sends[0];
-      if (decrypted) setDecryptedSends((current) => upsertById(current, decrypted));
-    } catch (error) {
-      if ((error as { status?: number }).status === 404) {
-        deleteSendLocally(id);
-        return;
-      }
-      console.warn('Failed to upsert send from notification:', error);
-    }
-  }
-
+  // The server pushes nothing to browsers: coming back to the tab, the vault
+  // syncs if its revision date moved meanwhile, and the lists that change
+  // elsewhere are reloaded.
   useEffect(() => {
     if (IS_DEMO_MODE) return;
-    if (phase !== 'app' || !session?.accessToken || !session?.symEncKey || !session?.symMacKey || !vaultInitialDecryptDone) return;
-
-    let disposed = false;
-    let socket: WebSocket | null = null;
-    let reconnectTimer: number | null = null;
-    let reconnectAttempts = 0;
-
-    const clearReconnectTimer = () => {
-      if (reconnectTimer !== null) {
-        window.clearTimeout(reconnectTimer);
-        reconnectTimer = null;
-      }
+    if (phase !== 'app' || !session?.accessToken || !vaultInitialDecryptDone) return;
+    const refresh = () => {
+      if (document.visibilityState !== 'visible') return;
+      void silentRefreshVaultRef.current();
+      void refreshAuthorizedDevicesRef.current();
+      void refreshPendingAuthRequestsRef.current();
     };
-
-    const scheduleReconnect = () => {
-      if (disposed) return;
-      clearReconnectTimer();
-      const delay = Math.min(10000, 1000 * Math.max(1, reconnectAttempts + 1));
-      reconnectAttempts += 1;
-      reconnectTimer = window.setTimeout(() => {
-        reconnectTimer = null;
-        void connect();
-      }, delay);
-    };
-
-    const connect = async () => {
-      if (disposed) return;
-      const accessToken = session.accessToken;
-      if (!accessToken) return;
-      try {
-        const negotiateResponse = await fetch('/notifications/hub/negotiate?negotiateVersion=1', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        // 404: the server has no realtime hub (serverless deployment). Stop
-        // retrying; the vault refreshes through its regular sync instead.
-        if (negotiateResponse.status === 404) return;
-        if (!negotiateResponse.ok) throw new Error('Notification negotiation failed');
-        const negotiation = (await negotiateResponse.json()) as { connectionToken?: string };
-        if (!negotiation.connectionToken || disposed) throw new Error('Notification connection token missing');
-
-        const hubUrl = new URL('/notifications/hub', window.location.origin);
-        hubUrl.searchParams.set('id', negotiation.connectionToken);
-        hubUrl.protocol = hubUrl.protocol === 'https:' ? 'wss:' : 'ws:';
-        socket = new WebSocket(hubUrl.toString());
-      } catch {
-        scheduleReconnect();
-        return;
-      }
-
-      let pingTimer: number | null = null;
-
-      const clearPingTimer = () => {
-        if (pingTimer !== null) {
-          window.clearInterval(pingTimer);
-          pingTimer = null;
-        }
-      };
-
-      socket.addEventListener('open', () => {
-        reconnectAttempts = 0;
-        void refreshAuthorizedDevicesRef.current();
-        try {
-          socket?.send(`{"protocol":"json","version":1}${SIGNALR_RECORD_SEPARATOR}`);
-        } catch {
-          socket?.close();
-          return;
-        }
-        clearPingTimer();
-        pingTimer = window.setInterval(() => {
-          try {
-            socket?.send(`{"type":6}${SIGNALR_RECORD_SEPARATOR}`);
-          } catch {
-            // send failure will trigger close event
-          }
-        }, 15_000);
-      });
-
-      socket.addEventListener('message', (event) => {
-        if (disposed) return;
-        if (typeof event.data !== 'string') return;
-
-        const frames = parseSignalRTextFrames(event.data);
-        for (const frame of frames) {
-          if (frame.type !== 1 || frame.target !== 'ReceiveMessage') continue;
-          const message = frame.arguments?.[0] as Record<string, unknown> | undefined;
-          const updateType = Number(message?.Type || 0);
-          const contextId = String(message?.ContextId || '').trim();
-          const payload = message?.Payload;
-          const payloadRecord = payload && typeof payload === 'object' ? payload as Record<string, unknown> : null;
-          const resourceId = String(payloadRecord?.Id || payloadRecord?.id || '').trim();
-          const revisionStamp = revisionStampFromIso(
-            payloadRecord?.RevisionDate
-            || payloadRecord?.revisionDate
-            || message?.Date
-            || message?.date
-          );
-          if (updateType === SIGNALR_UPDATE_TYPE_LOG_OUT) {
-            logoutNow();
-            return;
-          }
-          if (updateType === SIGNALR_UPDATE_TYPE_DEVICE_STATUS) {
-            void refreshAuthorizedDevicesRef.current();
-            continue;
-          }
-          if (updateType === SIGNALR_UPDATE_TYPE_AUTH_REQUEST || updateType === SIGNALR_UPDATE_TYPE_AUTH_REQUEST_RESPONSE) {
-            void refreshPendingAuthRequestsRef.current();
-            continue;
-          }
-          if (updateType === SIGNALR_UPDATE_TYPE_BACKUP_RESTORE_PROGRESS) {
-            if (isBackupProgressDetail(payload)) dispatchBackupProgress(payload);
-            continue;
-          }
-          if (contextId && contextId === getCurrentDeviceIdentifier()) continue;
-          if (updateType === SIGNALR_UPDATE_TYPE_SYNC_CIPHERS || updateType === SIGNALR_UPDATE_TYPE_SYNC_VAULT) {
-            if (notificationRefreshTimerRef.current !== null) {
-              window.clearTimeout(notificationRefreshTimerRef.current);
-            }
-            notificationRefreshTimerRef.current = window.setTimeout(() => {
-              notificationRefreshTimerRef.current = null;
-              void silentRefreshVaultRef.current();
-            }, 250);
-            continue;
-          }
-          if ((updateType === SIGNALR_UPDATE_TYPE_SYNC_CIPHER_CREATE || updateType === SIGNALR_UPDATE_TYPE_SYNC_CIPHER_UPDATE) && resourceId) {
-            void upsertCipherFromNotification(resourceId, revisionStamp);
-            continue;
-          }
-          if (updateType === SIGNALR_UPDATE_TYPE_SYNC_CIPHER_DELETE && resourceId) {
-            deleteCipherLocally(resourceId, revisionStamp);
-            continue;
-          }
-          if ((updateType === SIGNALR_UPDATE_TYPE_SYNC_FOLDER_CREATE || updateType === SIGNALR_UPDATE_TYPE_SYNC_FOLDER_UPDATE) && resourceId) {
-            void upsertFolderFromNotification(resourceId, revisionStamp);
-            continue;
-          }
-          if (updateType === SIGNALR_UPDATE_TYPE_SYNC_FOLDER_DELETE && resourceId) {
-            deleteFolderLocally(resourceId, revisionStamp);
-            continue;
-          }
-          if ((updateType === SIGNALR_UPDATE_TYPE_SYNC_SEND_CREATE || updateType === SIGNALR_UPDATE_TYPE_SYNC_SEND_UPDATE) && resourceId) {
-            void upsertSendFromNotification(resourceId, revisionStamp);
-            continue;
-          }
-          if (updateType === SIGNALR_UPDATE_TYPE_SYNC_SEND_DELETE && resourceId) {
-            deleteSendLocally(resourceId, revisionStamp);
-            continue;
-          }
-        }
-      });
-
-      socket.addEventListener('close', () => {
-        socket = null;
-        clearPingTimer();
-        void refreshAuthorizedDevicesRef.current();
-        scheduleReconnect();
-      });
-
-      socket.addEventListener('error', () => {
-        try {
-          socket?.close();
-        } catch {
-          // ignore close races
-        }
-      });
-    };
-
-    void connect();
-
-    return () => {
-      disposed = true;
-      if (notificationRefreshTimerRef.current !== null) {
-        window.clearTimeout(notificationRefreshTimerRef.current);
-        notificationRefreshTimerRef.current = null;
-      }
-      clearReconnectTimer();
-      if (socket) {
-        const s = socket;
-        socket = null;
-        try {
-          s.close();
-        } catch {
-          // ignore close races
-        }
-      }
-    };
-  }, [phase, session?.accessToken, session?.symEncKey, session?.symMacKey, vaultInitialDecryptDone]);
+    document.addEventListener('visibilitychange', refresh);
+    return () => document.removeEventListener('visibilitychange', refresh);
+  }, [phase, session?.accessToken, vaultInitialDecryptDone]);
 
   const vaultSendActions = useVaultSendActions({
     orgKeys,
     authedFetch,
-    importAuthedFetch,
     session,
     profile,
     defaultKdfIterations,
@@ -1977,18 +1612,18 @@ export default function App() {
   const sidebarToggleTitle = location === '/vault' ? t('txt_folders') : t('txt_type');
   const demoDomainRules = useMemo<DomainRules>(() => ({
     equivalentDomains: [
-      ['nodewarden.example', 'nw.example'],
-      ['staging.nodewarden.example', 'preview.nodewarden.example'],
+      ['moliwarden.example', 'mw.example'],
+      ['staging.moliwarden.example', 'preview.moliwarden.example'],
     ],
     customEquivalentDomains: [
-      { id: 'demo-custom-1', domains: ['nodewarden.example', 'nw.example'], excluded: false },
-      { id: 'demo-custom-2', domains: ['staging.nodewarden.example', 'preview.nodewarden.example'], excluded: false },
+      { id: 'demo-custom-1', domains: ['moliwarden.example', 'mw.example'], excluded: false },
+      { id: 'demo-custom-2', domains: ['staging.moliwarden.example', 'preview.moliwarden.example'], excluded: false },
     ],
     globalEquivalentDomains: [
       { type: 0, domains: ['youtube.com', 'google.com', 'gmail.com'], excluded: false },
       { type: 1, domains: ['apple.com', 'icloud.com'], excluded: false },
       { type: 10, domains: ['microsoft.com', 'office.com', 'xbox.com'], excluded: true },
-      { type: -10001, domains: ['nodewarden.example', 'nw.example'], excluded: false },
+      { type: -10001, domains: ['moliwarden.example', 'mw.example'], excluded: false },
     ],
     object: 'domains',
   }), []);
@@ -2288,8 +1923,8 @@ export default function App() {
       })
     : mainRoutesProps;
 
-  if (jwtWarning) {
-    return <JwtWarningPage reason={jwtWarning.reason} minLength={jwtWarning.minLength} />;
+  if (secretWarning) {
+    return <SecretWarningPage {...secretWarning} />;
   }
 
   if (publicSendMatch) {
@@ -2344,6 +1979,7 @@ export default function App() {
           passkeyPassword={passkeyPassword}
           registerValues={registerValues}
           registrationInviteRequired={registrationInviteRequired}
+          passwordHintEnabled={passwordHintEnabled}
           unlockPassword={unlockPassword}
           emailForLock={profile?.email || session?.email || ''}
           loginHintLoading={loginHintState.loading}

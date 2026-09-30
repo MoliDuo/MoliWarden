@@ -19,7 +19,7 @@ export interface PersistedRemoteBrowserState {
   refreshedAt: Record<string, number>;
 }
 
-export const REMOTE_BROWSER_STORAGE_KEY = 'nodewarden.backup.remote-browser.v1';
+export const REMOTE_BROWSER_STORAGE_KEY = 'moliwarden.backup.remote-browser.v1';
 export const REMOTE_BROWSER_ITEMS_PER_PAGE = 10;
 export const REMOTE_BROWSER_REFRESH_TTL_MS = 5 * 60 * 1000; // 5 minutes
 

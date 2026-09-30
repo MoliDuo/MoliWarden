@@ -5,7 +5,7 @@ export interface AppNotifyDetail {
   text: string;
 }
 
-export const APP_NOTIFY_EVENT = 'nodewarden:notify';
+export const APP_NOTIFY_EVENT = 'moliwarden:notify';
 
 export function dispatchAppNotify(type: AppNotifyType, text: string): void {
   if (typeof window === 'undefined') return;

@@ -1,15 +1,15 @@
 {
-  "name": "NodeWarden",
-  "short_name": "NodeWarden",
-  "description": "A lightweight Bitwarden-compatible vault for Cloudflare Workers.",
+  "name": "MoliWarden",
+  "short_name": "MoliWarden",
+  "description": "A Bitwarden-compatible password vault.",
   "id": "/",
   "start_url": "/vault",
   "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#eef4ff",
-  "theme_color": "#0f172a",
+  "background_color": "#fafafa",
+  "theme_color": "#0a0a0a",
   "categories": ["security", "productivity", "utilities"],
   "icons": [
     {

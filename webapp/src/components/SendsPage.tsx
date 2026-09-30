@@ -20,7 +20,7 @@ interface SendsPageProps {
 }
 
 type SendTypeFilter = 'all' | 'text' | 'file';
-const AUTO_COPY_KEY = 'nodewarden.send.auto_copy_link.v1';
+const AUTO_COPY_KEY = 'moliwarden.send.auto_copy_link.v1';
 const MOBILE_LAYOUT_QUERY = '(max-width: 1180px)';
 
 function daysFromNow(iso: string | null | undefined, fallback: number): string {
@@ -498,7 +498,7 @@ export default function SendsPage(props: SendsPageProps) {
                   <div className="password-wrap">
                     <input className="input" type="password" value="••••••••" disabled />
                     {!isCreating && (
-                      <button type="button" className="password-toggle text-red-600 hover:text-red-700" onClick={() => setDraft({ ...draft, hasPassword: false, password: '' })} title={t('txt_remove')}>
+                      <button type="button" className="password-toggle danger" onClick={() => setDraft({ ...draft, hasPassword: false, password: '' })} title={t('txt_remove')}>
                         <Trash2 size={16} />
                       </button>
                     )}

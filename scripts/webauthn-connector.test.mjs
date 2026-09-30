@@ -116,7 +116,7 @@ test('uses the official postMessage message contract and iframe-sized fallback s
   ]);
   assert.match(html, /id="webauthn-button"/);
   assert.match(html, /min-height:\s*40px/);
-  assert.match(html, /background:\s*#2563eb/);
+  assert.match(html, /background:\s*#171717/);
   assert.match(source, /post\('info\|ready'\)/);
   assert.match(source, /post\(`success\|\$\{buildCredentialData\(credential\)\}`\)/);
   assert.match(source, /post\(`error\|\$\{browserErrorMessage\(error\)\}`\)/);

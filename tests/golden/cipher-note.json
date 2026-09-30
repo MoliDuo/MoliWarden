@@ -1,0 +1,51 @@
+{
+  "status": 200,
+  "headers": {
+    "access-control-allow-headers": "Content-Type, Authorization, Accept, Device-Type, Device-Identifier, Device-Name, Bitwarden-Client-Name, Bitwarden-Client-Version, Bitwarden-Package-Type, Is-Prerelease, X-Request-Email, X-Device-Identifier, X-Device-Name, X-MoliWarden-Web-Session",
+    "access-control-allow-methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+    "access-control-expose-headers": "*",
+    "access-control-max-age": "86400",
+    "content-security-policy": "frame-ancestors 'none'; img-src 'self' data:",
+    "content-type": "application/json",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY"
+  },
+  "body": {
+    "id": "<cipher:note>",
+    "organizationId": null,
+    "type": 2,
+    "name": "2.aXYtbmFtZS1ub3Rl|Y3QtbmFtZS1ub3Rl|bWFjLW5hbWUtbm90ZQ==",
+    "notes": "2.aXYtbm90ZXMtbm90ZQ==|Y3Qtbm90ZXMtbm90ZQ==|bWFjLW5vdGVzLW5vdGU=",
+    "key": null,
+    "reprompt": 0,
+    "login": null,
+    "secureNote": {
+      "type": 0
+    },
+    "card": null,
+    "identity": null,
+    "sshKey": null,
+    "bankAccount": null,
+    "driversLicense": null,
+    "passport": null,
+    "fields": null,
+    "passwordHistory": null,
+    "attachments": null,
+    "organizationUseTotp": true,
+    "creationDate": "<date>",
+    "revisionDate": "<date>",
+    "deletedDate": null,
+    "folderId": null,
+    "favorite": false,
+    "archivedDate": null,
+    "edit": true,
+    "viewPassword": true,
+    "permissions": {
+      "delete": true,
+      "restore": true
+    },
+    "collectionIds": [],
+    "object": "cipherDetails"
+  }
+}

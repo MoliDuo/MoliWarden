@@ -17,7 +17,7 @@ interface VaultCoreCacheRecord {
   snapshot: VaultCoreSnapshot;
 }
 
-const DB_NAME = 'nodewarden-web-cache';
+const DB_NAME = 'moliwarden-web-cache';
 const DB_VERSION = 1;
 const VAULT_CORE_STORE = 'vault-core';
 

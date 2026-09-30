@@ -1,9 +1,9 @@
-# Contributing to NodeWarden
+# Contributing to MoliWarden
 
-Thanks for taking the time to improve NodeWarden.
+Thanks for taking the time to improve MoliWarden.
 
-NodeWarden is a Bitwarden-compatible server with a custom web vault, Cloudflare
-Vercel / PostgreSQL storage, attachment storage, imports/exports, and scheduled backups.
+MoliWarden is a Bitwarden-compatible server for Vercel with a custom web vault,
+PostgreSQL storage, attachment storage, imports/exports, and scheduled backups.
 Small changes can affect official clients, backups, migrations, or locale files,
 so please keep changes focused and check the related parts of the project.
 
@@ -17,7 +17,7 @@ For bug reports, include enough detail for someone else to reproduce the problem
 - Whether the problem happened after sync, import, export, restore, upgrade, or
   a fresh deployment.
 
-Please do not report NodeWarden-specific problems to the official Bitwarden
+Please do not report MoliWarden-specific problems to the official Bitwarden
 team. This project is independent from Bitwarden.
 
 ## Pull Request Guidelines
@@ -32,6 +32,40 @@ Keep pull requests small enough to review. A good PR should explain:
 Avoid mixing unrelated refactors with feature or bug-fix work. If a cleanup is
 needed before the real fix, mention that clearly in the PR.
 
+## Backend Layout
+
+The server is a [Hono](https://hono.dev) app over PostgreSQL (through
+[Kysely](https://kysely.dev)) and S3-compatible blob storage:
+
+```
+src/main/       config (the only reader of process.env), dependencies, the app
+src/http/       authentication, rate limits, errors, body parsing, headers
+src/modules/*/  one directory per area: identity, accounts, ciphers, sends, ...
+src/platform/   database, migrations, blob storage, crypto, tokens
+src/config/     protocol constants and limits
+```
+
+A module is split the same way throughout:
+
+- `routes.ts` speaks HTTP: it reads the request, calls a service, shapes the
+  answer. It never touches the database.
+- `service.ts` (and its siblings) holds the rules, as plain functions of
+  `(deps, caller, input)`. Services know nothing of Hono.
+- `repo.ts` holds the queries. It takes an `Executor`, a database or a
+  transaction, so services can combine writes in one transaction.
+- `schemas.ts` holds the zod schemas of request bodies.
+
+A change clients must sync goes through `commit()` in
+`src/modules/sync/changes.ts`, which moves everyone's revision date in the same
+transaction and then notifies their apps.
+
+`src/` keeps no state of its own: no top-level `let` or `Map`. Everything a
+request needs comes in with `deps`. `tests/unit/architecture.test.ts` checks
+these rules on every file.
+
+Nothing on the request path cleans up. Expired rows are refused where they are
+read, and deleted by the cron job in `src/modules/cron/`.
+
 ## Areas That Need Extra Care
 
 Some parts of the codebase are deliberately connected. When changing one of
@@ -39,35 +73,36 @@ these areas, check the related files before calling the work complete.
 
 ### Database Changes
 
-The PostgreSQL schema lives only in `src/services/storage-schema.ts`.
+The schema is defined by the migrations in `src/platform/db/migrations/`, and
+its TypeScript shape by `src/platform/db/schema.ts`; keep the two in step.
 
 If you add or change a table, column, or index:
 
-- Add new columns with `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
-- Run `npm run check:sql` against a scratch database.
-- Bump `STORAGE_SCHEMA_VERSION` in `src/services/storage.ts`.
-- Decide whether the data should be included in instance backup.
+- Add a new migration file and register it in `src/platform/db/migrate.ts`.
+  Never edit a migration that has shipped.
+- Prefer additive changes; the server applies pending migrations on its first
+  request, while the previous deployment may still be serving.
+- Queries are typed by Kysely, so `npm run typecheck` catches most mismatches;
+  `npm run test:e2e` runs every migration on an empty database.
+- Decide whether the data belongs in instance backups.
 
 ### Backup And Restore
 
-Backup export and restore are whitelist-based. This protects old backups from
-breaking when fields are removed and prevents transient or secret runtime data
-from being exported by accident.
+Backups are whitelist-based: `src/modules/backup/archive.ts` lists every record
+kind and field an archive carries, independent of the table layout. Transient
+rows (sessions, rate limits, leases, consumed tokens) are never exported.
 
 When adding persistent data, check:
 
-- `src/services/backup-archive.ts`
-- `src/services/backup-import.ts`
+- `src/modules/backup/archive.ts`
+- `src/modules/backup/repo.ts`
 - `webapp/src/lib/api/backup.ts`
-
-Do not export runtime lock rows such as `backup.runner.lock.v1`. Do not import
-retired sensitive fields such as `users.api_key`.
 
 ### Secrets And Provider Settings
 
-Provider credentials must not be stored or exported as plain config JSON. Follow
-the encrypted settings pattern in `src/services/backup-settings-crypto.ts`, or
-document a replacement design before changing it.
+Provider credentials must not be stored or exported as plain JSON. Follow the
+sealed settings in `src/modules/backup/settings-crypto.ts`, or document a
+replacement design before changing it.
 
 ### Bitwarden Client Compatibility
 
@@ -77,16 +112,15 @@ unless they are known-invalid or server-owned.
 
 Check these files when changing vault item shape or sync behavior:
 
-- `src/handlers/ciphers.ts`
-- `src/handlers/sync.ts`
-- `src/services/storage-cipher-repo.ts`
+- `src/modules/ciphers/model.ts`
+- `src/modules/ciphers/responses.ts`
+- `src/modules/sync/service.ts`
 
 ### Domain Rules
 
-Equivalent-domain settings store both client/UI rule state and derived active
-groups. Do not remove `equivalent_domains`, `custom_equivalent_domains`, or
-`excluded_global_equivalent_domains` as duplicates without a migration and
-compatibility plan.
+`users.custom_domains` holds the user's own equivalent-domain groups and
+`users.excluded_global_domains` the global groups they turned off; the active
+groups are derived from both when the rules are read.
 
 ### Accounts And Passwords
 
@@ -111,11 +145,12 @@ For new locales, update:
 
 ## Recommended Checks
 
-For most backend or shared changes:
+For most backend or shared changes, with PostgreSQL available as
+`TEST_DATABASE_URL`:
 
 ```sh
-npx tsc -p tsconfig.json --noEmit
-npm run build
+npm run typecheck
+npm test
 ```
 
 For webapp text or locale changes:

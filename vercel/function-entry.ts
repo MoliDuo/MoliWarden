@@ -1,5 +1,5 @@
 // Bundled by scripts/build-vercel.ts into
 // .vercel/output/functions/_moliwarden.func/index.mjs
-import { handleNodeRequest } from '../src/platform/node-http';
+import { createNodeHandler } from '../src/main/node';
 
-export default handleNodeRequest;
+export default createNodeHandler().handler;

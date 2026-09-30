@@ -42,7 +42,7 @@ async function main(): Promise<void> {
     external: ['pg-native'],
     // Some bundled CommonJS dependencies (pg) call require() at runtime.
     banner: {
-      js: "import { createRequire as __nwCreateRequire } from 'node:module'; const require = __nwCreateRequire(import.meta.url);",
+      js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);",
     },
     logLevel: 'info',
   });

@@ -1,26 +1,26 @@
 # MoliWarden
 
-运行在 **Vercel** 上的 Bitwarden 兼容服务端，基于 [NodeWarden](https://github.com/shuaiplus/NodeWarden) 1.8.0 改造：
+运行在 **Vercel** 上的 Bitwarden 兼容服务端，自带 Web 密码库：
 
-- 数据库：Cloudflare D1 → **PostgreSQL**（推荐 Neon，通过 Vercel Marketplace 一键接入）
-- 附件 / Send 文件：R2 / KV → **任意 S3 兼容存储**（AWS S3、Cloudflare R2 的 S3 接口、Backblaze B2、MinIO 等）
-- 新增 **组织（共享）**：组织、成员、集合、集合级权限，官方客户端和自带 Web 密码库都能使用
+- 数据库：**PostgreSQL**（推荐 Neon，通过 Vercel Marketplace 一键接入）
+- 附件 / Send 文件：**任意 S3 兼容存储**（AWS S3、Cloudflare R2 的 S3 接口、Backblaze B2、MinIO 等）
+- **组织（共享）**：组织、成员、集合、集合级权限，官方客户端和自带 Web 密码库都能使用
 
 > 本项目与 Bitwarden 官方无关，仅供学习交流。请定期备份。
 
 ---
 
-## 与 NodeWarden / Vaultwarden 的功能对比
+## 功能
 
-| 功能 | NodeWarden | MoliWarden | 说明 |
-|---|---|---|---|
-| 密码库、TOTP、Passkey 登录、两步验证、设备管理、登录请求 | ✅ | ✅ | 沿用 NodeWarden |
-| 附件 / Send | ✅ | ✅ | 经官方客户端上传的单个文件上限约 **4.4 MB**（Vercel 请求体限制，见下文） |
-| 实例备份（本地 / WebDAV / S3） | ✅ | ✅ | 备份已包含组织数据 |
-| **组织 / 集合 / 成员角色** | ❌ | ✅ | 所有者、管理员、经理、用户；只读 / 隐藏密码 / 可编辑 / 可管理 |
-| 实时推送（WebSocket） | ✅ | ⚠️ | Vercel 无法保持长连接。桌面端和浏览器扩展靠定期同步；移动端仍可走 Bitwarden 官方推送中继 |
-| 邮件（邮箱两步验证、邀请邮件等） | ❌ | ❌ | 邀请改为：被邀请人在 Web 密码库的“组织”页面接受 |
-| 群组、策略、SSO、紧急访问、事件日志 | ❌ | ❌ | 未实现 |
+| 功能 | 状态 | 说明 |
+|---|---|---|
+| 密码库、TOTP、Passkey 登录、两步验证、设备管理、登录请求 | ✅ | |
+| 附件 / Send | ✅ | 经官方客户端上传的单个文件上限约 **4.4 MB**（Vercel 请求体限制，见下文） |
+| 实例备份（本地 / WebDAV / S3） | ✅ | 包含组织数据 |
+| **组织 / 集合 / 成员角色** | ✅ | 所有者、管理员、经理、用户；只读 / 隐藏密码 / 可编辑 / 可管理 |
+| 实时推送（WebSocket） | ⚠️ | Vercel 无法保持长连接。桌面端和浏览器扩展靠定期同步；移动端仍可走 Bitwarden 官方推送中继 |
+| 邮件（邮箱两步验证、邀请邮件等） | ❌ | 邀请改为：被邀请人在 Web 密码库的“组织”页面接受 |
+| 群组、策略、SSO、紧急访问 | ❌ | 未实现 |
 
 ### 组织共享的使用流程
 
@@ -50,17 +50,25 @@
 | 变量 | 必填 | 说明 |
 |---|---|---|
 | `DATABASE_URL` | ✅ | Postgres 连接串（Neon 集成会自动设置；也支持 `POSTGRES_URL`） |
-| `JWT_SECRET` | ✅ | 至少 32 位的随机字符串，如 `openssl rand -base64 48` |
+| `JWT_SECRET` | ✅ | 至少 32 位的随机字符串，如 `openssl rand -base64 48`；用于签发登录令牌，更换后所有设备需要重新登录 |
+| `ENCRYPTION_KEY` | ✅ | 至少 32 位的随机字符串，不要与 `JWT_SECRET` 相同；用于加密服务端保存的两步登录密钥、恢复码、API Key 和备份凭据。**请妥善保管**，更换后这些数据将无法解密 |
+| `SHOW_PASSWORD_HINT` | | 设为 `1` 在登录页提供密码提示；默认关闭，因为知道邮箱的人都能看到提示 |
 | `S3_ENDPOINT` | ✅ | 例如 `https://<account>.r2.cloudflarestorage.com`、`https://s3.us-east-1.amazonaws.com` |
 | `S3_BUCKET` | ✅ | bucket 名称 |
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | ✅ | 访问密钥 |
 | `S3_REGION` | | 默认 `auto`（R2）；AWS 需填实际区域 |
 | `S3_FORCE_PATH_STYLE` | | 默认路径风格；设为 `0` 改用虚拟主机风格 |
-| `CRON_SECRET` | 推荐 | Vercel Cron 调用定时备份时的鉴权密钥（Vercel 会自动带上） |
+| `CRON_SECRET` | 推荐 | Vercel Cron 调用 `/api/internal/cron` 的鉴权密钥（Vercel 会自动带上）。该任务负责定时备份，并清理过期的会话、令牌、Send 和未完成的上传；不设置则不会运行 |
 | `MOLIWARDEN_CRON_SCHEDULE` | | 构建时生效的定时任务表达式，默认每天一次（Hobby 套餐只允许每天一次） |
+| `BACKUP_ALLOW_PRIVATE_HOSTS` | | 设为 `1` 允许备份目的地使用内网或回环地址（自建 NAS、测试） |
 | `PUSH_RELAY_DISABLED` | | 设为 `1` 不向 Bitwarden 官方推送中继注册 |
 | `HIDE_WEB_VAULT` | | 构建时设为 `1`，则不发布 Web 密码库，只保留客户端 API |
-| `WEBAUTHN_RP_ID` 等 | | 同 NodeWarden |
+| `WEBAUTHN_RP_ID` / `WEBAUTHN_RP_NAME` | | Passkey 的 RP ID 和显示名称，默认取站点域名和 `MoliWarden` |
+| `WEBAUTHN_ALLOWED_ORIGINS` | | 额外允许使用 Passkey 的来源，逗号分隔；官方扩展和桌面端始终允许 |
+| `ICON_SOURCE` | | 网站图标来源：`favicon`（默认，先 favicon.im 再 Bitwarden 图标服务）、`bitwarden` 或 `off` |
+| `MAX_UPLOAD_BYTES` | | 附件和 Send 文件的上限，默认 4400000（Vercel Functions 的请求体上限为 4.5 MB） |
+| `DATABASE_POOL_MAX` | | 每个函数实例的数据库连接数，默认 5 |
+| `YUBICO_VALIDATION_URLS` | | YubiKey OTP 验证服务器，逗号分隔，默认使用 Yubico 官方 |
 
 ### 4. 首次使用
 
@@ -86,9 +94,82 @@
 
 - 页面提示 `Server configuration error: DATABASE_URL is not configured`：没有设置数据库变量。
 - 提示 `Database unavailable. Check DATABASE_URL`：连接串错误或数据库不可达，具体原因在 Vercel 的函数日志里。
-- 注册时提示 `JWT_SECRET is not set` / `must be at least 32 characters`：设置 `JWT_SECRET` 后重新部署。
+- 页面显示密钥配置提示，或请求报 `JWT_SECRET is not set or too weak` / `ENCRYPTION_KEY is not set or too weak`：设置对应变量（至少 32 位）后重新部署。
+- 报错 `a stored secret cannot be decrypted. Was ENCRYPTION_KEY changed?`：`ENCRYPTION_KEY` 与写入数据时的不一致，改回原来的值。
 - 上传附件提示 `File storage is not configured`：缺少 `S3_*` 变量。
+- 所有请求返回 503 并提示 `db:migrate-legacy`：数据库里还是旧版本的数据，见下方“从旧版本升级”。
 - 修改环境变量后需要在 Vercel 里 **Redeploy** 才会生效。
+
+---
+
+## 从旧版本升级
+
+存储层重写之前的版本把数据放在另一套表里。新版本不会自动转换这些表：迁移完成之前，所有请求都返回 `503`，并提示查看本节。升级期间旧版本不能继续写入，部署新版本后它自然就停止了。
+
+### 1. 备份
+
+在旧版 Web 密码库的“管理 → 备份”里导出一份**包含附件**的实例备份，同时给数据库做一个快照（Neon 分支或 `pg_dump`）。
+
+### 2. 部署
+
+`JWT_SECRET` 保持不变，新增 `ENCRYPTION_KEY`，然后部署新版本。
+
+### 3. 迁移
+
+在本仓库的本地检出目录里，对生产数据库执行迁移。要求如下：
+
+- 使用**直连**地址，不要用连接池地址。脚本会优先读取 `DATABASE_URL_UNPOOLED`（Neon 集成会自动设置），没有时才用 `DATABASE_URL`。
+- `JWT_SECRET` 必须是旧版本正在使用的那个，因为它用来解开已保存的备份设置。
+
+```bash
+DATABASE_URL='<直连地址>' JWT_SECRET='<现有值>' ENCRYPTION_KEY='<新值>' npm run db:migrate-legacy -- --dry-run
+```
+
+`--dry-run` 会完整执行转换和校验，最后全部撤销。它会输出：
+
+- 读取和写入的行数；
+- 被跳过的行及原因；
+- 需要用户自行处理的事项。
+
+确认无误后，去掉 `--dry-run` 再执行一次。整个迁移在同一个事务里完成。
+
+### 4. 验证
+
+刷新站点并登录，然后同步一次、打开一个附件、执行一次备份。
+
+- **Web 密码库**：浏览器端的存储已改名，所有人需要重新登录一次。
+- **官方 App、浏览器扩展和 `bw`**：保持登录状态。TOTP、安全密钥、Passkey、记住的设备和 API Key 都继续可用。
+- **例外**：旧版本只保存了哈希的 API Key 需要重新生成，迁移报告会列出这些用户。
+
+### 5. 备份目的地（可选）
+
+每个备份目的地都保存着一份附件索引，记录它已有哪些附件。索引文件已改名，复制一份过去，首次备份就不必重新上传全部附件：
+
+```bash
+DATABASE_URL='<直连地址>' ENCRYPTION_KEY='<新值>' npm run db:migrate-legacy -- --migrate-remote-index
+```
+
+旧版本写入的备份文件保留原来的文件名，不参与保留份数的清理，不再需要时请手动删除。
+
+### 回滚
+
+迁移之后如果还没有产生任何新写入，可以执行 `npm run db:migrate-legacy -- --rollback` 把旧表移回原位，再重新部署旧版本（Vercel → Deployments → Instant Rollback）。一旦有了新写入，脚本会拒绝回滚，因为这些数据会丢失；这时请恢复第 1 步的快照。
+
+### 清理
+
+迁移后旧表保存在名为 `legacy` 的 schema 中。确认不再回滚后，执行 `DROP SCHEMA legacy CASCADE;` 删除。
+
+### 旧版本的备份文件
+
+新版本不能直接恢复旧版本的备份文件，需要先转换：
+
+```bash
+npm run backup:convert-v1 -- old-backup.zip
+```
+
+转换结果是输入文件旁边的一个 `moliwarden_backup_*.zip`，按平常的方式在“管理 → 备份”里导入即可。超过 4.4 MB 上传上限的文件，可以先放到某个备份目的地，再从那里远程恢复。
+
+旧版本 Web 密码库自有 JSON 格式的导出文件仍然可以导入，但不含附件；请在升级后重新导出一次。
 
 ---
 
@@ -128,7 +209,6 @@ npm test
 | `npm run test:official-cli` | 用官方 Bitwarden CLI（`bw`，首次运行自动下载到 `~/.cache/moliwarden-bw-cli`，不进依赖）走一遍：密码 / API Key 登录、锁定解锁、条目、文件夹、附件、Send、导出、确认组织成员、共享和集合权限。约 5 分钟 |
 | `npm run test:ui` | 用浏览器（Playwright，默认在官方 Docker 镜像里运行）把 Web 密码库的主要页面和流程点一遍，包括条目、文件夹、回收站、附件、Send、导入导出、设置、管理员、组织共享全流程、中文界面和 375px 手机宽度；任何页面报错、控制台错误、错误提示或 5xx 都算失败。见 `tests/ui/README.md` |
 | `npm run test:smoke` | 构建 `.vercel/output`，复制到仓库外，用 `tests/vercel-emulator.ts` 按 Vercel 的路由规则、4.5 MB 请求体限制、`waitUntil` 和 Cron 调用方式运行 |
-| `npm run check:sql` | 把代码中的每条 SQL 在真实 Postgres 上 `PREPARE` 一遍 |
 | `scripts/vercel-build-local.sh` | 不需要 Vercel 账号，用官方 `vercel build` 生成与线上一致的产物（会执行 `npm ci`）|
 
 要验证 Neon 连接池模式，把 `TEST_DATABASE_URL` 指向 PgBouncer 再跑端到端测试：
@@ -143,12 +223,12 @@ GitHub Actions（`.github/workflows/ci.yml`）在每次推送时运行以上全�
 
 ## 架构说明
 
-- `src/platform/pg-d1.ts`：D1 兼容的 Postgres 适配层（`?` 占位符转换、`batch()` 事务），存储代码基本保持 NodeWarden 原样。
-- `src/platform/node-http.ts`：Node HTTP 与 Web `Request`/`Response` 的转换，Vercel 函数和本地开发服务器共用。
+- `src/main/app.ts`：Hono 应用，挂载 `src/modules/*/routes.ts`；每个模块分为 routes（HTTP）、service（领域逻辑）和 repo（Kysely 查询）。
+- `src/platform/db/migrations/`：数据库结构，由服务端在首个请求时按顺序执行，也可用 `npm run db:migrate` 手动执行。
 - `scripts/build-vercel.ts`：生成 Vercel Build Output（静态 Web 密码库 + 单个 Node 函数 + 路由 + Cron）。
-- `src/services/org-access.ts`：组织权限的唯一判定点。只有**已确认**的成员才能访问组织数据；被撤销、仅邀请或仅接受的成员没有任何访问权限。
-- 条目归属：个人条目 `user_id` 非空，组织条目 `organization_id` 非空，二者由数据库 CHECK 约束保证互斥；组织条目的文件夹、收藏、归档按用户分别存储。
+- `src/modules/organizations/access.ts`：组织权限的唯一判定点。只有**已确认**的成员才能访问组织数据；被撤销、仅邀请或仅接受的成员没有任何访问权限。
+- 条目归属：个人条目 `user_id` 非空，组织条目 `organization_id` 非空，二者由数据库 CHECK 约束保证互斥；文件夹、收藏、归档按用户存放在 `cipher_user_state`。
 
 ## 许可
 
-LGPL-3.0，沿用 NodeWarden。致谢 [NodeWarden](https://github.com/shuaiplus/NodeWarden)、[Vaultwarden](https://github.com/dani-garcia/vaultwarden)、[Bitwarden](https://bitwarden.com/)。
+LGPL-3.0，见 [LICENSE](./LICENSE) 和 [NOTICE](./NOTICE)。
