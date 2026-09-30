@@ -209,7 +209,7 @@ export async function runScheduledBackups(deps: Deps, now = new Date()): Promise
   await withLease(deps.db, BACKUP_LEASE, BACKUP_LEASE_MS, async () => {
     for (const destination of due) {
       await run(deps, destination, 'scheduled', { userId: null, metadata: {} }).catch((error) => {
-        console.error(`Scheduled backup to ${destination.name} failed:`, error);
+        console.error('Scheduled backup to %s failed:', destination.name, error);
       });
     }
   });

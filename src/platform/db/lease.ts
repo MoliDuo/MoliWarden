@@ -34,6 +34,6 @@ export async function withLease<T>(db: Executor, name: string, ttlMs: number, jo
   try {
     return { value: await job() };
   } finally {
-    await releaseLease(db, name, token).catch((error) => console.error(`Releasing lease ${name} failed:`, error));
+    await releaseLease(db, name, token).catch((error) => console.error('Releasing lease %s failed:', name, error));
   }
 }
