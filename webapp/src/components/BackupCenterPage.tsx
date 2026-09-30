@@ -194,6 +194,8 @@ export default function BackupCenterPage(props: BackupCenterPageProps) {
   const selectedDestination = getDestinationById(settings, selectedDestinationId);
   const savedSelectedDestination = getDestinationById(savedSettings, selectedDestinationId);
   const selectedDestinationIsSaved = !!savedSelectedDestination;
+  const selectedDestinationHasUnsavedChanges =
+    !!selectedDestination && JSON.stringify(selectedDestination) !== JSON.stringify(savedSelectedDestination ?? null);
   const disableWhileBusy = exporting || importing || savingSettings || runningRemoteBackup || backupPasswordSubmitting;
   const currentRemoteBrowserPath = savedSelectedDestination ? (remoteBrowserPathByDestination[savedSelectedDestination.id] || '') : '';
   const currentRemoteBrowserKey = savedSelectedDestination ? getRemoteBrowserCacheKey(savedSelectedDestination.id, currentRemoteBrowserPath) : '';
@@ -680,6 +682,10 @@ export default function BackupCenterPage(props: BackupCenterPageProps) {
         enabled: !destination.schedule.enabled,
       },
     }));
+    // Turning the schedule on or off is easy to mistake for saving it, so a
+    // saved destination goes straight to the save prompt. A new one is saved
+    // together with the rest of its form.
+    if (selectedDestinationIsSaved) void handleSaveSettings();
   }
 
   async function handleRunRemoteBackup() {
@@ -955,6 +961,7 @@ export default function BackupCenterPage(props: BackupCenterPageProps) {
         selectedRecommendedProvider={selectedRecommendedProvider}
         selectedDestination={selectedDestination}
         selectedDestinationIsSaved={selectedDestinationIsSaved}
+        selectedDestinationHasUnsavedChanges={selectedDestinationHasUnsavedChanges}
         canRunSelectedDestination={canRunSelectedDestination}
         canBrowseSelectedDestination={canBrowseSelectedDestination}
         disableWhileBusy={disableWhileBusy}

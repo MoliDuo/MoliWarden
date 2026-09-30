@@ -18,6 +18,7 @@ interface BackupDestinationDetailProps {
   selectedRecommendedProvider: RecommendedProvider | null;
   selectedDestination: BackupDestinationRecord | null;
   selectedDestinationIsSaved: boolean;
+  selectedDestinationHasUnsavedChanges: boolean;
   canRunSelectedDestination: boolean;
   canBrowseSelectedDestination: boolean;
   disableWhileBusy: boolean;
@@ -232,7 +233,12 @@ export function BackupDestinationDetail(props: BackupDestinationDetailProps) {
   return (
     <section className="backup-detail-panel">
       <div className="section-head">
-        <h3>{t('txt_backup_destination_detail_title')}</h3>
+        <div className="backup-detail-title">
+          <h3>{t('txt_backup_destination_detail_title')}</h3>
+          {props.selectedDestinationHasUnsavedChanges ? (
+            <span className="backup-unsaved-badge" role="status">{t('txt_backup_unsaved_changes')}</span>
+          ) : null}
+        </div>
         {props.selectedDestination ? (
           <div className="actions">
             <button type="button" className="btn btn-primary small" disabled={props.loadingSettings || props.disableWhileBusy} onClick={props.onSaveSettings}>
@@ -386,6 +392,8 @@ export function BackupDestinationDetail(props: BackupDestinationDetailProps) {
               </div>
             </label>
           </div>
+
+          <p className="backup-inline-note">{t('txt_backup_schedule_note')}</p>
 
           <div className="backup-schedule-attachments-row">
             <BackupIncludeAttachmentsField
