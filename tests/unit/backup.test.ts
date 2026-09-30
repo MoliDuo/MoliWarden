@@ -46,6 +46,10 @@ test('destinations must be public http(s) URLs', () => {
   for (const url of ['http://127.0.0.1', 'http://169.254.169.254', 'http://[::1]', 'http://[::ffff:10.0.0.1]', 'http://[fc00::1]', 'http://localhost:8080', 'http://nas.local']) {
     assert.throws(() => checkEndpointUrl(url, 'WebDAV server URL', false), /host is not allowed/, url);
   }
+  // Public addresses, among them Cloudflare R2's.
+  for (const url of ['https://1.1.1.1', 'https://172.64.66.1', 'https://[2606:4700:113::1]', 'https://[::ffff:8.8.8.8]']) {
+    assert.equal(checkEndpointUrl(url, 'S3 endpoint', false), new URL(url).toString().replace(/\/$/, ''), url);
+  }
   assert.throws(() => checkEndpointUrl('ftp://example.com', 'S3 endpoint', false), /must start with http/);
   assert.throws(() => checkEndpointUrl('https://user:pw@example.com', 'S3 endpoint', false), /credentials/);
   assert.equal(checkEndpointUrl('https://dav.example.com/remote.php/', 'WebDAV server URL', false), 'https://dav.example.com/remote.php');
