@@ -1,0 +1,9 @@
+# The default rules, minus data generated for tests: the legacy fixture is
+# a database written by a throwaway server, and the golden files are
+# recorded responses. Neither holds a real secret.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Generated test data"
+paths = ['''^tests/legacy-fixture/''', '''^tests/golden/''']

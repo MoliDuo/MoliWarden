@@ -1,3 +1,7 @@
 # Test/demo placeholders, not secrets.
 2ce96dfed4e71f23d14bb3d8b376292d5d18b760:tests/ui/smoke.mjs:generic-api-key:86
 bd77c432de08a11fc031d501c6bb339e921a5204:webapp/src/lib/demo.ts:private-key:379
+649167ed4ca00e9444382898866b498c4b0172d8:tests/helpers.ts:generic-api-key:76
+649167ed4ca00e9444382898866b498c4b0172d8:tests/secrets.e2e.test.ts:generic-api-key:15
+649167ed4ca00e9444382898866b498c4b0172d8:tests/ui/smoke.mjs:generic-api-key:87
+85a8170efadf2d7b4b7c679c4fc671f60cb20049:webapp/src/components/vault/vault-page-helpers.tsx:generic-api-key:162
