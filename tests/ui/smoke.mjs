@@ -365,13 +365,22 @@ async function step(name, fn) {
 
 const state = {};
 
+// The login page switches to the registration form by itself once the
+// server says it has no users yet, possibly while the button is being clicked.
+async function openRegisterForm(nameInput, gotoRegister) {
+  const deadline = Date.now() + 15_000;
+  while (!(await nameInput.isVisible())) {
+    if (Date.now() > deadline) throw new Error('the registration form did not open');
+    await gotoRegister.click({ timeout: 1_000 }).catch(() => {});
+  }
+}
+
 async function register(page, { name, email, inviteCode }) {
   await page.goto(`${BASE}/login`);
   // A fresh instance opens straight on the registration form.
   const nameInput = page.locator('input[autocomplete="name"]');
   const gotoRegister = page.locator('form button[type="button"]', { hasText: 'Create Account' });
-  await nameInput.or(gotoRegister).first().waitFor();
-  if (!(await nameInput.isVisible())) await gotoRegister.click();
+  await openRegisterForm(nameInput, gotoRegister);
   await nameInput.fill(name);
   await page.locator('input[type="email"]').fill(email);
   const pw = page.locator('input[autocomplete="new-password"]');
@@ -898,10 +907,7 @@ section('admin and second user', async () => {
     const bob = await newPage('bob');
     state.bob = bob;
     await bob.goto(state.inviteLink);
-    await bob.locator('input[autocomplete="name"]').or(bob.locator('form button[type="button"]', { hasText: 'Create Account' })).first().waitFor();
-    if (!(await bob.locator('input[autocomplete="name"]').isVisible())) {
-      await bob.locator('form button[type="button"]', { hasText: 'Create Account' }).click();
-    }
+    await openRegisterForm(bob.locator('input[autocomplete="name"]'), bob.locator('form button[type="button"]', { hasText: 'Create Account' }));
     const inviteInput = bob.locator('label.field', { hasText: /invite/i }).locator('input');
     assert((await inviteInput.inputValue()) === state.inviteCode, 'invite code not prefilled from link');
     await bob.locator('input[autocomplete="name"]').fill('Bob');
