@@ -527,6 +527,16 @@
   color: var(--muted);
 }
 
+.backup-detail-title {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+.backup-unsaved-badge {
+  @apply whitespace-nowrap rounded-full px-2 py-0.5 text-xs;
+  border: 1px solid var(--line-strong);
+  color: var(--muted-strong);
+}
+
 .import-export-panel h3 {
   @apply m-0 mb-1.5;
 }

@@ -877,6 +877,40 @@ section('settings', async () => {
     assert(bytes.subarray(0, 2).toString('latin1') === 'PK', `backup ${download.suggestedFilename()} is not a zip`);
   });
 
+  await step('backup center: enabling a schedule saves it', async () => {
+    const grid = page.locator('.backup-grid');
+    const detail = grid.locator('.backup-detail-panel');
+    const unsaved = detail.locator('.backup-unsaved-badge');
+    const entry = grid.locator('.backup-destination-list .backup-destination-item.active');
+    await grid.getByRole('button', { name: 'Add Destination' }).click();
+    await grid.locator('.backup-add-chooser').getByRole('button', { name: 'WebDAV' }).click();
+    await unsaved.waitFor();
+    await detail.getByRole('button', { name: 'Save Settings' }).click();
+    await masterPasswordPrompt(page);
+    await unsaved.waitFor({ state: 'detached' });
+
+    await field(detail, 'WebDAV Server URL').fill('https://dav.example.com/backups');
+    await field(detail, 'WebDAV Username').fill('ui');
+    await field(detail, 'WebDAV Password').fill('ui-password');
+    await unsaved.waitFor();
+    // Enable goes straight to the save prompt, taking the edits above with it.
+    await detail.getByRole('button', { name: 'Enable', exact: true }).click();
+    await masterPasswordPrompt(page);
+    await unsaved.waitFor({ state: 'detached' });
+    await entry.getByText('Auto On').waitFor();
+
+    await detail.getByRole('button', { name: 'Disable', exact: true }).click();
+    await masterPasswordPrompt(page);
+    await entry.getByText('Auto Off').waitFor();
+    await unsaved.waitFor({ state: 'detached' });
+
+    // The host does not exist; later visits to the page would try to list it.
+    await detail.getByRole('button', { name: 'Delete', exact: true }).click();
+    await confirmDialog(page);
+    await masterPasswordPrompt(page);
+    await grid.locator('.backup-destination-list .backup-destination-item').first().waitFor({ state: 'detached' });
+  });
+
   await step('log center opens', async () => {
     await go(page, '/logs');
     await page.locator('.log-center-page').waitFor();
