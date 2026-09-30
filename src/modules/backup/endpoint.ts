@@ -17,18 +17,21 @@ export class RemoteError extends HttpError {
   }
 }
 
-const BLOCKED = new BlockList();
+// One list per family: node:net checks an IPv4 address against IPv6 rules
+// too, so ::ffff:0:0/96 in a shared list would block every IPv4 address.
+const BLOCKED_V4 = new BlockList();
+const BLOCKED_V6 = new BlockList();
 for (const [network, prefix] of [
   ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16],
   ['172.16.0.0', 12], ['192.0.0.0', 24], ['192.0.2.0', 24], ['192.168.0.0', 16], ['198.18.0.0', 15],
   ['198.51.100.0', 24], ['203.0.113.0', 24], ['224.0.0.0', 3],
 ] as const) {
-  BLOCKED.addSubnet(network, prefix, 'ipv4');
+  BLOCKED_V4.addSubnet(network, prefix, 'ipv4');
 }
 for (const [network, prefix] of [
   ['::', 127], ['::ffff:0:0', 96], ['64:ff9b::', 96], ['fc00::', 7], ['fe80::', 10], ['ff00::', 8], ['2001:db8::', 32],
 ] as const) {
-  BLOCKED.addSubnet(network, prefix, 'ipv6');
+  BLOCKED_V6.addSubnet(network, prefix, 'ipv6');
 }
 
 const PRIVATE_NAME = /(^|\.)(localhost|localdomain|local|internal|lan|home\.arpa|localtest\.me|lvh\.me|vcap\.me|nip\.io|sslip\.io|xip\.io)$/;
@@ -37,11 +40,18 @@ function isBlockedAddress(address: string): boolean {
   const family = isIP(address);
   if (family === 0) return false;
   if (family === 6) {
-    // IPv4-mapped addresses are judged by the IPv4 address they carry.
-    const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(address)?.[1];
-    if (mapped) return BLOCKED.check(mapped, 'ipv4');
+    // IPv4-mapped addresses are judged by the IPv4 address they carry,
+    // written either way (URLs spell it in hex: [::ffff:a00:1]).
+    const dotted = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(address)?.[1];
+    if (dotted) return BLOCKED_V4.check(dotted, 'ipv4');
+    const hex = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i.exec(address);
+    if (hex) {
+      const [high, low] = [parseInt(hex[1], 16), parseInt(hex[2], 16)];
+      return BLOCKED_V4.check(`${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`, 'ipv4');
+    }
+    return BLOCKED_V6.check(address, 'ipv6');
   }
-  return BLOCKED.check(address, family === 6 ? 'ipv6' : 'ipv4');
+  return BLOCKED_V4.check(address, 'ipv4');
 }
 
 // The host of a URL, lower-cased and without brackets or a trailing dot.
