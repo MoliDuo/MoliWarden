@@ -36,6 +36,7 @@ test('tokens without a typ, with another alg, expired or from the future are ref
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'HS256', typ: 'JWT' };
   assert.equal(tokens.verify('access', forge(header, { iat: now, exp: now + 60 }, SECRET)), null);
+  assert.equal(tokens.verify('access', forge(header, { sub: 'u', iat: now, exp: now + 60 }, SECRET)), null);
   assert.equal(tokens.verify('access', forge({ alg: 'none' }, { typ: 'access', iat: now, exp: now + 60 }, SECRET)), null);
   assert.equal(tokens.verify('access', forge({ alg: 'HS512' }, { typ: 'access', iat: now, exp: now + 60 }, SECRET)), null);
   assert.equal(tokens.verify('access', forge(header, { typ: 'access', iat: now - 120, exp: now - 60 }, SECRET)), null);
@@ -44,6 +45,18 @@ test('tokens without a typ, with another alg, expired or from the future are ref
   assert.equal(tokens.verify('access', `${forge(header, { typ: 'access', iat: now, exp: now + 60 }, SECRET)}x`), null);
   assert.equal(tokens.verify('access', 'not-a-token'), null);
   assert.equal(tokens.verify('access', null), null);
+});
+
+test('access tokens from before typ existed stay valid until they expire', () => {
+  const tokens = createTokenService(SECRET);
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const earlier = { sub: 'user-1', sstamp: 'stamp', did: 'device-1', dstamp: 'd', iat: now, exp: now + 7200 };
+  assert.deepEqual(tokens.verify('access', forge(header, earlier, SECRET)), { ...earlier, typ: 'access' });
+  assert.equal(tokens.verify('send-access', forge(header, earlier, SECRET)), null);
+  assert.equal(tokens.verify('access', forge(header, { ...earlier, iat: now - 7300, exp: now - 100 }, SECRET)), null);
+  assert.equal(tokens.verify('access', forge(header, { ...earlier, typ: 'send_access' }, SECRET)), null);
+  assert.equal(tokens.verify('access', forge(header, earlier, `${SECRET}-rotated`)), null);
 });
 
 test('expiry follows the clock', () => {

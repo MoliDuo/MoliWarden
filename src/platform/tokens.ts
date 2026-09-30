@@ -6,6 +6,13 @@ import { base64url, constantTimeEqual, deriveKey, fromBase64url } from './crypto
 // issued for one purpose never verifies as another. Access tokens use
 // JWT_SECRET itself, which no other purpose does, so tokens issued before
 // the key derivation existed stayed valid.
+//
+// Those earlier access tokens carry no `typ`. Nothing else signed with
+// JWT_SECRET named both a user and a security stamp, and none of them
+// outlives LIMITS.auth.accessTokenTtlSeconds, so clients signed in before an
+// upgrade keep working until their next refresh instead of being logged out.
+const isUntypedAccess = (claims: Record<string, unknown>) =>
+  claims.typ === undefined && typeof claims.sub === 'string' && typeof claims.sstamp === 'string';
 
 export type TokenType =
   | 'access'
@@ -65,10 +72,10 @@ export function createTokenService(jwtSecret: string, now: () => number = Date.n
         if (alg !== 'HS256') return null;
         const claims = JSON.parse(fromBase64url(payload)?.toString('utf8') ?? '');
         const current = seconds();
-        if (!claims || claims.typ !== typ) return null;
+        if (!claims || (claims.typ !== typ && !(typ === 'access' && isUntypedAccess(claims)))) return null;
         if (!Number.isInteger(claims.exp) || claims.exp <= current) return null;
         if (!Number.isInteger(claims.iat) || claims.iat > current + CLOCK_SKEW_SECONDS) return null;
-        return claims as T & TokenClaims;
+        return { ...claims, typ } as T & TokenClaims;
       } catch {
         return null;
       }
