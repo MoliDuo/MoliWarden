@@ -1,9 +1,15 @@
 // Loads v1.sql, a plain pg_dump, with the pg driver alone (no psql needed):
 // statements run as they are, the rows of each COPY block are inserted.
+// It all runs in one transaction with the dump's settings local to it:
+// through a transaction pooler, a session setting such as its empty
+// search_path would stay on the server connection for whoever gets it next.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import pg from 'pg';
 import { FIXTURE_DIR } from './common';
+
+const local = (sql: string) =>
+  sql.replace(/^SET (?!LOCAL )/, 'SET LOCAL ').replace(/set_config\(('[^']*'), ('[^']*'), false\)/, 'set_config($1, $2, true)');
 
 const ESCAPES: Record<string, string> = { b: '\b', f: '\f', n: '\n', r: '\r', t: '\t', v: '\v' };
 
@@ -19,6 +25,7 @@ export async function restoreLegacyDump(connectionString: string, dump = readFil
   const client = new pg.Client({ connectionString });
   await client.connect();
   try {
+    await client.query('BEGIN');
     const lines = dump.split('\n');
     let statement: string[] = [];
     for (let i = 0; i < lines.length; i++) {
@@ -35,10 +42,14 @@ export async function restoreLegacyDump(connectionString: string, dump = readFil
       if (!statement.length && (!line.trim() || line.startsWith('--'))) continue;
       statement.push(line);
       if (line.trimEnd().endsWith(';')) {
-        await client.query(statement.join('\n'));
+        await client.query(local(statement.join('\n')));
         statement = [];
       }
     }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
   } finally {
     await client.end();
   }
