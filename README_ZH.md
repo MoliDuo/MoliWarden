@@ -49,7 +49,7 @@
 
 | 变量 | 必填 | 说明 |
 |---|---|---|
-| `DATABASE_URL` | ✅ | Postgres 连接串（Neon 集成会自动设置；也支持 `POSTGRES_URL`） |
+| `DATABASE_URL` | ✅ | Postgres 连接串（Neon 集成会自动设置；也支持 `POSTGRES_URL`）。会校验服务器证书，自签名证书请加 `sslmode=no-verify` |
 | `JWT_SECRET` | ✅ | 至少 32 位的随机字符串，如 `openssl rand -base64 48`；用于签发登录令牌，更换后所有设备需要重新登录 |
 | `ENCRYPTION_KEY` | ✅ | 至少 32 位的随机字符串，不要与 `JWT_SECRET` 相同；用于加密服务端保存的两步登录密钥、恢复码、API Key 和备份凭据。**请妥善保管**，更换后这些数据将无法解密 |
 | `SHOW_PASSWORD_HINT` | | 设为 `1` 在登录页提供密码提示；默认关闭，因为知道邮箱的人都能看到提示 |

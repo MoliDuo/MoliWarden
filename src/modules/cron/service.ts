@@ -39,7 +39,7 @@ export async function runCron(deps: Deps, now = new Date()): Promise<CronResult>
     try {
       return { name, removed: await task(deps, now) };
     } catch (error) {
-      console.error(`Cleanup task ${name} failed:`, error);
+      console.error('Cleanup task %s failed:', name, error);
       return { name, removed: null };
     }
   });

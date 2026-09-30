@@ -137,7 +137,7 @@ export function openLegacyBackupSettings(value: unknown, jwtSecret: string): str
   try {
     const key = Buffer.from(hkdfSync('sha256', jwtSecret, LEGACY_BACKUP_SALT, LEGACY_BACKUP_INFO, 32));
     const sealed = Buffer.from(runtime.ciphertext, 'base64');
-    const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(runtime.iv, 'base64'));
+    const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(runtime.iv, 'base64'), { authTagLength: 16 });
     decipher.setAuthTag(sealed.subarray(sealed.length - 16));
     return Buffer.concat([decipher.update(sealed.subarray(0, sealed.length - 16)), decipher.final()]).toString('utf8');
   } catch {

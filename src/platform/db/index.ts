@@ -22,12 +22,16 @@ const types = {
   },
 };
 
-function sslFor(connectionString: string): pg.PoolConfig['ssl'] {
+// TLS with the server's certificate checked, except on this machine or when
+// the URL opts out: `sslmode=disable` for none, `sslmode=no-verify` for a
+// server with a self-signed certificate.
+export function sslFor(connectionString: string): pg.PoolConfig['ssl'] {
   const url = new URL(connectionString);
   const sslmode = url.searchParams.get('sslmode');
   if (sslmode === 'disable') return false;
-  if (sslmode) return { rejectUnauthorized: sslmode === 'verify-full' || sslmode === 'verify-ca' };
-  return ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) ? false : { rejectUnauthorized: false };
+  if (sslmode === 'no-verify') return { rejectUnauthorized: false };
+  if (!sslmode && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) return false;
+  return { rejectUnauthorized: true };
 }
 
 export function createPool(options: { connectionString: string; max?: number }): pg.Pool {

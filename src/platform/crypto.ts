@@ -92,7 +92,7 @@ export function createSecretBox(encryptionKey: string): SecretBox {
       if (!ivBytes || ivBytes.length !== 12 || !bodyBytes || bodyBytes.length < 16) {
         throw new SecretBoxError(`Malformed sealed secret (${context})`);
       }
-      const decipher = createDecipheriv('aes-256-gcm', key, ivBytes);
+      const decipher = createDecipheriv('aes-256-gcm', key, ivBytes, { authTagLength: 16 });
       decipher.setAAD(Buffer.from(context, 'utf8'));
       decipher.setAuthTag(bodyBytes.subarray(bodyBytes.length - 16));
       try {
